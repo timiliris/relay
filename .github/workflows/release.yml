@@ -47,6 +47,13 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # Signature Windows via Azure Trusted Signing (optionnelle).
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      TRUSTED_SIGNING_ENDPOINT: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+      TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+      TRUSTED_SIGNING_PROFILE: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
     steps:
       - uses: actions/checkout@v5
 
@@ -73,9 +80,18 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Signature Windows (Azure Trusted Signing)
+        if: runner.os == 'Windows' && env.AZURE_CLIENT_ID != ''
+        shell: pwsh
+        run: |
+          cargo install trusted-signing-cli --locked
+          $config = @{ bundle = @{ windows = @{ signCommand = "trusted-signing-cli -e $env:TRUSTED_SIGNING_ENDPOINT -a $env:TRUSTED_SIGNING_ACCOUNT -c $env:TRUSTED_SIGNING_PROFILE %1" } } }
+          $config | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 src-tauri/tauri.windows-sign.conf.json
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Le CLI Tauri lit ces variables pour signer et notariser les bundles macOS.
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Relay ${{ github.ref_name }}"
@@ -85,4 +101,4 @@ jobs:
           releaseDraft: false
           prerelease: false
           # Active les artefacts d'updater (.sig + latest.json) seulement si la clé de signature est fournie.
-          args: ${{ matrix.args }} ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' && '--config src-tauri/tauri.updater.conf.json' || '' }}
+          args: ${{ matrix.args }} ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' && '--config src-tauri/tauri.updater.conf.json' || '' }} ${{ runner.os == 'Windows' && env.AZURE_CLIENT_ID != '' && '--config src-tauri/tauri.windows-sign.conf.json' || '' }}

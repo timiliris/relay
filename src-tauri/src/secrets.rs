@@ -6,7 +6,9 @@ use keyring::Entry;
 
 use crate::AppResult;
 
-const SERVICE: &str = "com.example.relay";
+const SERVICE: &str = "io.github.timiliris.relay";
+/// Service utilisé par les versions installées sous l'ancien identifiant.
+const LEGACY_SERVICE: &str = "com.example.relay";
 const ACCOUNT: &str = "openrouter_api_key";
 
 fn entry() -> AppResult<Entry> {
@@ -30,6 +32,27 @@ pub fn clear_api_key() -> AppResult<()> {
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(err) => Err(err.into()),
+    }
+}
+
+/// Reprend la clé enregistrée sous l'ancien service, puis supprime l'ancienne entrée.
+pub fn migrate_legacy_entry() {
+    let has_current = matches!(get_api_key(), Ok(Some(_)));
+    if has_current {
+        return;
+    }
+    let Ok(legacy) = Entry::new(LEGACY_SERVICE, ACCOUNT) else {
+        return;
+    };
+    match legacy.get_password() {
+        Ok(key) => {
+            if set_api_key(&key).is_ok() {
+                let _ = legacy.delete_credential();
+                log::info!("clé API reprise depuis l'ancienne installation");
+            }
+        }
+        Err(keyring::Error::NoEntry) => {}
+        Err(err) => log::warn!("lecture de l'ancienne entrée du trousseau impossible : {err}"),
     }
 }
 

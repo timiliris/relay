@@ -108,8 +108,8 @@ L'arrêt (`cancel_stream`) annule la requête côté Rust ; ce qui a déjà ét�
 
 ## Données et confidentialité
 
-- Conversations : `relay.db` dans le dossier app-config de l'OS (`%APPDATA%\com.example.relay`,
-  `~/Library/Application Support/com.example.relay`, `~/.config/com.example.relay`). Les pièces jointes
+- Conversations : `relay.db` dans le dossier app-config de l'OS (`%APPDATA%\io.github.timiliris.relay`,
+  `~/Library/Application Support/io.github.timiliris.relay`, `~/.config/io.github.timiliris.relay`). Les pièces jointes
   (images, PDF en base64, texte) sont stockées dans la base.
 - Préférences et cache des modèles : `settings.json`, `models-cache.json` au même endroit.
 - Clé API : trousseau système uniquement. Export / import JSON depuis Paramètres → Données.
@@ -122,12 +122,14 @@ L'arrêt (`cancel_stream`) annule la requête côté Rust ; ce qui a déjà ét�
 - **Schéma** : ajouter une migration dans `src-tauri/src/db.rs` et adapter `src/lib/db.ts`.
 - **Limites** : taille des pièces jointes (`MAX_ATTACHMENT_BYTES`) et extensions acceptées dans `src/lib/attachments.ts`.
 
-## Avant une distribution publique
+## Distribution : identité, mises à jour, signature
 
-Deux décisions appartiennent à l'éditeur de l'application et ne sont pas prises dans ce dépôt :
+- **Identifiant d'application** : `io.github.timiliris.relay` (dossiers de données, entrée du trousseau, instance unique). Les installations faites sous l'identifiant provisoire `com.example.relay` sont reprises automatiquement au premier lancement : base, préférences, cache des modèles, état de fenêtre et clé API (`src-tauri/src/migration.rs`, `secrets.rs`).
+- **Mises à jour automatiques** : la clé publique de l'updater est en place dans `tauri.conf.json` et pointe sur les releases GitHub `timiliris/relay`. La clé privée correspondante est `~/.tauri/relay.key` sur le poste qui l'a générée : ajoutez son contenu dans le secret `TAURI_SIGNING_PRIVATE_KEY` du dépôt (clé sans mot de passe, laissez `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` vide) et conservez-la en lieu sûr, sans quoi les mises à jour ne pourront plus être signées.
+- **Signature macOS** : secrets `APPLE_CERTIFICATE` (`.p12` en base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (mot de passe d'application), `APPLE_TEAM_ID` ; le CLI Tauri signe et notarise.
+- **Signature Windows** : via [Azure Trusted Signing](https://learn.microsoft.com/azure/trusted-signing/) ; secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `TRUSTED_SIGNING_ENDPOINT`, `TRUSTED_SIGNING_ACCOUNT`, `TRUSTED_SIGNING_PROFILE`. Le workflow installe `trusted-signing-cli` et signe les installeurs quand ces secrets sont présents.
 
-1. **Identifiant d'application** : `com.example.relay` est un identifiant provisoire. Il détermine les dossiers de données (`%APPDATA%\<identifier>`), l'entrée du trousseau et l'instance unique ; le changer après une première installation déplace les données des utilisateurs. Fixez-le une fois pour toutes (`identifier` dans `src-tauri/tauri.conf.json`, `SERVICE` dans `src-tauri/src/secrets.rs`) avant la première version distribuée.
-2. **Signature des binaires** : sans certificat, Windows (SmartScreen) et macOS (Gatekeeper) affichent un avertissement à l'installation. Le workflow de release signe et notarise automatiquement dès que les secrets `APPLE_*` sont fournis ; pour Windows, voir la section ci-dessous.
+Sans secrets de signature, la release se construit quand même : les installeurs ne sont simplement pas signés (avertissement SmartScreen / Gatekeeper à l'installation).
 
 ## Vérification de bout en bout
 

@@ -16,6 +16,7 @@ mod error;
 mod i18n;
 #[cfg(desktop)]
 mod menu;
+mod migration;
 mod openrouter;
 mod secrets;
 #[cfg(desktop)]
@@ -90,6 +91,10 @@ pub fn run() {
         .setup(|app| {
             let info = app.package_info();
             log::info!("{} v{} démarrée", info.name, info.version);
+
+            // Installation précédente sous l'ancien identifiant : données et clé reprises.
+            migration::migrate_legacy_data(app.handle());
+            secrets::migrate_legacy_entry();
 
             #[cfg(desktop)]
             {

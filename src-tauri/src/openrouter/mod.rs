@@ -19,7 +19,7 @@ pub const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
 /// Variable d'environnement permettant de viser un autre serveur (tests, proxy).
 pub const BASE_URL_ENV: &str = "RELAY_OPENROUTER_BASE_URL";
 /// En-têtes recommandés par OpenRouter pour identifier l'application.
-const REFERER: &str = "https://github.com/example/relay";
+const REFERER: &str = "https://github.com/timiliris/relay";
 const TITLE: &str = "Relay";
 
 pub struct OpenRouterState {
