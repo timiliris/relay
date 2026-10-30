@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart';
-import { ask, open, save } from '@tauri-apps/plugin-dialog';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { platform } from '@tauri-apps/plugin-os';
 import {
@@ -37,6 +37,7 @@ import { checkForUpdates, type UpdateStatus } from '@/lib/updater';
 import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
 import { useConversations } from '@/stores/conversations';
+import { dialog } from '@/stores/dialog';
 import { type Accent, defaultGeneration, useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 
@@ -65,15 +66,13 @@ export function SettingsPage() {
     if (inTauri) isEnabled().then(setAutostart).catch(console.error);
   }, [inTauri]);
 
-  const confirm = async (message: string): Promise<boolean> =>
-    inTauri
-      ? ask(message, {
-          title: t('common.delete'),
-          kind: 'warning',
-          okLabel: t('common.delete'),
-          cancelLabel: t('common.cancel'),
-        })
-      : window.confirm(message);
+  const confirm = (message: string) =>
+    dialog.confirm({
+      title: t('common.delete'),
+      message,
+      confirmLabel: t('common.delete'),
+      destructive: true,
+    });
 
   const onSaveKey = async (e: FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { ask, save } from '@tauri-apps/plugin-dialog';
+import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { ArrowDown, Download, Globe, KeyRound, Scissors, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
+import { dialog } from '@/stores/dialog';
 import { useModels } from '@/stores/models';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
@@ -128,15 +129,13 @@ export function ChatPage({ conversationId }: ChatPageProps) {
     }
   };
 
-  const confirm = async (message: string): Promise<boolean> =>
-    inTauri
-      ? ask(message, {
-          title: t('common.delete'),
-          kind: 'warning',
-          okLabel: t('common.delete'),
-          cancelLabel: t('common.cancel'),
-        })
-      : window.confirm(message);
+  const confirm = (message: string) =>
+    dialog.confirm({
+      title: t('common.delete'),
+      message,
+      confirmLabel: t('common.delete'),
+      destructive: true,
+    });
 
   const onDelete = (m: Message) =>
     guard(async () => {
@@ -305,10 +304,11 @@ export function ChatPage({ conversationId }: ChatPageProps) {
           />
           <GenerationParams conversation={conversation} />
           <PresetPicker conversation={conversation} />
-          <IconButton
-            label={t('chat.webSearch')}
+          <Button
+            variant="ghost"
+            size="sm"
             title={webSearch ? t('chat.webSearchOn') : t('chat.webSearch')}
-            className={cn('size-8', webSearch ? 'text-primary' : 'text-muted-foreground')}
+            className={cn('gap-1.5', webSearch ? 'text-primary' : 'text-muted-foreground')}
             aria-pressed={webSearch}
             onClick={() =>
               conversation
@@ -317,7 +317,8 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             }
           >
             <Globe className="size-4" />
-          </IconButton>
+            <span className="hidden text-xs lg:inline">{t('chat.webSearch')}</span>
+          </Button>
           {systemPrompt.trim() && (
             <span
               className="hidden truncate text-xs text-muted-foreground md:inline"

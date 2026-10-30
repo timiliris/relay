@@ -1,5 +1,4 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ask } from '@tauri-apps/plugin-dialog';
 import {
   Archive,
   ArchiveRestore,
@@ -20,13 +19,13 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Conversation, Folder as FolderType } from '@/lib/db';
 import { groupConversations } from '@/lib/format';
-import { isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { useConversations } from '@/stores/conversations';
+import { dialog } from '@/stores/dialog';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { Button } from './ui/button';
@@ -57,18 +56,13 @@ export function ConversationSidebar({ onOpenSearch }: SidebarProps) {
     if (!loaded) void load();
   }, [loaded, load]);
 
-  const confirm = useCallback(
-    async (message: string): Promise<boolean> =>
-      isTauri()
-        ? ask(message, {
-            title: t('common.delete'),
-            kind: 'warning',
-            okLabel: t('common.delete'),
-            cancelLabel: t('common.cancel'),
-          })
-        : window.confirm(message),
-    [t],
-  );
+  const confirm = (message: string) =>
+    dialog.confirm({
+      title: t('common.delete'),
+      message,
+      confirmLabel: t('common.delete'),
+      destructive: true,
+    });
 
   const active = items.filter((c) => !c.archived);
   const archived = items.filter((c) => c.archived);
@@ -245,8 +239,15 @@ export function ConversationSidebar({ onOpenSearch }: SidebarProps) {
                       <DropdownItem
                         onClick={() => {
                           close();
-                          const name = window.prompt(t('sidebar.renameFolder'), f.name);
-                          if (name?.trim()) void store.renameFolder(f.id, name.trim());
+                          void dialog
+                            .prompt({
+                              title: t('sidebar.renameFolder'),
+                              defaultValue: f.name,
+                              confirmLabel: t('common.rename'),
+                            })
+                            .then((name) => {
+                              if (name?.trim()) void store.renameFolder(f.id, name.trim());
+                            });
                         }}
                       >
                         <Pencil />

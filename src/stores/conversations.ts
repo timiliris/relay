@@ -9,6 +9,7 @@ import {
   presets as presetRepo,
   conversations as repo,
 } from '@/lib/db';
+import { devFixturesEnabled, sampleConversations, sampleFolders } from '@/lib/dev-fixtures';
 import { isTauri } from '@/lib/tauri';
 
 interface ConversationsState {
@@ -55,7 +56,11 @@ export const useConversations = create<ConversationsState>()((set, get) => {
 
     async load() {
       if (!isTauri()) {
-        set({ loaded: true });
+        set(
+          devFixturesEnabled()
+            ? { items: sort(sampleConversations), folders: sampleFolders, loaded: true }
+            : { loaded: true },
+        );
         return;
       }
       const [items, folders, presets] = await Promise.all([

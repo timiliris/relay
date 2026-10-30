@@ -46,7 +46,23 @@ export function SearchPalette({ open, onClose }: SearchPaletteProps) {
       );
       return;
     }
-    if (!isTauri()) return;
+    if (!isTauri()) {
+      // Hors Tauri (dev navigateur) : filtre les titres seulement.
+      const lower = q.toLowerCase();
+      setHits(
+        conversations
+          .filter((c) => c.title.toLowerCase().includes(lower))
+          .map((c) => ({
+            conversationId: c.id,
+            conversationTitle: c.title,
+            messageId: null,
+            role: null,
+            snippet: c.title,
+            updatedAt: c.updatedAt,
+          })),
+      );
+      return;
+    }
     const timer = setTimeout(() => {
       search(q)
         .then(setHits)

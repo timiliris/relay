@@ -7,6 +7,7 @@ import { useApiKey } from '@/stores/api-key';
 import { useModels } from '@/stores/models';
 import { useSettings } from '@/stores/settings';
 import { ConversationSidebar } from './conversation-sidebar';
+import { DialogHost } from './dialog-host';
 import { ErrorBoundary } from './error-boundary';
 import { SearchPalette } from './search-palette';
 import { TitleBar } from './title-bar';
@@ -56,6 +57,7 @@ export function AppShell() {
         </main>
       </div>
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <DialogHost />
       <Toaster />
     </div>
   );

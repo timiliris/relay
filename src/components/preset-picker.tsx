@@ -60,7 +60,9 @@ export function PresetPicker({ conversation }: PresetPickerProps) {
           className={cn('gap-1.5 text-muted-foreground', current && 'text-primary')}
         >
           <UserRound className="size-4" />
-          {current && <span className="max-w-28 truncate text-xs">{current.name}</span>}
+          <span className="hidden max-w-28 truncate text-xs lg:inline">
+            {current?.name ?? t('presets.apply')}
+          </span>
         </Button>
       )}
     >

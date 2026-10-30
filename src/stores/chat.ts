@@ -4,6 +4,7 @@
  */
 import { create } from 'zustand';
 import { type Message, messages as repo } from '@/lib/db';
+import { devFixturesEnabled, sampleMessages } from '@/lib/dev-fixtures';
 import { isTauri } from '@/lib/tauri';
 import { activePath } from '@/lib/tree';
 
@@ -49,7 +50,9 @@ export const useChat = create<ChatState>()((set, get) => ({
   async open(conversationId) {
     set({ conversationId, all: [], messages: [], error: null, loading: conversationId !== null });
     if (!conversationId || !isTauri()) {
-      set({ loading: false });
+      const demo =
+        conversationId && devFixturesEnabled() ? (sampleMessages[conversationId] ?? []) : [];
+      set({ ...withPath(demo), loading: false });
       return;
     }
     const all = await repo.list(conversationId);

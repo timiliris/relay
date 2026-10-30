@@ -31,7 +31,8 @@
     "apply": "Apply",
     "none": "None",
     "optional": "optional",
-    "actions": "Actions"
+    "actions": "Actions",
+    "confirm": "Confirm"
   },
   "nav": {
     "chat": "Chats",

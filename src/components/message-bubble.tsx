@@ -206,18 +206,13 @@ export function MessageBubble({
             {message.finishReason === 'cancelled' && <span>{t('chat.cancelled')}</span>}
             {interrupted && <span className="text-amber-600">{t('chat.interrupted')}</span>}
             {truncated && <span className="text-amber-600">{t('chat.truncated')}</span>}
+            {onContinue && (interrupted || truncated || message.finishReason === 'cancelled') && (
+              <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={onContinue}>
+                <Play className="size-3" />
+                {t('chat.continue')}
+              </Button>
+            )}
             <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [&_button]:size-6 [&_svg]:size-3.5">
-              {onContinue && (interrupted || truncated || message.finishReason === 'cancelled') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  onClick={onContinue}
-                >
-                  <Play className="size-3" />
-                  {t('chat.continue')}
-                </Button>
-              )}
               {onCopy && (
                 <IconButton label={t('chat.copyMessage')} onClick={onCopy}>
                   <Copy />

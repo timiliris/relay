@@ -36,13 +36,13 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 - Raccourcis : Ctrl+N nouvelle conversation, Ctrl+K recherche, Ctrl+, paramètres, Échap pour arrêter, ↑ pour reprendre le dernier message.
 - Barre de titre personnalisée, menu natif, icône de zone de notification, raccourci global, démarrage automatique, notification de fin de réponse, mises à jour automatiques.
 
-| Couche | Choix |
-| --- | --- |
-| Shell natif | Tauri 2 (Rust, édition 2024), `reqwest` pour l'API, `keyring` pour la clé |
-| UI | React 19 + React Compiler, TypeScript 7, Vite 8, TanStack Router, react-markdown, KaTeX, Mermaid |
-| Styles | Tailwind CSS 4 (tokens OKLCH compatibles shadcn/ui) |
-| État | Zustand (préférences persistées via `tauri-plugin-store`), SQLite via `tauri-plugin-sql` |
-| Qualité | Biome 2, Vitest, Clippy, lefthook + commitlint, cargo-deny, Dependabot, release-please |
+| Couche      | Choix                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| Shell natif | Tauri 2 (Rust, édition 2024), `reqwest` pour l'API, `keyring` pour la clé                        |
+| UI          | React 19 + React Compiler, TypeScript 7, Vite 8, TanStack Router, react-markdown, KaTeX, Mermaid |
+| Styles      | Tailwind CSS 4 (tokens OKLCH compatibles shadcn/ui)                                              |
+| État        | Zustand (préférences persistées via `tauri-plugin-store`), SQLite via `tauri-plugin-sql`         |
+| Qualité     | Biome 2, Vitest, Clippy, lefthook + commitlint, cargo-deny, Dependabot, release-please           |
 
 ## Démarrage
 
@@ -58,12 +58,12 @@ Au premier lancement, l'assistant demande votre clé OpenRouter (`sk-or-v1-…`,
 
 ## Scripts
 
-| Script | Rôle |
-| --- | --- |
-| `pnpm app:dev` / `pnpm app:build` | Développement / installeurs (`src-tauri/target/release/bundle`) |
-| `pnpm check` | Lint, types, tests frontend, Clippy, tests Rust |
-| `pnpm rust:deny` | Audit sécurité et licences des crates (`cargo install cargo-deny`) |
-| `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` | Test réseau réel contre l'API OpenRouter |
+| Script                                                         | Rôle                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm app:dev` / `pnpm app:build`                              | Développement / installeurs (`src-tauri/target/release/bundle`)    |
+| `pnpm check`                                                   | Lint, types, tests frontend, Clippy, tests Rust                    |
+| `pnpm rust:deny`                                               | Audit sécurité et licences des crates (`cargo install cargo-deny`) |
+| `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` | Test réseau réel contre l'API OpenRouter                           |
 
 ## Architecture
 

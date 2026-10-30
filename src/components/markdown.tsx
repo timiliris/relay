@@ -13,6 +13,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import { useIsDark } from '@/hooks/use-is-dark';
 import { cn } from '@/lib/utils';
 
 interface MarkdownProps {
@@ -105,13 +106,13 @@ function Mermaid({ code }: { code: string }) {
   const { t } = useTranslation();
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const dark = useIsDark();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const { default: mermaid } = await import('mermaid');
-        const dark = document.documentElement.classList.contains('dark');
         mermaid.initialize({
           startOnLoad: false,
           theme: dark ? 'dark' : 'default',
@@ -126,7 +127,7 @@ function Mermaid({ code }: { code: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code]);
+  }, [code, dark]);
 
   if (error) {
     return (

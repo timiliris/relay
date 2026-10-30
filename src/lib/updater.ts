@@ -1,14 +1,14 @@
 /**
- * Mise à jour automatique via tauri-plugin-updater.
+ * Mise à jour automatique via tauri-plugin-updater, avec dialogues intégrés à l'app.
  *
  * Nécessite dans `tauri.conf.json` une `pubkey` valide et des `endpoints`
  * (voir README, section « Mises à jour automatiques »).
  */
-import { ask, message } from '@tauri-apps/plugin-dialog';
 import { info, error as logError } from '@tauri-apps/plugin-log';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check } from '@tauri-apps/plugin-updater';
 import i18n from '@/i18n';
+import { dialog } from '@/stores/dialog';
 
 export type UpdateStatus =
   | 'idle'
@@ -36,9 +36,9 @@ export async function checkForUpdates({ silent = false, onStatus }: CheckOptions
     if (!update) {
       report('up-to-date');
       if (!silent) {
-        await message(t('updates.dialog.upToDate'), {
+        await dialog.alert({
           title: t('updates.dialog.title'),
-          kind: 'info',
+          message: t('updates.dialog.upToDate'),
         });
       }
       return;
@@ -47,15 +47,13 @@ export async function checkForUpdates({ silent = false, onStatus }: CheckOptions
     info(`Mise à jour disponible : ${update.version}`);
     report('available', update.version);
 
-    const accepted = await ask(
-      `${t('updates.dialog.available', { version: update.version })}\n\n${update.body ?? ''}`.trim(),
-      {
-        title: t('updates.dialog.titleAvailable'),
-        kind: 'info',
-        okLabel: t('updates.dialog.install'),
-        cancelLabel: t('updates.dialog.later'),
-      },
-    );
+    const accepted = await dialog.confirm({
+      title: t('updates.dialog.titleAvailable'),
+      message:
+        `${t('updates.dialog.available', { version: update.version })}\n\n${update.body ?? ''}`.trim(),
+      confirmLabel: t('updates.dialog.install'),
+      cancelLabel: t('updates.dialog.later'),
+    });
     if (!accepted) {
       report('idle');
       return;
@@ -86,9 +84,9 @@ export async function checkForUpdates({ silent = false, onStatus }: CheckOptions
     logError(`Updater : ${text}`);
     report('error', text);
     if (!silent) {
-      await message(`${t('updates.dialog.failed')}\n\n${text}`, {
+      await dialog.alert({
         title: t('updates.dialog.title'),
-        kind: 'error',
+        message: `${t('updates.dialog.failed')}\n\n${text}`,
       });
     }
   }

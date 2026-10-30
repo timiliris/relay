@@ -180,6 +180,10 @@
   .markdown img {
     @apply max-w-full rounded-md;
   }
+  .markdown svg {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 /* ---------- Coloration syntaxique (highlight.js) via les tokens du thème ---------- */
