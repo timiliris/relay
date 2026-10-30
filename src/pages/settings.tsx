@@ -27,6 +27,7 @@ import { Select } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { useWindowTitle } from '@/hooks/use-window-title';
 import { exportAll, newId, type Preset } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { importConversations, parseImport } from '@/lib/import';
@@ -49,6 +50,7 @@ const ACCENTS: Accent[] = ['neutral', 'violet', 'blue', 'green', 'amber', 'rose'
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  useWindowTitle(t('settings.title'));
   const inTauri = isTauri();
   const settings = useSettings();
   const { hint, save: saveKey, clear: clearKey } = useApiKey();

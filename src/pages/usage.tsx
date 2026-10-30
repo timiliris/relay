@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
+import { useWindowTitle } from '@/hooks/use-window-title';
 import { type UsageRow, usage } from '@/lib/db';
 import { formatCost, formatTokens } from '@/lib/format';
 import { errorMessage, isTauri } from '@/lib/tauri';
@@ -13,6 +14,7 @@ type Period = '7' | '30' | '90';
 /** Dépenses et tokens par modèle et par jour, à partir des réponses enregistrées. */
 export function UsagePage() {
   const { t } = useTranslation();
+  useWindowTitle(t('usage.title'));
   const [period, setPeriod] = useState<Period>('30');
   const [rows, setRows] = useState<UsageRow[]>([]);
 

@@ -6,6 +6,7 @@ import { ModelPicker } from '@/components/model-picker';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { IconButton } from '@/components/ui/tooltip-button';
+import { useWindowTitle } from '@/hooks/use-window-title';
 import { newId } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { openrouter } from '@/lib/openrouter';
@@ -29,6 +30,7 @@ const MAX_COLUMNS = 3;
 /** Même question envoyée à plusieurs modèles, réponses côte à côte (non persistées). */
 export function ComparePage() {
   const { t } = useTranslation();
+  useWindowTitle(t('compare.title'));
   const settings = useSettings();
   const inTauri = isTauri();
   const [prompt, setPrompt] = useState('');

@@ -11,6 +11,7 @@ import { ModelPicker } from '@/components/model-picker';
 import { PresetPicker } from '@/components/preset-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
+import { useWindowTitle } from '@/hooks/use-window-title';
 import {
   continueMessage,
   deleteMessage,
@@ -65,6 +66,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inTauri = isTauri();
+  useWindowTitle(conversation?.title ?? null);
 
   useEffect(() => {
     void open(conversationId);

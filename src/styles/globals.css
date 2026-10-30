@@ -82,6 +82,8 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
 
   html,
@@ -367,10 +369,6 @@ html.dark[data-accent="rose"] {
   --scrollbar-thumb: oklch(1 0 0 / 22%);
   --scrollbar-thumb-hover: oklch(1 0 0 / 40%);
 }
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) transparent;
-}
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -478,8 +476,11 @@ html.dark[data-accent="rose"] {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: doit l'emporter sur les utilitaires d'animation */
     animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: idem */
     animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: idem */
     transition-duration: 0.01ms !important;
   }
 }

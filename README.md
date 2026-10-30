@@ -18,7 +18,7 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 
 - Historique SQLite groupé par date, **dossiers**, épinglage, **archivage**, renommage, titre automatique.
 - **Recherche globale** (Ctrl+K) dans les titres et le contenu des messages, avec mise en évidence du message trouvé.
-- **Personas** : instruction système + modèle + paramètres appliqués en un clic (par conversation ou par défaut).
+- **Personas** : instruction système + modèle + paramètres appliqués en un clic (par conversation ou par défaut) ; huit personas fournis au premier lancement, restaurables.
 - **Comparaison** : même question envoyée à deux ou trois modèles côte à côte.
 - Page **Usage** : dépenses et tokens par jour et par modèle.
 - **Import** d'exports ChatGPT, Claude ou Relay ; export Markdown par conversation, export JSON complet.
@@ -32,7 +32,7 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 
 **Confort**
 
-- Assistant de premier lancement, thème clair / sombre / système, **FR / EN**, taille de texte, couleur d'accent, densité, barre latérale redimensionnable.
+- Assistant de premier lancement, thème clair / sombre / système, **FR / EN**, taille de texte, couleur d'accent, densité, barre latérale redimensionnable, barres de défilement discrètes, animations (désactivées avec `prefers-reduced-motion`), dialogues intégrés (aucune boîte native).
 - Raccourcis : Ctrl+N nouvelle conversation, Ctrl+K recherche, Ctrl+, paramètres, Échap pour arrêter, ↑ pour reprendre le dernier message.
 - Barre de titre personnalisée, menu natif, icône de zone de notification, raccourci global, démarrage automatique, notification de fin de réponse, mises à jour automatiques.
 

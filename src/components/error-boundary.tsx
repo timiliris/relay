@@ -1,5 +1,7 @@
+import { error as logError } from '@tauri-apps/plugin-log';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import i18n from '@/i18n';
+import { isTauri } from '@/lib/tauri';
 import { Button } from './ui/button';
 
 interface Props {
@@ -20,6 +22,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Erreur non interceptée :', error, info.componentStack);
+    if (isTauri()) {
+      logError(`UI : ${error.message}
+${error.stack ?? ''}
+${info.componentStack ?? ''}`);
+    }
   }
 
   render() {
