@@ -71,7 +71,7 @@ function DialogView({ request }: { request: DialogRequest }) {
 
   return (
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[95] flex animate-fade-in items-center justify-center bg-black/50 p-4"
       onPointerDown={(e) => e.target === e.currentTarget && finish(null)}
     >
       <div
@@ -79,7 +79,7 @@ function DialogView({ request }: { request: DialogRequest }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="relay-dialog-title"
-        className="w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
+        className="w-full max-w-md animate-pop rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
       >
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <div className="flex items-start gap-3">

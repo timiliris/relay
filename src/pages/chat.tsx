@@ -347,9 +347,15 @@ function EmptyState({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center justify-center gap-6 px-4 py-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-2xl border bg-card shadow-sm">
-        <Sparkles className="size-6 text-primary" />
+    <div className="mx-auto flex min-h-full max-w-2xl animate-slide-up flex-col items-center justify-center gap-6 px-4 py-8 text-center">
+      <div className="relative">
+        <div
+          className="absolute -inset-6 animate-float rounded-full bg-primary/15 blur-2xl"
+          aria-hidden="true"
+        />
+        <div className="relative flex size-12 items-center justify-center rounded-2xl border bg-card shadow-sm">
+          <Sparkles className="size-6 text-primary" />
+        </div>
       </div>
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t('chat.emptyTitle')}</h1>

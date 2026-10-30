@@ -52,7 +52,9 @@ export function AppShell() {
         {pathname !== '/welcome' && <ConversationSidebar onOpenSearch={openSearch} />}
         <main className="flex min-w-0 flex-1 flex-col">
           <ErrorBoundary>
-            <Outlet />
+            <div key={pathname} className="flex min-h-0 flex-1 animate-fade-in flex-col">
+              <Outlet />
+            </div>
           </ErrorBoundary>
         </main>
       </div>

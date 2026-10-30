@@ -1,5 +1,6 @@
 /** Conversations (historique), dossiers et presets, synchronisés avec SQLite. */
 import { create } from 'zustand';
+import { resolveLanguage } from '@/i18n';
 import {
   type Conversation,
   type ConversationPatch,
@@ -9,8 +10,10 @@ import {
   presets as presetRepo,
   conversations as repo,
 } from '@/lib/db';
+import { defaultPresetId, defaultPresets } from '@/lib/default-presets';
 import { devFixturesEnabled, sampleConversations, sampleFolders } from '@/lib/dev-fixtures';
 import { isTauri } from '@/lib/tauri';
+import { useSettings } from './settings';
 
 interface ConversationsState {
   items: Conversation[];
@@ -34,6 +37,8 @@ interface ConversationsState {
   renameFolder: (id: string, name: string) => Promise<void>;
   removeFolder: (id: string) => Promise<void>;
   savePreset: (preset: Parameters<typeof presetRepo.save>[0]) => Promise<Preset>;
+  /** Ajoute les personas par défaut manquants ; renvoie le nombre créé. */
+  restoreDefaultPresets: () => Promise<number>;
   removePreset: (id: string) => Promise<void>;
 }
 
@@ -58,7 +63,23 @@ export const useConversations = create<ConversationsState>()((set, get) => {
       if (!isTauri()) {
         set(
           devFixturesEnabled()
-            ? { items: sort(sampleConversations), folders: sampleFolders, loaded: true }
+            ? {
+                items: sort(sampleConversations),
+                folders: sampleFolders,
+                presets: defaultPresets('fr').map((d, index) => ({
+                  id: defaultPresetId(d.key),
+                  name: d.name,
+                  systemPrompt: d.systemPrompt,
+                  model: null,
+                  temperature: d.temperature,
+                  topP: d.topP,
+                  maxTokens: d.maxTokens,
+                  reasoning: d.reasoning,
+                  position: index,
+                  createdAt: new Date().toISOString(),
+                })),
+                loaded: true,
+              }
             : { loaded: true },
         );
         return;
@@ -69,6 +90,11 @@ export const useConversations = create<ConversationsState>()((set, get) => {
         presetRepo.list(),
       ]);
       set({ items: sort(items), folders, presets, loaded: true });
+      // Premier lancement : personas fournis par défaut.
+      if (presets.length === 0 && !useSettings.getState().presetsSeeded) {
+        await get().restoreDefaultPresets();
+        useSettings.getState().patch({ presetsSeeded: true });
+      }
     },
 
     async create(input) {
@@ -129,6 +155,28 @@ export const useConversations = create<ConversationsState>()((set, get) => {
           : [...s.presets, saved],
       }));
       return saved;
+    },
+    async restoreDefaultPresets() {
+      const language = resolveLanguage(useSettings.getState().language);
+      const existing = new Set(get().presets.map((p) => p.id));
+      let created = 0;
+      for (const [index, preset] of defaultPresets(language).entries()) {
+        const id = defaultPresetId(preset.key);
+        if (existing.has(id)) continue;
+        await get().savePreset({
+          id,
+          name: preset.name,
+          systemPrompt: preset.systemPrompt,
+          model: null,
+          temperature: preset.temperature,
+          topP: preset.topP,
+          maxTokens: preset.maxTokens,
+          reasoning: preset.reasoning,
+          position: index,
+        });
+        created++;
+      }
+      return created;
     },
     async removePreset(id) {
       await presetRepo.remove(id);

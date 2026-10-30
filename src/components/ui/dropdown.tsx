@@ -102,7 +102,7 @@ export function Dropdown({
             role="menu"
             style={position}
             className={cn(
-              'z-50 min-w-44 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',
+              'z-50 min-w-44 animate-pop overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',
               className,
             )}
           >

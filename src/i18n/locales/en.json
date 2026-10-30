@@ -195,7 +195,9 @@
     "delete": "Delete persona",
     "deleteConfirm": "Delete persona “{{name}}”?",
     "saveFromCurrent": "Save current configuration as a persona",
-    "saved": "Persona saved."
+    "saved": "Persona saved.",
+    "restoreDefaults": "Restore default personas",
+    "restored": "{{count}} default persona(s) added."
   },
   "compare": {
     "title": "Compare models",

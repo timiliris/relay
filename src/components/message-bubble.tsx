@@ -124,7 +124,7 @@ export function MessageBubble({
       );
     }
     return (
-      <div className="group flex flex-col items-end gap-1">
+      <div className="group flex animate-slide-up flex-col items-end gap-1">
         {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} />}
         <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
           {message.content}
@@ -161,9 +161,9 @@ export function MessageBubble({
   const truncated = !streaming && message.finishReason === 'length';
 
   return (
-    <div className="group flex gap-3">
-      <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border bg-card">
-        <Bot className="size-4 text-muted-foreground" />
+    <div className="group flex animate-slide-up gap-3">
+      <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border bg-gradient-to-br from-primary/15 to-transparent">
+        <Bot className="size-4 text-primary" />
       </div>
       <div className="min-w-0 flex-1">
         {showReasoning && message.reasoning && (
@@ -174,7 +174,11 @@ export function MessageBubble({
         ) : (
           streaming && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="inline-block size-2 animate-pulse rounded-full bg-muted-foreground" />
+              <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+                <span className="size-1.5 animate-dot rounded-full bg-muted-foreground" />
+                <span className="size-1.5 animate-dot rounded-full bg-muted-foreground [animation-delay:0.15s]" />
+                <span className="size-1.5 animate-dot rounded-full bg-muted-foreground [animation-delay:0.3s]" />
+              </span>
               {t('chat.thinking')}
             </p>
           )

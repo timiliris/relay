@@ -195,7 +195,9 @@
     "delete": "Supprimer le persona",
     "deleteConfirm": "Supprimer le persona « {{name}} » ?",
     "saveFromCurrent": "Enregistrer la configuration actuelle comme persona",
-    "saved": "Persona enregistré."
+    "saved": "Persona enregistré.",
+    "restoreDefaults": "Restaurer les personas par défaut",
+    "restored": "{{count}} persona(s) par défaut ajouté(s)."
   },
   "compare": {
     "title": "Comparer des modèles",

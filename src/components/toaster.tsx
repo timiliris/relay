@@ -20,7 +20,7 @@ export function Toaster() {
             key={toast.id}
             role="status"
             className={cn(
-              'pointer-events-auto flex items-start gap-2 rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg',
+              'pointer-events-auto flex animate-slide-up items-start gap-2 rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg',
               toast.kind === 'error' && 'border-destructive/40',
             )}
           >

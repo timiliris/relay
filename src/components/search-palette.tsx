@@ -105,14 +105,14 @@ export function SearchPalette({ open, onClose }: SearchPaletteProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center bg-black/40 pt-[12vh]"
+      className="fixed inset-0 z-[90] flex animate-fade-in items-start justify-center bg-black/40 pt-[12vh]"
       onPointerDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={t('search.title')}
-        className="w-[36rem] max-w-[92vw] overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
+        className="w-[36rem] max-w-[92vw] animate-pop overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
         onKeyDown={onKeyDown}
       >
         <div className="flex items-center gap-2 border-b px-3">

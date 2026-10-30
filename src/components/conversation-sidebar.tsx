@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import type { Conversation, Folder as FolderType } from '@/lib/db';
 import { groupConversations } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { dialog } from '@/stores/dialog';
 import { useSettings } from '@/stores/settings';
@@ -190,6 +191,13 @@ export function ConversationSidebar({ onOpenSearch }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-2" aria-label={t('nav.chat')}>
+        {!loaded && (
+          <div className="flex flex-col gap-2 px-2 py-3" aria-hidden="true">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="skeleton h-7" style={{ width: `${70 + ((i * 13) % 30)}%` }} />
+            ))}
+          </div>
+        )}
         {loaded && items.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">
             {t('sidebar.empty')}
@@ -411,12 +419,14 @@ function ConversationRow({
   onDelete,
 }: RowProps) {
   const { t } = useTranslation();
+  const streaming = useChat((s) => s.stream?.conversationId === c.id);
 
   return (
     <div
       className={cn(
-        'group flex items-center rounded-md text-sm hover:bg-accent',
-        active && 'bg-accent',
+        'group relative flex items-center rounded-md text-sm transition-colors hover:bg-accent',
+        active &&
+          'bg-accent before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary',
       )}
     >
       {editing !== null ? (
@@ -447,6 +457,12 @@ function ConversationRow({
           >
             {c.pinned && <Pin className="mr-1.5 inline size-3 text-muted-foreground" />}
             {c.title}
+            {streaming && (
+              <span
+                className="ml-1.5 inline-block size-1.5 animate-pulse rounded-full bg-primary align-middle"
+                aria-hidden="true"
+              />
+            )}
           </Link>
           <Dropdown
             trigger={({ toggle }) => (

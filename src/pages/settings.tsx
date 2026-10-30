@@ -423,6 +423,17 @@ export function SettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
+                    void conversations
+                      .restoreDefaultPresets()
+                      .then((count) => toast.success(t('presets.restored', { count })))
+                  }
+                >
+                  {t('presets.restoreDefaults')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
                     setEditingPreset({
                       ...blankPreset(),
                       model: settings.defaultModel,

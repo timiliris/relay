@@ -58,6 +58,7 @@ export interface SettingsData extends GenerationParams {
   /** Nombre de messages rendus avant le bouton « afficher les précédents ». */
   messagesPageSize: number;
   onboarded: boolean;
+  presetsSeeded: boolean;
 }
 
 export interface SettingsState extends SettingsData {
@@ -87,6 +88,7 @@ const defaults: SettingsData = {
   density: 'comfortable',
   messagesPageSize: 60,
   onboarded: false,
+  presetsSeeded: false,
   ...defaultGeneration,
 };
 
