@@ -72,10 +72,12 @@ impl Default for OpenRouterState {
     }
 }
 
+/// Message au format OpenAI. `content` est une chaîne ou un tableau de parties
+/// (texte, image, fichier) : il est relayé tel quel à l'API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
-    pub content: String,
+    pub content: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,6 +94,18 @@ pub struct ChatRequest {
     /// Demande au modèle d'exposer son raisonnement (modèles compatibles).
     #[serde(default)]
     pub reasoning: bool,
+    /// Active le plugin de recherche web d'OpenRouter.
+    #[serde(default)]
+    pub web_search: bool,
+    /// Préférence de routage : `price`, `throughput` ou `latency`.
+    #[serde(default)]
+    pub provider_sort: Option<String>,
+    /// Fournisseurs à exclure (ex. `["OpenAI"]`).
+    #[serde(default)]
+    pub ignore_providers: Vec<String>,
+    /// Refuse les fournisseurs qui conservent ou entraînent sur les données.
+    #[serde(default)]
+    pub data_collection_deny: bool,
 }
 
 #[derive(Serialize)]
@@ -108,11 +122,30 @@ struct Body<'a> {
     top_p: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     reasoning: Option<ReasoningOption>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    plugins: Option<Vec<Plugin>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provider: Option<ProviderPrefs>,
 }
 
 #[derive(Serialize)]
 struct UsageOption {
     include: bool,
+}
+
+#[derive(Serialize)]
+struct Plugin {
+    id: &'static str,
+}
+
+#[derive(Serialize, Default)]
+struct ProviderPrefs {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sort: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    ignore: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data_collection: Option<&'static str>,
 }
 
 #[derive(Serialize)]
@@ -131,8 +164,21 @@ impl<'a> Body<'a> {
             max_tokens: req.max_tokens,
             top_p: req.top_p,
             reasoning: req.reasoning.then_some(ReasoningOption { enabled: true }),
+            plugins: req.web_search.then(|| vec![Plugin { id: "web" }]),
+            provider: provider_prefs(req),
         }
     }
+}
+
+fn provider_prefs(req: &ChatRequest) -> Option<ProviderPrefs> {
+    if req.provider_sort.is_none() && req.ignore_providers.is_empty() && !req.data_collection_deny {
+        return None;
+    }
+    Some(ProviderPrefs {
+        sort: req.provider_sort.clone(),
+        ignore: req.ignore_providers.clone(),
+        data_collection: req.data_collection_deny.then_some("deny"),
+    })
 }
 
 /// Événements relayés au frontend pendant un streaming.
@@ -242,7 +288,10 @@ pub async fn complete(
         .choices
         .into_iter()
         .next()
-        .map(|c| c.message.content)
+        .map(|c| match c.message.content {
+            serde_json::Value::String(text) => text,
+            other => other.to_string(),
+        })
         .unwrap_or_default())
 }
 
@@ -322,6 +371,24 @@ pub async fn stream(
 mod tests {
     use super::*;
 
+    fn request() -> ChatRequest {
+        ChatRequest {
+            model: "openrouter/auto".into(),
+            messages: vec![ChatMessage {
+                role: "user".into(),
+                content: serde_json::Value::String("Salut".into()),
+            }],
+            temperature: Some(0.7),
+            max_tokens: None,
+            top_p: None,
+            reasoning: false,
+            web_search: false,
+            provider_sort: None,
+            ignore_providers: vec![],
+            data_collection_deny: false,
+        }
+    }
+
     /// Vérifie le client HTTP (TLS, en-têtes) et la forme de la réponse sur l'API réelle.
     /// Réseau requis : `cargo test -- --ignored fetch_models_live`.
     #[tokio::test]
@@ -337,22 +404,32 @@ mod tests {
 
     #[test]
     fn body_omits_unset_parameters() {
-        let request = ChatRequest {
-            model: "openrouter/auto".into(),
-            messages: vec![ChatMessage {
-                role: "user".into(),
-                content: "Salut".into(),
-            }],
-            temperature: Some(0.7),
-            max_tokens: None,
-            top_p: None,
-            reasoning: false,
-        };
-        let json = serde_json::to_value(Body::new(&request, true)).unwrap();
+        let json = serde_json::to_value(Body::new(&request(), true)).unwrap();
         assert_eq!(json["stream"], true);
         assert_eq!(json["usage"]["include"], true);
         assert_eq!(json["temperature"], 0.7);
+        assert_eq!(json["messages"][0]["content"], "Salut");
         assert!(json.get("max_tokens").is_none());
         assert!(json.get("reasoning").is_none());
+        assert!(json.get("plugins").is_none());
+        assert!(json.get("provider").is_none());
+    }
+
+    #[test]
+    fn body_includes_openrouter_options() {
+        let request = ChatRequest {
+            reasoning: true,
+            web_search: true,
+            provider_sort: Some("price".into()),
+            ignore_providers: vec!["OpenAI".into()],
+            data_collection_deny: true,
+            ..request()
+        };
+        let json = serde_json::to_value(Body::new(&request, false)).unwrap();
+        assert_eq!(json["reasoning"]["enabled"], true);
+        assert_eq!(json["plugins"][0]["id"], "web");
+        assert_eq!(json["provider"]["sort"], "price");
+        assert_eq!(json["provider"]["ignore"][0], "OpenAI");
+        assert_eq!(json["provider"]["data_collection"], "deny");
     }
 }

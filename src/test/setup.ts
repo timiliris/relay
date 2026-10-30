@@ -34,3 +34,7 @@ Object.defineProperty(window, 'ResizeObserver', { writable: true, value: ResizeO
 
 // Initialise i18n après le mock de navigator.language.
 await import('@/i18n');
+
+// Les tests rendent l'app sans assistant de premier lancement.
+const { useSettings } = await import('@/stores/settings');
+useSettings.setState({ onboarded: true });

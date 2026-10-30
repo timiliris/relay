@@ -1,29 +1,41 @@
-import { Link, useNavigate } from '@tanstack/react-router';
-import { save } from '@tauri-apps/plugin-dialog';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
+import { ask, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { Download, KeyRound, Sparkles, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDown, Download, Globe, KeyRound, Scissors, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Composer } from '@/components/composer';
 import { GenerationParams } from '@/components/generation-params';
 import { MessageBubble } from '@/components/message-bubble';
 import { ModelPicker } from '@/components/model-picker';
-import { buttonVariants } from '@/components/ui/button';
+import { PresetPicker } from '@/components/preset-picker';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
 import {
+  continueMessage,
   deleteMessage,
+  editMessage,
+  effectiveParams,
   ensureConversation,
   regenerate,
   sendMessage,
   stopStreaming,
+  summarizeOlder,
+  switchVersion,
 } from '@/lib/chat-service';
-import type { Message } from '@/lib/db';
+import { estimateContext } from '@/lib/context';
+import type { Attachment, Message } from '@/lib/db';
 import { formatCost } from '@/lib/format';
+import { supportsImages } from '@/lib/openrouter';
 import { errorMessage, isTauri } from '@/lib/tauri';
+import { siblingIndex } from '@/lib/tree';
+import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
+import { useModels } from '@/stores/models';
 import { useSettings } from '@/stores/settings';
+import { toast } from '@/stores/toast';
 
 interface ChatPageProps {
   /** `null` : écran « nouvelle conversation ». */
@@ -33,75 +45,128 @@ interface ChatPageProps {
 export function ChatPage({ conversationId }: ChatPageProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const hash = useRouterState({ select: (s) => s.location.hash });
   const conversation = useConversations(
     (s) => s.items.find((c) => c.id === conversationId) ?? null,
   );
-  const { setModel, setSystemPrompt } = useConversations();
-  const { messages, stream, error, open, clearError } = useChat();
+  const updateConversation = useConversations((s) => s.update);
+  const { all, messages, stream, error, open, setError } = useChat();
   const settings = useSettings();
   const apiKeyHint = useApiKey((s) => s.hint);
+  const modelInfo = useModels((s) => s.byId(conversation?.model ?? settings.defaultModel));
   const [draft, setDraft] = useState<string | undefined>(undefined);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [composerState, setComposerState] = useState<{ text: string; attachments: Attachment[] }>({
+    text: '',
+    attachments: [],
+  });
+  const [visibleCount, setVisibleCount] = useState(settings.messagesPageSize);
+  const [atBottom, setAtBottom] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inTauri = isTauri();
 
   useEffect(() => {
     void open(conversationId);
-  }, [conversationId, open]);
+    setVisibleCount(settings.messagesPageSize);
+  }, [conversationId, open, settings.messagesPageSize]);
 
   const streaming = stream !== null && stream.conversationId === conversationId;
   const model = conversation?.model ?? settings.defaultModel;
   const systemPrompt = conversation ? (conversation.systemPrompt ?? '') : settings.systemPrompt;
+  const webSearch = conversation ? conversation.webSearch : settings.webSearch;
   const totalCost = useMemo(() => messages.reduce((sum, m) => sum + (m.cost ?? 0), 0), [messages]);
+  const context = useMemo(
+    () =>
+      estimateContext(
+        messages,
+        composerState.text,
+        composerState.attachments,
+        systemPrompt,
+        modelInfo?.contextLength ?? 0,
+      ),
+    [messages, composerState, systemPrompt, modelInfo],
+  );
 
-  // Défilement automatique vers le bas pendant le streaming.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: déclenché par le contenu, pas par la ref
+  // Défilement : seulement si l'utilisateur est déjà en bas (lecture non interrompue).
+  const lastMessage = messages[messages.length - 1];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: déclenché par le contenu du dernier message
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length, stream?.content.length, stream?.reasoning.length]);
+    if (atBottom) bottomRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length, lastMessage?.content.length, lastMessage?.reasoning?.length, atBottom]);
 
-  const onModelChange = (id: string) => {
-    if (conversation) void setModel(conversation.id, id);
-    else settings.patch({ defaultModel: id });
-  };
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 48);
+  }, []);
 
-  const onSystemPromptChange = (value: string) => {
-    if (conversation) void setSystemPrompt(conversation.id, value.trim() || null);
-    else settings.patch({ systemPrompt: value });
-  };
+  // Mise en évidence d'un message ciblé par la recherche (hash de l'URL).
+  useEffect(() => {
+    if (!hash || messages.length === 0) return;
+    const el = document.getElementById(`message-${hash}`);
+    if (!el) return;
+    setAtBottom(false);
+    el.scrollIntoView({ block: 'center' });
+    el.classList.add('message-highlight');
+    const timer = setTimeout(() => el.classList.remove('message-highlight'), 2000);
+    return () => clearTimeout(timer);
+  }, [hash, messages.length]);
 
-  const onSend = async (text: string) => {
+  const guard = (fn: () => Promise<void>) => () => fn().catch((err) => setError(errorMessage(err)));
+  const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
+
+  const onSend = async (text: string, attachments: Attachment[]) => {
     try {
-      const target = await ensureConversation(conversation, text);
+      setAtBottom(true);
+      const target = await ensureConversation(conversation, text || attachments[0]?.name || '');
       if (!conversation) {
         await navigate({ to: '/chat/$conversationId', params: { conversationId: target.id } });
       }
-      await sendMessage(target, text);
+      await sendMessage(target, text, attachments);
     } catch (err) {
-      useChat.getState().endStream(errorMessage(err));
+      setError(errorMessage(err));
     }
   };
 
-  const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
+  const confirm = async (message: string): Promise<boolean> =>
+    inTauri
+      ? ask(message, {
+          title: t('common.delete'),
+          kind: 'warning',
+          okLabel: t('common.delete'),
+          cancelLabel: t('common.cancel'),
+        })
+      : window.confirm(message);
 
-  const exportMarkdown = async () => {
+  const onDelete = (m: Message) =>
+    guard(async () => {
+      if (await confirm(t('chat.deleteMessageConfirm'))) await deleteMessage(m);
+    })();
+
+  const onSummarize = guard(async () => {
     if (!conversation) return;
-    try {
-      const path = await save({
-        defaultPath: `${conversation.title.replace(/[\\/:*?"<>|]/g, '-')}.md`,
-        filters: [{ name: 'Markdown', extensions: ['md'] }],
-      });
-      if (!path) return;
-      await writeTextFile(path, toMarkdown(conversation.title, messages, t('chat.youLabel')));
-      setNotice(t('chat.exported'));
-      setTimeout(() => setNotice(null), 2500);
-    } catch (err) {
-      useChat.getState().endStream(errorMessage(err));
-    }
-  };
+    const done = await summarizeOlder(conversation);
+    toast[done ? 'success' : 'info'](done ? t('chat.summarized') : t('chat.summaryTooShort'));
+  });
 
+  const exportMarkdown = guard(async () => {
+    if (!conversation) return;
+    const path = await save({
+      defaultPath: `${conversation.title.replace(/[\\/:*?"<>|]/g, '-')}.md`,
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
+    });
+    if (!path) return;
+    await writeTextFile(path, toMarkdown(conversation.title, messages, t('chat.youLabel')));
+    toast.success(t('chat.exported'));
+  });
+
+  const lastUserMessage = () =>
+    [...messages].reverse().find((m) => m.role === 'user')?.content ?? null;
   const showEmpty = !conversationId && messages.length === 0 && !streaming;
   const suggestions = t('chat.suggestions', { returnObjects: true }) as string[];
+  const hidden = Math.max(0, messages.length - visibleCount);
+  const visible = messages.slice(hidden);
+  const showReasoning = conversation ? effectiveParams(conversation).reasoning : settings.reasoning;
 
   return (
     <div className="flex h-full flex-col">
@@ -110,17 +175,17 @@ export function ChatPage({ conversationId }: ChatPageProps) {
           {conversation?.title ?? (showEmpty ? t('chat.emptyTitle') : t('chat.untitled'))}
         </p>
         {totalCost > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="hidden text-xs text-muted-foreground sm:inline">
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
           </span>
         )}
-        {notice && <span className="text-xs text-muted-foreground">{notice}</span>}
+        {conversation && messages.length > 8 && (
+          <IconButton label={t('chat.summarize')} onClick={onSummarize} disabled={streaming}>
+            <Scissors />
+          </IconButton>
+        )}
         {conversation && messages.length > 0 && (
-          <IconButton
-            label={t('chat.export')}
-            onClick={() => void exportMarkdown()}
-            disabled={!inTauri}
-          >
+          <IconButton label={t('chat.export')} onClick={exportMarkdown} disabled={!inTauri}>
             <Download />
           </IconButton>
         )}
@@ -138,46 +203,70 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto">
         {showEmpty ? (
           <EmptyState suggestions={suggestions} onPick={setDraft} />
         ) : (
-          <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
-            {messages.map((m, index) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                showReasoning={settings.reasoning}
-                onCopy={() => void copy(m.content)}
-                onDelete={() => void deleteMessage(m.id)}
-                onRegenerate={
-                  conversation &&
-                  m.role === 'assistant' &&
-                  index === messages.length - 1 &&
-                  !streaming
-                    ? () => void regenerate(conversation)
-                    : undefined
-                }
-              />
-            ))}
-            {streaming && stream && (
-              <MessageBubble
-                streaming
-                showReasoning={settings.reasoning}
-                message={{
-                  role: 'assistant',
-                  content: stream.content,
-                  reasoning: stream.reasoning || null,
-                  model,
-                  promptTokens: null,
-                  completionTokens: null,
-                  cost: null,
-                  finishReason: null,
-                }}
-              />
+          <div className="message-list mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
+            {hidden > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-center"
+                onClick={() => setVisibleCount((n) => n + settings.messagesPageSize)}
+              >
+                {t('chat.showEarlier', { count: Math.min(hidden, settings.messagesPageSize) })}
+              </Button>
             )}
+            {visible.map((m, index) => {
+              const isLast = hidden + index === messages.length - 1;
+              const isStreamingThis = streaming && stream?.messageId === m.id;
+              const canAct = conversation !== null && !streaming;
+              return (
+                <div key={m.id} id={`message-${m.id}`}>
+                  <MessageBubble
+                    message={m}
+                    streaming={isStreamingThis}
+                    showReasoning={showReasoning}
+                    version={siblingIndex(all, m)}
+                    onSwitchVersion={canAct ? (dir) => void switchVersion(m, dir) : undefined}
+                    onCopy={() => void copy(m.content)}
+                    onDelete={canAct ? () => onDelete(m) : undefined}
+                    onEdit={
+                      canAct && m.role === 'user'
+                        ? (text) => guard(() => editMessage(conversation, m, text))()
+                        : undefined
+                    }
+                    onRegenerate={
+                      canAct && m.role === 'assistant' && isLast
+                        ? guard(() => regenerate(conversation, m))
+                        : undefined
+                    }
+                    onContinue={
+                      canAct && m.role === 'assistant' && isLast
+                        ? guard(() => continueMessage(conversation, m))
+                        : undefined
+                    }
+                  />
+                </div>
+              );
+            })}
             <div ref={bottomRef} />
           </div>
+        )}
+        {!atBottom && !showEmpty && (
+          <button
+            type="button"
+            onClick={() => {
+              setAtBottom(true);
+              bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+            }}
+            aria-label={t('chat.scrollToBottom')}
+            title={t('chat.scrollToBottom')}
+            className="sticky bottom-3 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border bg-card shadow-md hover:bg-accent"
+          >
+            <ArrowDown className="size-4" />
+          </button>
         )}
       </div>
 
@@ -188,7 +277,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             <IconButton
               label={t('common.close')}
               className="size-6 text-destructive"
-              onClick={clearError}
+              onClick={() => setError(null)}
             >
               <X />
             </IconButton>
@@ -197,17 +286,43 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         <Composer
           streaming={streaming}
           disabled={!inTauri}
-          onSend={(text) => void onSend(text)}
+          onSend={(text, attachments) => void onSend(text, attachments)}
           onStop={stopStreaming}
           draft={draft}
+          onRecallLast={lastUserMessage}
+          context={context}
+          onContextChange={(text, attachments) => setComposerState({ text, attachments })}
+          acceptsImages={supportsImages(modelInfo)}
         >
-          <ModelPicker value={model} onChange={onModelChange} side="top" />
-          <GenerationParams
-            systemPrompt={systemPrompt}
-            onSystemPromptChange={onSystemPromptChange}
+          <ModelPicker
+            value={model}
+            onChange={(id) =>
+              conversation
+                ? void updateConversation(conversation.id, { model: id })
+                : settings.patch({ defaultModel: id })
+            }
+            side="top"
           />
+          <GenerationParams conversation={conversation} />
+          <PresetPicker conversation={conversation} />
+          <IconButton
+            label={t('chat.webSearch')}
+            title={webSearch ? t('chat.webSearchOn') : t('chat.webSearch')}
+            className={cn('size-8', webSearch ? 'text-primary' : 'text-muted-foreground')}
+            aria-pressed={webSearch}
+            onClick={() =>
+              conversation
+                ? void updateConversation(conversation.id, { webSearch: !webSearch })
+                : settings.patch({ webSearch: !webSearch })
+            }
+          >
+            <Globe className="size-4" />
+          </IconButton>
           {systemPrompt.trim() && (
-            <span className="truncate text-xs text-muted-foreground" title={systemPrompt}>
+            <span
+              className="hidden truncate text-xs text-muted-foreground md:inline"
+              title={systemPrompt}
+            >
               · {t('chat.systemPromptActive')}
             </span>
           )}
@@ -259,7 +374,9 @@ function toMarkdown(title: string, messages: Message[], youLabel: string): strin
   const parts = [`# ${title}`, ''];
   for (const m of messages) {
     const author = m.role === 'user' ? youLabel : (m.model ?? m.role);
-    parts.push(`## ${author}`, '', m.content, '');
+    parts.push(`## ${author}`, '');
+    if (m.attachments.length) parts.push(...m.attachments.map((a) => `> 📎 ${a.name}`), '');
+    parts.push(m.content, '');
   }
   return parts.join('\n');
 }

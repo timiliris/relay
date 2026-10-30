@@ -5,21 +5,44 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 
 ## Fonctionnalités
 
-- **Chat en streaming** avec affichage du raisonnement (modèles compatibles), arrêt, régénération, copie et suppression de messages.
-- **Historique** local (SQLite) : conversations groupées par date, recherche, épinglage, renommage, titre automatique, export Markdown.
-- **Catalogue de modèles** OpenRouter : recherche, favoris, modèles récents, prix par million de tokens, taille de contexte.
-- **Paramètres de génération** : température, top-p, tokens max, instruction système (globale ou par conversation).
-- **Coûts et tokens** affichés par réponse et par conversation ; **crédits** du compte dans les paramètres.
-- **Clé API dans le trousseau système** (Gestionnaire d'identifiants Windows, Trousseau macOS, Secret Service Linux) : elle ne quitte jamais le processus Rust.
-- Thème clair / sombre / système, **FR / EN**, barre de titre personnalisée, menu natif, icône de zone de notification, raccourci global, démarrage automatique, notification de fin de réponse, mises à jour automatiques.
+**Chat**
 
-| Couche      | Choix                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| Shell natif | Tauri 2 (Rust, édition 2024), `reqwest` pour l'API, `keyring` pour la clé                |
-| UI          | React 19 + React Compiler, TypeScript 7, Vite 8, TanStack Router, react-markdown         |
-| Styles      | Tailwind CSS 4 (tokens OKLCH compatibles shadcn/ui)                                      |
-| État        | Zustand (préférences persistées via `tauri-plugin-store`), SQLite via `tauri-plugin-sql` |
-| Qualité     | Biome 2, Vitest, Clippy, lefthook + commitlint, cargo-deny, Dependabot, release-please   |
+- Réponses en **streaming** avec raisonnement repliable (modèles compatibles), arrêt, **régénération** et **continuation** d'une réponse coupée.
+- **Édition d'un message** envoyé et **versions** alternatives navigables (« 2/3 ») : chaque conversation est un arbre, le chemin actif est affiché.
+- **Pièces jointes** : images (collage, glisser-déposer, sélecteur) pour les modèles vision, PDF, fichiers texte et code inlinés dans le prompt.
+- **Jauge de contexte** (estimation vs fenêtre du modèle), avertissements, **résumé automatique** des anciens messages à la demande.
+- Rendu Markdown complet : coloration syntaxique, **LaTeX** (KaTeX), **diagrammes Mermaid** (chargés à la demande), copie des blocs de code.
+- Temps de réponse, tokens/seconde, tokens et coût par réponse, coût total par conversation ; **sauvegarde progressive** du texte pendant le flux (rien n'est perdu si l'app se ferme).
+
+**Organisation**
+
+- Historique SQLite groupé par date, **dossiers**, épinglage, **archivage**, renommage, titre automatique.
+- **Recherche globale** (Ctrl+K) dans les titres et le contenu des messages, avec mise en évidence du message trouvé.
+- **Personas** : instruction système + modèle + paramètres appliqués en un clic (par conversation ou par défaut).
+- **Comparaison** : même question envoyée à deux ou trois modèles côte à côte.
+- Page **Usage** : dépenses et tokens par jour et par modèle.
+- **Import** d'exports ChatGPT, Claude ou Relay ; export Markdown par conversation, export JSON complet.
+
+**Modèles et OpenRouter**
+
+- Catalogue complet avec recherche, filtres (favoris, vision, gratuits, raisonnement), favoris, modèles récents, prix par million de tokens.
+- **Recherche web** (plugin OpenRouter) par conversation, **routage** par prix / débit / latence, fournisseurs exclus, refus des fournisseurs qui conservent les données.
+- Paramètres de génération globaux ou **propres à chaque conversation**.
+- Clé API dans le **trousseau système** (Windows Credential Manager, Keychain macOS, Secret Service Linux) : elle ne quitte jamais le processus Rust.
+
+**Confort**
+
+- Assistant de premier lancement, thème clair / sombre / système, **FR / EN**, taille de texte, couleur d'accent, densité, barre latérale redimensionnable.
+- Raccourcis : Ctrl+N nouvelle conversation, Ctrl+K recherche, Ctrl+, paramètres, Échap pour arrêter, ↑ pour reprendre le dernier message.
+- Barre de titre personnalisée, menu natif, icône de zone de notification, raccourci global, démarrage automatique, notification de fin de réponse, mises à jour automatiques.
+
+| Couche | Choix |
+| --- | --- |
+| Shell natif | Tauri 2 (Rust, édition 2024), `reqwest` pour l'API, `keyring` pour la clé |
+| UI | React 19 + React Compiler, TypeScript 7, Vite 8, TanStack Router, react-markdown, KaTeX, Mermaid |
+| Styles | Tailwind CSS 4 (tokens OKLCH compatibles shadcn/ui) |
+| État | Zustand (préférences persistées via `tauri-plugin-store`), SQLite via `tauri-plugin-sql` |
+| Qualité | Biome 2, Vitest, Clippy, lefthook + commitlint, cargo-deny, Dependabot, release-please |
 
 ## Démarrage
 
@@ -30,63 +53,74 @@ pnpm install
 pnpm app:dev
 ```
 
-Au premier lancement, ouvrez **Paramètres** et collez votre clé OpenRouter
-(`sk-or-v1-…`, à créer sur [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys)).
-« Tester la connexion » affiche les crédits restants.
+Au premier lancement, l'assistant demande votre clé OpenRouter (`sk-or-v1-…`, à créer sur
+[openrouter.ai/settings/keys](https://openrouter.ai/settings/keys)) et le modèle par défaut.
 
 ## Scripts
 
-| Script                            | Rôle                                                               |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `pnpm app:dev` / `pnpm app:build` | Développement / installeurs (`src-tauri/target/release/bundle`)    |
-| `pnpm check`                      | Lint, types, tests frontend, Clippy, tests Rust                    |
-| `pnpm rust:deny`                  | Audit sécurité et licences des crates (`cargo install cargo-deny`) |
-| `pnpm app:icon`                   | Régénère les icônes depuis `src-tauri/icons/source.svg`            |
+| Script | Rôle |
+| --- | --- |
+| `pnpm app:dev` / `pnpm app:build` | Développement / installeurs (`src-tauri/target/release/bundle`) |
+| `pnpm check` | Lint, types, tests frontend, Clippy, tests Rust |
+| `pnpm rust:deny` | Audit sécurité et licences des crates (`cargo install cargo-deny`) |
+| `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` | Test réseau réel contre l'API OpenRouter |
 
 ## Architecture
 
 ```
 src/
-├── router.tsx                 # / (nouvelle conversation), /chat/:id, /settings
-├── pages/chat.tsx             # Écran de chat : messages, streaming, composer, export
-├── pages/settings.tsx         # Clé API, crédits, valeurs par défaut, apparence, données
-├── components/                # conversation-sidebar, model-picker, composer, message-bubble, markdown…
-├── lib/chat-service.ts        # Orchestration d'un échange (persistance, streaming, titre auto)
+├── router.tsx                 # /, /chat/:id, /compare, /usage, /settings, /welcome
+├── pages/                     # chat, compare, usage, settings, onboarding
+├── components/                # conversation-sidebar, composer, message-bubble, model-picker,
+│                              # generation-params, preset-picker, search-palette, markdown, toaster, ui/
+├── lib/chat-service.ts        # Envoi, édition, régénération, continuation, résumé, titre auto
+├── lib/tree.ts                # Chemin actif dans l'arbre de messages (versions)
+├── lib/attachments.ts         # Lecture des fichiers et parties de message multimodales
+├── lib/context.ts             # Estimation de la taille du contexte
+├── lib/import.ts              # Parsers ChatGPT / Claude / Relay
 ├── lib/openrouter.ts          # Wrappers typés des commandes Rust + normalisation des modèles
-├── lib/db.ts                  # Accès SQLite (conversations, messages, export)
-├── stores/                    # settings, models (cache), conversations, chat (flux), api-key
+├── lib/db.ts                  # Accès SQLite (conversations, messages, dossiers, personas, recherche, usage)
+├── stores/                    # settings, models (cache), conversations, chat (flux), api-key, toast
 └── i18n/locales/{fr,en}.json  # Traductions (clés typées)
 
 src-tauri/src/
-├── openrouter/mod.rs          # Client HTTP : modèles, crédits, complétion, streaming SSE annulable
+├── openrouter/mod.rs          # Client HTTP : modèles, crédits, complétion, streaming SSE annulable,
+│                              # options de routage et plugins (recherche web)
 ├── openrouter/sse.rs          # Analyseur SSE incrémental (testé)
 ├── secrets.rs                 # Clé API dans le trousseau système
 ├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement)
-├── db.rs                      # Migrations SQLite
+├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas)
 └── menu.rs, tray.rs, shortcut.rs, i18n.rs
 ```
 
 ### Flux d'un message
 
 1. `ChatPage` crée la conversation si besoin (`ensureConversation`) puis appelle `sendMessage`.
-2. Le message utilisateur est écrit en base ; `runAssistant` invoque la commande Rust `stream_chat` avec l'historique.
-3. Rust lit le flux SSE d'OpenRouter et relaie chaque fragment via un `Channel` (`delta`, `reasoning`, `usage`, `done`, `error`).
-4. À la fin, la réponse est persistée avec tokens et coût, la conversation remonte dans l'historique, et un titre est généré pour le premier échange.
+2. Le message utilisateur (texte + pièces jointes) est écrit en base sous le dernier message du chemin actif ;
+   un message assistant vide est créé immédiatement (`finish_reason = streaming`).
+3. `stream_chat` (Rust) lit le flux SSE d'OpenRouter et relaie chaque fragment via un `Channel`
+   (`delta`, `reasoning`, `usage`, `done`, `error`) ; le texte partiel est sauvegardé toutes les 800 ms.
+4. À la fin, la réponse est finalisée avec tokens, coût et durée ; un titre est généré pour le premier échange.
 
-L'arrêt (`cancel_stream`) annule la requête côté Rust via un `CancellationToken` ; ce qui a déjà été reçu est conservé.
+Éditer un message crée un **frère** (même parent) qui devient actif ; régénérer crée un frère de la réponse.
+« Continuer » renvoie l'historique terminé par la réponse partielle, que le modèle prolonge.
+L'arrêt (`cancel_stream`) annule la requête côté Rust ; ce qui a déjà été reçu est conservé.
 
 ## Données et confidentialité
 
-- Conversations : `relay.db` dans le dossier app-config de l'OS (`%APPDATA%\com.example.relay`, `~/Library/Application Support/com.example.relay`, `~/.config/com.example.relay`).
+- Conversations : `relay.db` dans le dossier app-config de l'OS (`%APPDATA%\com.example.relay`,
+  `~/Library/Application Support/com.example.relay`, `~/.config/com.example.relay`). Les pièces jointes
+  (images, PDF en base64, texte) sont stockées dans la base.
 - Préférences et cache des modèles : `settings.json`, `models-cache.json` au même endroit.
-- Clé API : trousseau système uniquement. Export JSON complet depuis Paramètres → Données.
+- Clé API : trousseau système uniquement. Export / import JSON depuis Paramètres → Données.
 - Seul `openrouter.ai` est contacté, depuis Rust (CSP du webview sans `connect-src` externe).
 
 ## Personnaliser
 
 - **Identité** : `productName` / `identifier` dans `src-tauri/tauri.conf.json` (et `tauri.macos.conf.json`), `name` dans `package.json` et `Cargo.toml` (`relay_lib` dans `Cargo.toml` et `main.rs`), `SERVICE` dans `secrets.rs`, `REFERER` / `TITLE` dans `openrouter/mod.rs`.
-- **Modèle par défaut** : `DEFAULT_MODEL` dans `src/stores/settings.ts` (`openrouter/auto` par défaut).
+- **Modèle par défaut** : `DEFAULT_MODEL` dans `src/stores/settings.ts` (`openrouter/auto`).
 - **Schéma** : ajouter une migration dans `src-tauri/src/db.rs` et adapter `src/lib/db.ts`.
+- **Limites** : taille des pièces jointes (`MAX_ATTACHMENT_BYTES`) et extensions acceptées dans `src/lib/attachments.ts`.
 
 ## Publication, mises à jour, CI
 
@@ -96,5 +130,7 @@ Hérité du template : CI sur PR (lint, types, tests, Clippy, cargo-deny, pnpm a
 
 - **Clé refusée (401)** : vérifiez la clé dans Paramètres ; les clés OpenRouter commencent par `sk-or-`.
 - **Modèle indisponible (404 / 400)** : la liste est mise en cache 6 h, utilisez « Actualiser la liste » dans le sélecteur.
+- **« Continuer » repart de zéro** : certains fournisseurs ignorent le préremplissage de la réponse ; régénérez ou changez de modèle.
+- **Images refusées** : le modèle n'accepte pas les images (filtre « Vision » dans le sélecteur).
 - **Linux, trousseau** : nécessite un Secret Service actif (GNOME Keyring, KWallet via bridge).
 - **Windows, chemins longs** : placez le projet dans un chemin court (`C:\dev\relay`) si `link.exe` ou Vitest échouent.

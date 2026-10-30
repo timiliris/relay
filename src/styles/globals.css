@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 /* Mode sombre piloté par la classe `.dark` sur <html> (voir hooks/use-theme.ts). */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -271,4 +272,84 @@
 .dark .hljs-property,
 .dark .hljs-deletion {
   color: oklch(0.8 0.12 20);
+}
+
+/* ---------- Formules (KaTeX) ---------- */
+
+.markdown .katex-display {
+  @apply my-3 overflow-x-auto;
+}
+
+/* ---------- Préférences d'apparence ---------- */
+/* Taille du texte : appliquée sur <html>, tout le rem suit. */
+html[data-font-size="sm"] {
+  font-size: 14px;
+}
+html[data-font-size="lg"] {
+  font-size: 17px;
+}
+
+/* Densité compacte : espacements réduits dans les listes et les messages. */
+html[data-density="compact"] .markdown > * + * {
+  @apply mt-2;
+}
+html[data-density="compact"] .message-list {
+  @apply gap-5 py-4;
+}
+
+/* Couleur d'accent : redéfinit --primary (le neutre reste la valeur par défaut). */
+html[data-accent="violet"] {
+  --primary: oklch(0.55 0.22 295);
+  --primary-foreground: oklch(0.98 0 0);
+  --ring: oklch(0.65 0.18 295);
+}
+html[data-accent="blue"] {
+  --primary: oklch(0.55 0.2 255);
+  --primary-foreground: oklch(0.98 0 0);
+  --ring: oklch(0.65 0.16 255);
+}
+html[data-accent="green"] {
+  --primary: oklch(0.55 0.17 150);
+  --primary-foreground: oklch(0.98 0 0);
+  --ring: oklch(0.65 0.14 150);
+}
+html[data-accent="amber"] {
+  --primary: oklch(0.7 0.17 70);
+  --primary-foreground: oklch(0.2 0.05 70);
+  --ring: oklch(0.75 0.14 70);
+}
+html[data-accent="rose"] {
+  --primary: oklch(0.6 0.21 10);
+  --primary-foreground: oklch(0.98 0 0);
+  --ring: oklch(0.7 0.17 10);
+}
+html.dark[data-accent="violet"] {
+  --primary: oklch(0.75 0.16 295);
+  --primary-foreground: oklch(0.2 0.05 295);
+}
+html.dark[data-accent="blue"] {
+  --primary: oklch(0.75 0.14 255);
+  --primary-foreground: oklch(0.2 0.05 255);
+}
+html.dark[data-accent="green"] {
+  --primary: oklch(0.75 0.14 150);
+  --primary-foreground: oklch(0.2 0.05 150);
+}
+html.dark[data-accent="rose"] {
+  --primary: oklch(0.75 0.15 10);
+  --primary-foreground: oklch(0.2 0.05 10);
+}
+
+/* Mise en évidence d'un message atteint par la recherche. */
+@keyframes relay-highlight {
+  from {
+    background-color: color-mix(in oklch, var(--primary) 25%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.message-highlight {
+  animation: relay-highlight 2s ease-out;
+  border-radius: 0.75rem;
 }

@@ -6,10 +6,18 @@ import { Channel, invoke } from '@tauri-apps/api/core';
 
 export type Role = 'system' | 'user' | 'assistant';
 
+/** Partie d'un message multimodal (format OpenAI / OpenRouter). */
+export type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
+  | { type: 'file'; file: { filename: string; file_data: string } };
+
 export interface ChatMessageInput {
   role: Role;
-  content: string;
+  content: string | ContentPart[];
 }
+
+export type ProviderSort = 'price' | 'throughput' | 'latency';
 
 export interface ChatRequest {
   model: string;
@@ -18,6 +26,10 @@ export interface ChatRequest {
   maxTokens?: number;
   topP?: number;
   reasoning?: boolean;
+  webSearch?: boolean;
+  providerSort?: ProviderSort;
+  ignoreProviders?: string[];
+  dataCollectionDeny?: boolean;
 }
 
 export type StreamEvent =
@@ -81,6 +93,12 @@ export function normalizeModel(raw: unknown): ModelInfo | null {
     created: typeof m.created === 'number' ? m.created : 0,
   };
 }
+
+export const supportsImages = (model: ModelInfo | undefined): boolean =>
+  model?.inputModalities.includes('image') ?? false;
+
+export const supportsFiles = (model: ModelInfo | undefined): boolean =>
+  model?.inputModalities.includes('file') ?? false;
 
 export const openrouter = {
   async fetchModels(): Promise<ModelInfo[]> {

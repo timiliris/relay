@@ -10,7 +10,12 @@ interface DropdownProps {
   className?: string;
 }
 
-/** Menu déroulant minimal : fermeture au clic extérieur et à Échap, sans dépendance. */
+const ITEM_SELECTOR = '[role="menuitem"]:not([disabled])';
+
+/**
+ * Menu déroulant sans dépendance : fermeture au clic extérieur et à Échap,
+ * navigation clavier (↑ ↓ Début Fin) entre les éléments `role="menuitem"`.
+ */
 export function Dropdown({
   trigger,
   children,
@@ -20,6 +25,7 @@ export function Dropdown({
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const id = useId();
 
   useEffect(() => {
@@ -28,7 +34,26 @@ export function Dropdown({
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        return;
+      }
+      const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
+      if (items.length === 0 || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+      // Ne détourne pas les flèches d'un champ de saisie (recherche de modèles, etc.).
+      const target = e.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName) && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      const next =
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? items.length - 1
+            : e.key === 'ArrowDown'
+              ? (current + 1) % items.length
+              : (current - 1 + items.length) % items.length;
+      items[next]?.focus();
     };
     document.addEventListener('pointerdown', onPointer);
     document.addEventListener('keydown', onKey);
@@ -44,6 +69,7 @@ export function Dropdown({
       {open && (
         <div
           id={id}
+          ref={menuRef}
           role="menu"
           className={cn(
             'absolute z-50 min-w-44 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',

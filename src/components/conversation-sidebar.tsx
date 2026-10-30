@@ -1,6 +1,14 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ask } from '@tauri-apps/plugin-dialog';
 import {
+  Archive,
+  ArchiveRestore,
+  BarChart3,
+  ChevronDown,
+  Columns3,
+  Folder,
+  FolderInput,
+  FolderPlus,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
@@ -12,55 +20,104 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Conversation } from '@/lib/db';
+import type { Conversation, Folder as FolderType } from '@/lib/db';
 import { groupConversations } from '@/lib/format';
 import { isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { useConversations } from '@/stores/conversations';
 import { useSettings } from '@/stores/settings';
+import { toast } from '@/stores/toast';
 import { Button } from './ui/button';
 import { Dropdown, DropdownItem } from './ui/dropdown';
 import { Input } from './ui/input';
 import { IconButton } from './ui/tooltip-button';
 
-export function ConversationSidebar() {
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 440;
+
+interface SidebarProps {
+  onOpenSearch: () => void;
+}
+
+export function ConversationSidebar({ onOpenSearch }: SidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { conversationId?: string };
-  const { items, loaded, load, rename, togglePin, remove } = useConversations();
-  const collapsed = useSettings((s) => s.sidebarCollapsed);
-  const patch = useSettings((s) => s.patch);
-  const [query, setQuery] = useState('');
+  const store = useConversations();
+  const { items, folders, loaded, load } = store;
+  const { sidebarCollapsed, sidebarWidth, showArchived, patch } = useSettings();
   const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
+  const [newFolder, setNewFolder] = useState<string | null>(null);
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+  const dragging = useRef(false);
 
   useEffect(() => {
     if (!loaded) void load();
   }, [loaded, load]);
 
-  const groups = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = q ? items.filter((c) => c.title.toLowerCase().includes(q)) : items;
-    return groupConversations(list);
-  }, [items, query]);
+  const confirm = useCallback(
+    async (message: string): Promise<boolean> =>
+      isTauri()
+        ? ask(message, {
+            title: t('common.delete'),
+            kind: 'warning',
+            okLabel: t('common.delete'),
+            cancelLabel: t('common.cancel'),
+          })
+        : window.confirm(message),
+    [t],
+  );
 
-  const confirmDelete = async (c: Conversation) => {
-    const message = t('sidebar.deleteConfirm', { title: c.title });
-    const ok = isTauri()
-      ? await ask(message, {
-          title: t('common.delete'),
-          kind: 'warning',
-          okLabel: t('common.delete'),
-          cancelLabel: t('common.cancel'),
-        })
-      : window.confirm(message);
-    if (!ok) return;
-    await remove(c.id);
-    if (params.conversationId === c.id) void navigate({ to: '/' });
+  const active = items.filter((c) => !c.archived);
+  const archived = items.filter((c) => c.archived);
+  const unfiled = useMemo(() => groupConversations(active.filter((c) => !c.folderId)), [active]);
+
+  const leaveIfCurrent = (id: string) => {
+    if (params.conversationId === id) void navigate({ to: '/' });
   };
 
-  if (collapsed) {
+  const removeConversation = async (c: Conversation) => {
+    if (!(await confirm(t('sidebar.deleteConfirm', { title: c.title })))) return;
+    await store.remove(c.id);
+    leaveIfCurrent(c.id);
+  };
+
+  const removeFolder = async (f: FolderType) => {
+    if (!(await confirm(t('sidebar.deleteFolderConfirm', { name: f.name })))) return;
+    await store.removeFolder(f.id);
+  };
+
+  const removeArchived = async () => {
+    if (!(await confirm(t('sidebar.deleteArchivedConfirm', { count: archived.length })))) return;
+    const wasCurrentArchived = archived.some((c) => c.id === params.conversationId);
+    await store.removeArchived();
+    if (wasCurrentArchived) void navigate({ to: '/' });
+  };
+
+  // Redimensionnement par glisser du bord droit.
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+    const onMove = (ev: PointerEvent) => {
+      if (!dragging.current) return;
+      patch({
+        sidebarWidth: Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + ev.clientX - startX)),
+      });
+    };
+    const onUp = () => {
+      dragging.current = false;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  if (sidebarCollapsed) {
     return (
       <aside className="flex w-12 shrink-0 flex-col items-center gap-1 border-r py-2">
         <IconButton label={t('sidebar.expand')} onClick={() => patch({ sidebarCollapsed: false })}>
@@ -69,7 +126,16 @@ export function ConversationSidebar() {
         <IconButton label={t('sidebar.newChat')} onClick={() => void navigate({ to: '/' })}>
           <Plus />
         </IconButton>
+        <IconButton label={t('search.title')} onClick={onOpenSearch}>
+          <Search />
+        </IconButton>
         <div className="flex-1" />
+        <IconButton label={t('nav.compare')} onClick={() => void navigate({ to: '/compare' })}>
+          <Columns3 />
+        </IconButton>
+        <IconButton label={t('nav.usage')} onClick={() => void navigate({ to: '/usage' })}>
+          <BarChart3 />
+        </IconButton>
         <IconButton label={t('common.settings')} onClick={() => void navigate({ to: '/settings' })}>
           <Settings />
         </IconButton>
@@ -77,8 +143,33 @@ export function ConversationSidebar() {
     );
   }
 
+  const renderRow = (c: Conversation) => (
+    <ConversationRow
+      key={c.id}
+      conversation={c}
+      folders={folders}
+      active={c.id === params.conversationId}
+      editing={editing?.id === c.id ? editing.title : null}
+      onEdit={(title) => setEditing(title === null ? null : { id: c.id, title })}
+      onRename={(title) => {
+        if (title.trim()) void store.rename(c.id, title.trim());
+        setEditing(null);
+      }}
+      onTogglePin={() => void store.togglePin(c.id)}
+      onArchive={() => {
+        void store.setArchived(c.id, !c.archived);
+        if (!c.archived) leaveIfCurrent(c.id);
+      }}
+      onMove={(folderId) => void store.moveToFolder(c.id, folderId)}
+      onDelete={() => void removeConversation(c)}
+    />
+  );
+
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r bg-card/40">
+    <aside
+      className="relative flex shrink-0 flex-col border-r bg-card/40"
+      style={{ width: sidebarWidth }}
+    >
       <div className="flex items-center gap-1 p-2">
         <Button
           variant="outline"
@@ -93,84 +184,229 @@ export function ConversationSidebar() {
           <PanelLeftClose />
         </IconButton>
       </div>
-      <div className="relative px-2 pb-2">
-        <Search className="pointer-events-none absolute top-2.5 left-4 size-3.5 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('sidebar.search')}
-          aria-label={t('sidebar.search')}
-          className="h-8 pl-8 text-xs"
-        />
+      <div className="px-2 pb-2">
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-input px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
+        >
+          <Search className="size-3.5" />
+          {t('sidebar.search')}
+        </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 pb-2" aria-label="Conversations">
+      <nav className="flex-1 overflow-y-auto px-2 pb-2" aria-label={t('nav.chat')}>
         {loaded && items.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">
             {t('sidebar.empty')}
           </p>
         )}
-        {loaded && items.length > 0 && groups.length === 0 && (
-          <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-            {t('sidebar.noResults')}
-          </p>
+
+        {folders.map((f) => {
+          const inFolder = active.filter((c) => c.folderId === f.id);
+          const collapsed = collapsedFolders.has(f.id);
+          return (
+            <div key={f.id} className="mb-1">
+              <div className="group flex items-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCollapsedFolders((s) => {
+                      const next = new Set(s);
+                      if (next.has(f.id)) next.delete(f.id);
+                      else next.add(f.id);
+                      return next;
+                    })
+                  }
+                  className="flex flex-1 items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  aria-expanded={!collapsed}
+                >
+                  <ChevronDown
+                    className={cn('size-3.5 transition-transform', collapsed && '-rotate-90')}
+                  />
+                  <Folder className="size-3.5" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="ml-auto font-mono text-[10px]">{inFolder.length}</span>
+                </button>
+                <Dropdown
+                  trigger={({ toggle }) => (
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      aria-label={t('common.actions')}
+                      className="mr-1 rounded p-1 text-muted-foreground opacity-0 hover:text-foreground focus:opacity-100 group-hover:opacity-100"
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </button>
+                  )}
+                >
+                  {(close) => (
+                    <>
+                      <DropdownItem
+                        onClick={() => {
+                          close();
+                          const name = window.prompt(t('sidebar.renameFolder'), f.name);
+                          if (name?.trim()) void store.renameFolder(f.id, name.trim());
+                        }}
+                      >
+                        <Pencil />
+                        {t('sidebar.renameFolder')}
+                      </DropdownItem>
+                      <DropdownItem
+                        destructive
+                        onClick={() => {
+                          close();
+                          void removeFolder(f);
+                        }}
+                      >
+                        <Trash2 />
+                        {t('sidebar.deleteFolder')}
+                      </DropdownItem>
+                    </>
+                  )}
+                </Dropdown>
+              </div>
+              {!collapsed && <div className="ml-3 border-l pl-1">{inFolder.map(renderRow)}</div>}
+            </div>
+          );
+        })}
+
+        {newFolder !== null ? (
+          <form
+            className="px-1 pb-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = newFolder.trim();
+              if (name) {
+                store.createFolder(name).catch((err) => toast.error(String(err)));
+              }
+              setNewFolder(null);
+            }}
+          >
+            <Input
+              autoFocus
+              value={newFolder}
+              onChange={(e) => setNewFolder(e.target.value)}
+              onBlur={() => setNewFolder(null)}
+              onKeyDown={(e) => e.key === 'Escape' && setNewFolder(null)}
+              placeholder={t('sidebar.folderName')}
+              aria-label={t('sidebar.folderName')}
+              className="h-7 text-xs"
+            />
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNewFolder('')}
+            className="mb-1 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <FolderPlus className="size-3.5" />
+            {t('sidebar.newFolder')}
+          </button>
         )}
-        {groups.map((group) => (
+
+        {unfiled.map((group) => (
           <div key={group.key} className="mb-2">
             <p className="px-2 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               {t(`sidebar.${group.key}`)}
             </p>
-            {group.items.map((c) => (
-              <ConversationRow
-                key={c.id}
-                conversation={c}
-                active={c.id === params.conversationId}
-                editing={editing?.id === c.id ? editing.title : null}
-                onEdit={(title) => setEditing(title === null ? null : { id: c.id, title })}
-                onRename={(title) => {
-                  if (title.trim()) void rename(c.id, title.trim());
-                  setEditing(null);
-                }}
-                onTogglePin={() => void togglePin(c.id)}
-                onDelete={() => void confirmDelete(c)}
-              />
-            ))}
+            {group.items.map(renderRow)}
           </div>
         ))}
+
+        {archived.length > 0 && (
+          <div className="mb-2 border-t pt-2">
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => patch({ showArchived: !showArchived })}
+                className="flex flex-1 items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                aria-expanded={showArchived}
+              >
+                <Archive className="size-3.5" />
+                {t('sidebar.archived')}
+                <span className="ml-auto font-mono text-[10px]">{archived.length}</span>
+              </button>
+              {showArchived && (
+                <IconButton
+                  label={t('sidebar.deleteArchived')}
+                  className="size-7 text-muted-foreground"
+                  onClick={() => void removeArchived()}
+                >
+                  <Trash2 className="size-3.5" />
+                </IconButton>
+              )}
+            </div>
+            {showArchived && archived.map(renderRow)}
+          </div>
+        )}
       </nav>
 
-      <div className="border-t p-2">
-        <Link
+      <div className="flex flex-col gap-0.5 border-t p-2">
+        <NavLink to="/compare" icon={<Columns3 className="size-4" />} label={t('nav.compare')} />
+        <NavLink to="/usage" icon={<BarChart3 className="size-4" />} label={t('nav.usage')} />
+        <NavLink
           to="/settings"
-          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          activeProps={{ className: 'bg-accent text-accent-foreground' }}
-        >
-          <Settings className="size-4" />
-          {t('common.settings')}
-        </Link>
+          icon={<Settings className="size-4" />}
+          label={t('common.settings')}
+        />
       </div>
+
+      <div
+        role="separator"
+        aria-label={t('sidebar.resize')}
+        aria-orientation="vertical"
+        onPointerDown={startResize}
+        className="absolute top-0 -right-1 h-full w-2 cursor-col-resize hover:bg-primary/20"
+      />
     </aside>
+  );
+}
+
+function NavLink({
+  to,
+  icon,
+  label,
+}: {
+  to: '/compare' | '/usage' | '/settings';
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      activeProps={{ className: 'bg-accent text-accent-foreground' }}
+    >
+      {icon}
+      {label}
+    </Link>
   );
 }
 
 interface RowProps {
   conversation: Conversation;
+  folders: FolderType[];
   active: boolean;
-  /** Titre en cours d'édition, ou `null` si la ligne n'est pas en édition. */
   editing: string | null;
   onEdit: (title: string | null) => void;
   onRename: (title: string) => void;
   onTogglePin: () => void;
+  onArchive: () => void;
+  onMove: (folderId: string | null) => void;
   onDelete: () => void;
 }
 
 function ConversationRow({
   conversation: c,
+  folders,
   active,
   editing,
   onEdit,
   onRename,
   onTogglePin,
+  onArchive,
+  onMove,
   onDelete,
 }: RowProps) {
   const { t } = useTranslation();
@@ -216,7 +452,7 @@ function ConversationRow({
               <button
                 type="button"
                 onClick={toggle}
-                aria-label="Actions"
+                aria-label={t('common.actions')}
                 className={cn(
                   'mr-1 rounded p-1 text-muted-foreground opacity-0 hover:text-foreground focus:opacity-100 group-hover:opacity-100',
                   active && 'opacity-100',
@@ -245,6 +481,47 @@ function ConversationRow({
                 >
                   <Pencil />
                   {t('common.rename')}
+                </DropdownItem>
+                {folders.length > 0 && (
+                  <>
+                    <p className="px-2 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t('sidebar.moveToFolder')}
+                    </p>
+                    {c.folderId && (
+                      <DropdownItem
+                        onClick={() => {
+                          onMove(null);
+                          close();
+                        }}
+                      >
+                        <FolderInput />
+                        {t('sidebar.noFolder')}
+                      </DropdownItem>
+                    )}
+                    {folders
+                      .filter((f) => f.id !== c.folderId)
+                      .map((f) => (
+                        <DropdownItem
+                          key={f.id}
+                          onClick={() => {
+                            onMove(f.id);
+                            close();
+                          }}
+                        >
+                          <Folder />
+                          <span className="truncate">{f.name}</span>
+                        </DropdownItem>
+                      ))}
+                  </>
+                )}
+                <DropdownItem
+                  onClick={() => {
+                    onArchive();
+                    close();
+                  }}
+                >
+                  {c.archived ? <ArchiveRestore /> : <Archive />}
+                  {c.archived ? t('sidebar.unarchive') : t('sidebar.archive')}
                 </DropdownItem>
                 <DropdownItem
                   destructive

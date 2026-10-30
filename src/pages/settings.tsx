@@ -1,9 +1,19 @@
 import { Link } from '@tanstack/react-router';
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart';
-import { save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { ask, open, save } from '@tauri-apps/plugin-dialog';
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { platform } from '@tauri-apps/plugin-os';
-import { ArrowLeft, BookOpen, Download, KeyRound, RefreshCw, Trash2, Wifi } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Download,
+  KeyRound,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Upload,
+  Wifi,
+} from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from '@/components/language-toggle';
@@ -12,38 +22,58 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Segmented } from '@/components/ui/segmented';
+import { Select } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { exportAll } from '@/lib/db';
+import { exportAll, newId, type Preset } from '@/lib/db';
 import { formatCost } from '@/lib/format';
+import { importConversations, parseImport } from '@/lib/import';
 import { openExternal } from '@/lib/open-external';
-import { type Credits, openrouter } from '@/lib/openrouter';
+import { type Credits, openrouter, type ProviderSort } from '@/lib/openrouter';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { checkForUpdates, type UpdateStatus } from '@/lib/updater';
+import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
-import { defaultGeneration, useSettings } from '@/stores/settings';
+import { useConversations } from '@/stores/conversations';
+import { type Accent, defaultGeneration, useSettings } from '@/stores/settings';
+import { toast } from '@/stores/toast';
 
 /** Doit rester identique à `SHORTCUT` dans src-tauri/src/shortcut.rs. */
-const SHORTCUT = isTauri() && platform() === 'macos' ? '⌘ ⇧ Espace' : 'Ctrl+Shift+Espace';
+const isMac = isTauri() && platform() === 'macos';
+const SHORTCUT = isMac ? '⌘ ⇧ Espace' : 'Ctrl+Shift+Espace';
+const MOD = isMac ? '⌘' : 'Ctrl';
+const ACCENTS: Accent[] = ['neutral', 'violet', 'blue', 'green', 'amber', 'rose'];
 
 export function SettingsPage() {
   const { t } = useTranslation();
   const inTauri = isTauri();
   const settings = useSettings();
   const { hint, save: saveKey, clear: clearKey } = useApiKey();
+  const conversations = useConversations();
   const [keyInput, setKeyInput] = useState('');
   const [keyMessage, setKeyMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [credits, setCredits] = useState<Credits | null>(null);
   const [testing, setTesting] = useState(false);
   const [autostart, setAutostart] = useState(false);
-  const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
   const [updateDetail, setUpdateDetail] = useState('');
+  const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
 
   useEffect(() => {
     if (inTauri) isEnabled().then(setAutostart).catch(console.error);
   }, [inTauri]);
+
+  const confirm = async (message: string): Promise<boolean> =>
+    inTauri
+      ? ask(message, {
+          title: t('common.delete'),
+          kind: 'warning',
+          okLabel: t('common.delete'),
+          cancelLabel: t('common.cancel'),
+        })
+      : window.confirm(message);
 
   const onSaveKey = async (e: FormEvent) => {
     e.preventDefault();
@@ -90,7 +120,7 @@ export function SettingsPage() {
       await (checked ? enable() : disable());
       setAutostart(await isEnabled());
     } catch (err) {
-      setExportMessage(errorMessage(err));
+      toast.error(errorMessage(err));
     }
   };
 
@@ -102,10 +132,48 @@ export function SettingsPage() {
       });
       if (!path) return;
       await writeTextFile(path, JSON.stringify(await exportAll(), null, 2));
-      setExportMessage(t('settings.exportedAll'));
+      toast.success(t('settings.exportedAll'));
     } catch (err) {
-      setExportMessage(errorMessage(err));
+      toast.error(errorMessage(err));
     }
+  };
+
+  const onImport = async () => {
+    try {
+      const path = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (!path) return;
+      const parsed = parseImport(JSON.parse(await readTextFile(path)) as unknown);
+      const result = await importConversations(parsed, settings.defaultModel);
+      await conversations.load();
+      toast.success(t('settings.imported', result));
+    } catch (err) {
+      toast.error(
+        err instanceof Error && err.message === 'unrecognized'
+          ? t('settings.importFailed')
+          : errorMessage(err),
+      );
+    }
+  };
+
+  const onDeleteAll = async () => {
+    if (!(await confirm(t('settings.deleteAllConfirm')))) return;
+    for (const c of conversations.items) await conversations.remove(c.id);
+    toast.success(t('settings.deletedAll'));
+  };
+
+  const savePreset = async (preset: Preset) => {
+    await conversations.savePreset(preset);
+    setEditingPreset(null);
+    toast.success(t('presets.saved'));
+  };
+
+  const removePreset = async (preset: Preset) => {
+    if (!(await confirm(t('presets.deleteConfirm', { name: preset.name })))) return;
+    await conversations.removePreset(preset.id);
   };
 
   const updateLabel = (): string => {
@@ -141,6 +209,7 @@ export function SettingsPage() {
           <h1 className="text-lg font-semibold">{t('settings.title')}</h1>
         </div>
 
+        {/* Clé API */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -220,6 +289,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Valeurs par défaut */}
         <Card>
           <CardHeader>
             <CardTitle>{t('settings.defaults')}</CardTitle>
@@ -278,6 +348,21 @@ export function SettingsPage() {
               <Switch
                 checked={settings.reasoning}
                 onCheckedChange={(v) => settings.patch({ reasoning: v })}
+                aria-label={t('params.reasoning')}
+              />
+            </Row>
+            <Row label={t('params.webSearch')}>
+              <Switch
+                checked={settings.webSearch}
+                onCheckedChange={(v) => settings.patch({ webSearch: v })}
+                aria-label={t('params.webSearch')}
+              />
+            </Row>
+            <Row label={t('settings.autoTitle')}>
+              <Switch
+                checked={settings.autoTitle}
+                onCheckedChange={(v) => settings.patch({ autoTitle: v })}
+                aria-label={t('settings.autoTitle')}
               />
             </Row>
             <div>
@@ -288,7 +373,126 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Personas */}
+        <Card id="presets">
+          <CardHeader>
+            <CardTitle>{t('presets.title')}</CardTitle>
+            <CardDescription>{t('presets.description')}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            {conversations.presets.length === 0 && !editingPreset && (
+              <p className="text-muted-foreground">{t('presets.none')}</p>
+            )}
+            <ul className="flex flex-col divide-y">
+              {conversations.presets.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{p.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {[p.model, p.systemPrompt].filter(Boolean).join(' · ') || '—'}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingPreset(p)}>
+                    {t('common.edit')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    aria-label={t('presets.delete')}
+                    onClick={() => void removePreset(p)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            {editingPreset ? (
+              <PresetEditor
+                preset={editingPreset}
+                onChange={setEditingPreset}
+                onSave={() => void savePreset(editingPreset)}
+                onCancel={() => setEditingPreset(null)}
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditingPreset(blankPreset())}>
+                  <Plus />
+                  {t('presets.new')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setEditingPreset({
+                      ...blankPreset(),
+                      model: settings.defaultModel,
+                      systemPrompt: settings.systemPrompt || null,
+                      temperature: settings.temperature,
+                      topP: settings.topP,
+                      maxTokens: settings.maxTokens,
+                      reasoning: settings.reasoning,
+                    })
+                  }
+                >
+                  {t('presets.saveFromCurrent')}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Routage OpenRouter */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings.routing')}</CardTitle>
+            <CardDescription>{t('settings.routingHelp')}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <Row label={t('settings.providerSort')}>
+              <Select
+                value={settings.providerSort ?? ''}
+                onChange={(e) =>
+                  settings.patch({ providerSort: (e.target.value || null) as ProviderSort | null })
+                }
+                aria-label={t('settings.providerSort')}
+              >
+                <option value="">{t('settings.sortNone')}</option>
+                <option value="price">{t('settings.sortPrice')}</option>
+                <option value="throughput">{t('settings.sortThroughput')}</option>
+                <option value="latency">{t('settings.sortLatency')}</option>
+              </Select>
+            </Row>
+            <Field label={t('settings.ignoreProviders')}>
+              <Input
+                value={settings.ignoreProviders.join(', ')}
+                onChange={(e) =>
+                  settings.patch({
+                    ignoreProviders: e.target.value
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  })
+                }
+                placeholder={t('settings.ignoreProvidersPlaceholder')}
+                className="h-8"
+              />
+            </Field>
+            <Row
+              label={t('settings.dataCollectionDeny')}
+              hint={t('settings.dataCollectionDenyHint')}
+            >
+              <Switch
+                checked={settings.dataCollectionDeny}
+                onCheckedChange={(v) => settings.patch({ dataCollectionDeny: v })}
+                aria-label={t('settings.dataCollectionDeny')}
+              />
+            </Row>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-4 md:grid-cols-2">
+          {/* Apparence */}
           <Card>
             <CardHeader>
               <CardTitle>{t('settings.appearance')}</CardTitle>
@@ -300,20 +504,74 @@ export function SettingsPage() {
               <Row label={t('language.label')}>
                 <LanguageToggle />
               </Row>
+              <Row label={t('settings.fontSize')}>
+                <Segmented
+                  label={t('settings.fontSize')}
+                  value={settings.fontSize}
+                  onChange={(v) => settings.patch({ fontSize: v })}
+                  options={[
+                    { value: 'sm', label: t('settings.fontSm') },
+                    { value: 'md', label: t('settings.fontMd') },
+                    { value: 'lg', label: t('settings.fontLg') },
+                  ]}
+                />
+              </Row>
+              <Row label={t('settings.density')}>
+                <Segmented
+                  label={t('settings.density')}
+                  value={settings.density}
+                  onChange={(v) => settings.patch({ density: v })}
+                  options={[
+                    { value: 'comfortable', label: t('settings.densityComfortable') },
+                    { value: 'compact', label: t('settings.densityCompact') },
+                  ]}
+                />
+              </Row>
+              <Row label={t('settings.accent')}>
+                <div role="radiogroup" aria-label={t('settings.accent')} className="flex gap-1.5">
+                  {ACCENTS.map((accent) => (
+                    <button
+                      key={accent}
+                      type="button"
+                      role="radio"
+                      aria-checked={settings.accent === accent}
+                      aria-label={t(
+                        `settings.accent${accent.charAt(0).toUpperCase()}${accent.slice(1)}` as 'settings.accentNeutral',
+                      )}
+                      title={t(
+                        `settings.accent${accent.charAt(0).toUpperCase()}${accent.slice(1)}` as 'settings.accentNeutral',
+                      )}
+                      onClick={() => settings.patch({ accent })}
+                      data-accent={accent}
+                      className={cn(
+                        'size-6 rounded-full border-2 transition-transform',
+                        settings.accent === accent
+                          ? 'scale-110 border-foreground'
+                          : 'border-transparent',
+                      )}
+                      style={{ background: accentSwatch(accent) }}
+                    />
+                  ))}
+                </div>
+              </Row>
             </CardContent>
           </Card>
 
+          {/* Notifications et raccourcis */}
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.notifications')}</CardTitle>
+              <CardTitle>{t('settings.shortcuts')}</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 text-sm">
-              <Row label={t('settings.notifyOnComplete')}>
-                <Switch
-                  checked={settings.notifyOnComplete}
-                  onCheckedChange={(v) => settings.patch({ notifyOnComplete: v })}
-                />
-              </Row>
+            <CardContent className="flex flex-col gap-2 text-sm">
+              <Shortcut keys={`${MOD}+N`} label={t('settings.shortcutNewChat')} />
+              <Shortcut keys={`${MOD}+K`} label={t('settings.shortcutSearch')} />
+              <Shortcut keys={`${MOD}+,`} label={t('settings.shortcutSettings')} />
+              <Shortcut keys="Échap" label={t('settings.shortcutStop')} />
+              <Shortcut keys="↑" label={t('settings.shortcutLastMessage')} />
+              <Shortcut
+                keys={SHORTCUT}
+                label={t('settings.shortcutHint', { shortcut: '' }).trim()}
+              />
             </CardContent>
           </Card>
 
@@ -330,22 +588,23 @@ export function SettingsPage() {
                   aria-label={t('settings.autostart')}
                 />
               </Row>
-              <Row
-                label={t('settings.shortcut')}
-                hint={t('settings.shortcutHint', { shortcut: SHORTCUT })}
-              >
-                <kbd className="rounded-md border bg-muted px-2 py-0.5 font-mono text-xs">
-                  {SHORTCUT}
-                </kbd>
+              <Row label={t('settings.notifyOnComplete')}>
+                <Switch
+                  checked={settings.notifyOnComplete}
+                  onCheckedChange={(v) => settings.patch({ notifyOnComplete: v })}
+                  aria-label={t('settings.notifyOnComplete')}
+                />
               </Row>
             </CardContent>
           </Card>
 
+          {/* Données */}
           <Card>
             <CardHeader>
               <CardTitle>{t('settings.data')}</CardTitle>
+              <CardDescription>{t('settings.importHelp')}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 text-sm">
+            <CardContent className="flex flex-col gap-2 text-sm">
               <Button
                 variant="outline"
                 size="sm"
@@ -355,11 +614,39 @@ export function SettingsPage() {
                 <Download />
                 {t('settings.exportAll')}
               </Button>
-              {exportMessage && <p className="text-muted-foreground">{exportMessage}</p>}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void onImport()}
+                disabled={!inTauri}
+              >
+                <Upload />
+                {t('settings.import')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => settings.patch({ onboarded: false })}
+              >
+                {t('settings.restartOnboarding')}
+              </Button>
+              <p className="mt-2 text-xs font-medium uppercase tracking-wide text-destructive">
+                {t('settings.dangerZone')}
+              </p>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => void onDeleteAll()}
+                disabled={!inTauri || conversations.items.length === 0}
+              >
+                <Trash2 />
+                {t('settings.deleteAll')}
+              </Button>
             </CardContent>
           </Card>
         </div>
 
+        {/* À propos */}
         <Card>
           <CardHeader>
             <CardTitle>{t('settings.about')}</CardTitle>
@@ -398,6 +685,135 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function blankPreset(): Preset {
+  return {
+    id: newId(),
+    name: '',
+    systemPrompt: null,
+    model: null,
+    temperature: null,
+    topP: null,
+    maxTokens: null,
+    reasoning: null,
+    position: Date.now(),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function accentSwatch(accent: Accent): string {
+  switch (accent) {
+    case 'violet':
+      return 'oklch(0.6 0.2 295)';
+    case 'blue':
+      return 'oklch(0.6 0.18 255)';
+    case 'green':
+      return 'oklch(0.6 0.15 150)';
+    case 'amber':
+      return 'oklch(0.75 0.16 70)';
+    case 'rose':
+      return 'oklch(0.65 0.19 10)';
+    default:
+      return 'oklch(0.5 0 0)';
+  }
+}
+
+function PresetEditor({
+  preset,
+  onChange,
+  onSave,
+  onCancel,
+}: {
+  preset: Preset;
+  onChange: (p: Preset) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <form
+      className="flex flex-col gap-3 rounded-lg border p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (preset.name.trim()) onSave();
+      }}
+    >
+      <Field label={t('presets.name')}>
+        <Input
+          autoFocus
+          value={preset.name}
+          onChange={(e) => onChange({ ...preset, name: e.target.value })}
+          placeholder={t('presets.namePlaceholder')}
+          className="h-8"
+        />
+      </Field>
+      <Field label={t('presets.model')}>
+        <div className="flex items-center gap-2">
+          <ModelPicker
+            value={preset.model ?? ''}
+            onChange={(id) => onChange({ ...preset, model: id })}
+          />
+          {preset.model && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onChange({ ...preset, model: null })}
+            >
+              {t('common.none')}
+            </Button>
+          )}
+        </div>
+      </Field>
+      <Field label={t('params.systemPrompt')}>
+        <Textarea
+          value={preset.systemPrompt ?? ''}
+          onChange={(e) => onChange({ ...preset, systemPrompt: e.target.value || null })}
+          placeholder={t('params.systemPromptPlaceholder')}
+          className="min-h-20 font-sans"
+        />
+      </Field>
+      <Field
+        label={t('params.temperature')}
+        value={
+          preset.temperature === null ? t('params.maxTokensAuto') : preset.temperature.toFixed(2)
+        }
+      >
+        <Slider
+          min={0}
+          max={2}
+          step={0.05}
+          value={preset.temperature ?? 0.7}
+          onValueChange={(v) => onChange({ ...preset, temperature: v })}
+        />
+      </Field>
+      <Row label={t('params.reasoning')}>
+        <Switch
+          checked={preset.reasoning ?? true}
+          onCheckedChange={(v) => onChange({ ...preset, reasoning: v })}
+          aria-label={t('params.reasoning')}
+        />
+      </Row>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" size="sm" disabled={!preset.name.trim()}>
+          {t('common.save')}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function Shortcut({ keys, label }: { keys: string; label: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <kbd className="rounded-md border bg-muted px-2 py-0.5 font-mono text-xs">{keys}</kbd>
     </div>
   );
 }

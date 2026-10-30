@@ -1,4 +1,4 @@
-import { Check, ChevronDown, RefreshCw, Star } from 'lucide-react';
+import { Brain, Check, ChevronDown, Eye, RefreshCw, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPrice, formatTokens } from '@/lib/format';
@@ -10,6 +10,9 @@ import { Button } from './ui/button';
 import { Dropdown } from './ui/dropdown';
 import { Input } from './ui/input';
 
+type Filter = 'all' | 'favorites' | 'vision' | 'free' | 'reasoning';
+const FILTERS: Filter[] = ['all', 'favorites', 'vision', 'free', 'reasoning'];
+
 interface ModelPickerProps {
   value: string;
   onChange: (modelId: string) => void;
@@ -18,7 +21,7 @@ interface ModelPickerProps {
   side?: 'top' | 'bottom';
 }
 
-/** Sélecteur de modèle avec recherche, favoris, prix et taille de contexte. */
+/** Sélecteur de modèle avec recherche, filtres, favoris, prix et taille de contexte. */
 export function ModelPicker({
   value,
   onChange,
@@ -32,6 +35,7 @@ export function ModelPicker({
   const recents = useSettings((s) => s.recentModels);
   const toggleFavorite = useSettings((s) => s.toggleFavorite);
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
 
   useEffect(() => {
     void load();
@@ -40,14 +44,33 @@ export function ModelPicker({
   const current = byId(value);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
+    let list = q
       ? models.filter((m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q))
       : models;
+    if (filter === 'favorites') list = list.filter((m) => favorites.includes(m.id));
+    if (filter === 'vision') list = list.filter((m) => m.inputModalities.includes('image'));
+    if (filter === 'free')
+      list = list.filter((m) => m.promptPrice === 0 && m.completionPrice === 0);
+    if (filter === 'reasoning') list = list.filter((m) => m.supportsReasoning);
     const fav = list.filter((m) => favorites.includes(m.id));
     const rec = list.filter((m) => !favorites.includes(m.id) && recents.includes(m.id));
     const rest = list.filter((m) => !favorites.includes(m.id) && !recents.includes(m.id));
-    return { fav, rec, rest };
-  }, [models, query, favorites, recents]);
+    return { fav, rec, rest, count: list.length };
+  }, [models, query, filter, favorites, recents]);
+
+  const row = (m: ModelInfo, close: () => void) => (
+    <Row
+      key={m.id}
+      model={m}
+      selected={m.id === value}
+      favorite={favorites.includes(m.id)}
+      onSelect={() => {
+        onChange(m.id);
+        close();
+      }}
+      onFavorite={() => toggleFavorite(m.id)}
+    />
+  );
 
   return (
     <Dropdown
@@ -90,6 +113,29 @@ export function ModelPicker({
               <RefreshCw className={cn('size-4', status === 'loading' && 'animate-spin')} />
             </Button>
           </div>
+          <div
+            className="flex gap-1 overflow-x-auto border-b px-2 py-1.5"
+            role="radiogroup"
+            aria-label={t('model.pick')}
+          >
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="radio"
+                aria-checked={filter === f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  'shrink-0 rounded-full border px-2 py-0.5 text-[11px] transition-colors',
+                  filter === f
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t(`model.filter${f.charAt(0).toUpperCase()}${f.slice(1)}` as 'model.filterAll')}
+              </button>
+            ))}
+          </div>
           <div className="overflow-y-auto p-1">
             {status === 'error' && models.length === 0 && (
               <p className="p-3 text-sm text-destructive">{t('model.loadError')}</p>
@@ -98,53 +144,18 @@ export function ModelPicker({
               <p className="p-3 text-sm text-muted-foreground">{t('common.loading')}</p>
             )}
             {filtered.fav.length > 0 && <Group label={t('model.favorites')} />}
-            {filtered.fav.map((m) => (
-              <Row
-                key={m.id}
-                model={m}
-                selected={m.id === value}
-                favorite
-                onSelect={() => {
-                  onChange(m.id);
-                  close();
-                }}
-                onFavorite={() => toggleFavorite(m.id)}
-              />
-            ))}
-            {filtered.rec.length > 0 && <Group label={t('model.all')} />}
-            {filtered.rec.map((m) => (
-              <Row
-                key={m.id}
-                model={m}
-                selected={m.id === value}
-                favorite={false}
-                onSelect={() => {
-                  onChange(m.id);
-                  close();
-                }}
-                onFavorite={() => toggleFavorite(m.id)}
-              />
-            ))}
-            {filtered.rest.map((m) => (
-              <Row
-                key={m.id}
-                model={m}
-                selected={m.id === value}
-                favorite={false}
-                onSelect={() => {
-                  onChange(m.id);
-                  close();
-                }}
-                onFavorite={() => toggleFavorite(m.id)}
-              />
-            ))}
-            {models.length > 0 &&
-              filtered.fav.length + filtered.rec.length + filtered.rest.length === 0 && (
-                <p className="p-3 text-sm text-muted-foreground">{t('model.noResults')}</p>
-              )}
+            {filtered.fav.map((m) => row(m, close))}
+            {(filtered.rec.length > 0 || filtered.rest.length > 0) && filtered.fav.length > 0 && (
+              <Group label={t('model.all')} />
+            )}
+            {filtered.rec.map((m) => row(m, close))}
+            {filtered.rest.map((m) => row(m, close))}
+            {models.length > 0 && filtered.count === 0 && (
+              <p className="p-3 text-sm text-muted-foreground">{t('model.noResults')}</p>
+            )}
           </div>
           <div className="border-t px-3 py-1.5 text-xs text-muted-foreground">
-            {t('model.count', { count: models.length })}
+            {t('model.count', { count: filtered.count })}
           </div>
         </div>
       )}
@@ -175,6 +186,7 @@ function Row({
 }) {
   const { t } = useTranslation();
   const free = model.promptPrice === 0 && model.completionPrice === 0;
+  const vision = model.inputModalities.includes('image');
   return (
     <div
       className={cn(
@@ -183,8 +195,17 @@ function Row({
       )}
     >
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="truncate text-sm">{model.name}</span>
+          {vision && (
+            <Eye className="size-3 shrink-0 text-muted-foreground" aria-label={t('model.vision')} />
+          )}
+          {model.supportsReasoning && (
+            <Brain
+              className="size-3 shrink-0 text-muted-foreground"
+              aria-label={t('model.filterReasoning')}
+            />
+          )}
           {selected && <Check className="size-3.5 shrink-0 text-primary" />}
         </div>
         <div className="flex gap-3 text-[11px] text-muted-foreground">
@@ -208,8 +229,8 @@ function Row({
         aria-label={favorite ? t('model.unfavorite') : t('model.favorite')}
         title={favorite ? t('model.unfavorite') : t('model.favorite')}
         className={cn(
-          'rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground',
-          favorite && 'opacity-100 text-amber-500',
+          'rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100',
+          favorite && 'text-amber-500 opacity-100',
         )}
       >
         <Star className={cn('size-4', favorite && 'fill-current')} />

@@ -7,9 +7,13 @@ import { LazyStore } from '@tauri-apps/plugin-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import type { LanguageSetting } from '@/i18n';
+import type { ProviderSort } from '@/lib/openrouter';
 import { isTauri } from '@/lib/tauri';
 
 export type Theme = 'light' | 'dark' | 'system';
+export type FontSize = 'sm' | 'md' | 'lg';
+export type Accent = 'neutral' | 'violet' | 'blue' | 'green' | 'amber' | 'rose';
+export type Density = 'comfortable' | 'compact';
 
 /** Paramètres de génération par défaut, repris par chaque nouvelle conversation. */
 export interface GenerationParams {
@@ -18,6 +22,7 @@ export interface GenerationParams {
   topP: number | null;
   systemPrompt: string;
   reasoning: boolean;
+  webSearch: boolean;
 }
 
 export const DEFAULT_MODEL = 'openrouter/auto';
@@ -28,9 +33,10 @@ export const defaultGeneration: GenerationParams = {
   topP: null,
   systemPrompt: '',
   reasoning: true,
+  webSearch: false,
 };
 
-export interface SettingsState extends GenerationParams {
+export interface SettingsData extends GenerationParams {
   theme: Theme;
   language: LanguageSetting;
   defaultModel: string;
@@ -39,16 +45,50 @@ export interface SettingsState extends GenerationParams {
   notifyOnComplete: boolean;
   autoTitle: boolean;
   sidebarCollapsed: boolean;
+  sidebarWidth: number;
+  showArchived: boolean;
+  /** Options de routage OpenRouter. */
+  providerSort: ProviderSort | null;
+  ignoreProviders: string[];
+  dataCollectionDeny: boolean;
+  /** Apparence. */
+  fontSize: FontSize;
+  accent: Accent;
+  density: Density;
+  /** Nombre de messages rendus avant le bouton « afficher les précédents ». */
+  messagesPageSize: number;
+  onboarded: boolean;
+}
+
+export interface SettingsState extends SettingsData {
   setTheme: (theme: Theme) => void;
   setLanguage: (language: LanguageSetting) => void;
-  patch: (
-    values: Partial<
-      Omit<SettingsState, 'patch' | 'setTheme' | 'setLanguage' | 'toggleFavorite' | 'rememberModel'>
-    >,
-  ) => void;
+  patch: (values: Partial<SettingsData>) => void;
   toggleFavorite: (modelId: string) => void;
   rememberModel: (modelId: string) => void;
 }
+
+const defaults: SettingsData = {
+  theme: 'system',
+  language: 'system',
+  defaultModel: DEFAULT_MODEL,
+  favoriteModels: [],
+  recentModels: [],
+  notifyOnComplete: true,
+  autoTitle: true,
+  sidebarCollapsed: false,
+  sidebarWidth: 264,
+  showArchived: false,
+  providerSort: null,
+  ignoreProviders: [],
+  dataCollectionDeny: false,
+  fontSize: 'md',
+  accent: 'neutral',
+  density: 'comfortable',
+  messagesPageSize: 60,
+  onboarded: false,
+  ...defaultGeneration,
+};
 
 function tauriStorage(): StateStorage {
   const store = new LazyStore('settings.json');
@@ -68,15 +108,7 @@ function tauriStorage(): StateStorage {
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
-      theme: 'system',
-      language: 'system',
-      defaultModel: DEFAULT_MODEL,
-      favoriteModels: [],
-      recentModels: [],
-      notifyOnComplete: true,
-      autoTitle: true,
-      sidebarCollapsed: false,
-      ...defaultGeneration,
+      ...defaults,
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
       patch: (values) => set(values),
@@ -93,9 +125,12 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'settings',
+      version: 2,
       storage: createJSONStorage(() => (isTauri() ? tauriStorage() : localStorage)),
       partialize: ({ setTheme, setLanguage, patch, toggleFavorite, rememberModel, ...state }) =>
         state,
+      // Les nouvelles clés prennent leur valeur par défaut pour les anciens fichiers.
+      merge: (persisted, current) => ({ ...current, ...(persisted as Partial<SettingsData>) }),
     },
   ),
 );

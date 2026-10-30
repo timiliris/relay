@@ -6,7 +6,10 @@ import {
 } from '@tanstack/react-router';
 import { AppShell } from '@/components/app-shell';
 import { ChatPage } from '@/pages/chat';
+import { ComparePage } from '@/pages/compare';
+import { OnboardingPage } from '@/pages/onboarding';
 import { SettingsPage } from '@/pages/settings';
+import { UsagePage } from '@/pages/usage';
 
 /**
  * Routage « code-based » (TanStack Router) : explicite et sans génération de fichiers.
@@ -29,13 +32,35 @@ const chatRoute = createRoute({
   },
 });
 
+const compareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compare',
+  component: ComparePage,
+});
+const usageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/usage',
+  component: UsagePage,
+});
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
   component: SettingsPage,
 });
+const welcomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/welcome',
+  component: OnboardingPage,
+});
 
-const routeTree = rootRoute.addChildren([newChatRoute, chatRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([
+  newChatRoute,
+  chatRoute,
+  compareRoute,
+  usageRoute,
+  settingsRoute,
+  welcomeRoute,
+]);
 
 export function createAppRouter(history?: RouterHistory) {
   return createRouter({
