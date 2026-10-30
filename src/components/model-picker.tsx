@@ -15,10 +15,17 @@ interface ModelPickerProps {
   onChange: (modelId: string) => void;
   className?: string;
   align?: 'start' | 'end';
+  side?: 'top' | 'bottom';
 }
 
 /** Sélecteur de modèle avec recherche, favoris, prix et taille de contexte. */
-export function ModelPicker({ value, onChange, className, align = 'start' }: ModelPickerProps) {
+export function ModelPicker({
+  value,
+  onChange,
+  className,
+  align = 'start',
+  side = 'bottom',
+}: ModelPickerProps) {
   const { t } = useTranslation();
   const { models, status, load, byId } = useModels();
   const favorites = useSettings((s) => s.favoriteModels);
@@ -45,6 +52,7 @@ export function ModelPicker({ value, onChange, className, align = 'start' }: Mod
   return (
     <Dropdown
       align={align}
+      side={side}
       className="w-[26rem] max-w-[90vw] p-0"
       trigger={({ toggle }) => (
         <Button
@@ -60,7 +68,7 @@ export function ModelPicker({ value, onChange, className, align = 'start' }: Mod
       )}
     >
       {(close) => (
-        <div className="flex max-h-[28rem] flex-col">
+        <div className="flex max-h-[min(28rem,70vh)] flex-col">
           <div className="flex items-center gap-2 border-b p-2">
             <Input
               autoFocus

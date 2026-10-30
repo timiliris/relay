@@ -201,7 +201,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
           onStop={stopStreaming}
           draft={draft}
         >
-          <ModelPicker value={model} onChange={onModelChange} />
+          <ModelPicker value={model} onChange={onModelChange} side="top" />
           <GenerationParams
             systemPrompt={systemPrompt}
             onSystemPromptChange={onSystemPromptChange}
@@ -231,7 +231,7 @@ function EmptyState({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-6 px-4 text-center">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center justify-center gap-6 px-4 py-8 text-center">
       <div className="flex size-12 items-center justify-center rounded-2xl border bg-card shadow-sm">
         <Sparkles className="size-6 text-primary" />
       </div>

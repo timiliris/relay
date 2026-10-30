@@ -22,7 +22,8 @@ export function GenerationParams({
   return (
     <Dropdown
       align="start"
-      className="w-80 p-3"
+      side="top"
+      className="w-80 max-h-[70vh] overflow-y-auto p-3"
       trigger={({ toggle }) => (
         <Button
           variant="ghost"

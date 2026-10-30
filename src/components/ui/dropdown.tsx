@@ -5,11 +5,19 @@ interface DropdownProps {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
   children: (close: () => void) => ReactNode;
   align?: 'start' | 'end';
+  /** `top` pour un déclencheur en bas de fenêtre (composer). */
+  side?: 'top' | 'bottom';
   className?: string;
 }
 
 /** Menu déroulant minimal : fermeture au clic extérieur et à Échap, sans dépendance. */
-export function Dropdown({ trigger, children, align = 'end', className }: DropdownProps) {
+export function Dropdown({
+  trigger,
+  children,
+  align = 'end',
+  side = 'bottom',
+  className,
+}: DropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -38,7 +46,8 @@ export function Dropdown({ trigger, children, align = 'end', className }: Dropdo
           id={id}
           role="menu"
           className={cn(
-            'absolute z-50 mt-1 min-w-44 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',
+            'absolute z-50 min-w-44 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',
+            side === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
             align === 'end' ? 'right-0' : 'left-0',
             className,
           )}
