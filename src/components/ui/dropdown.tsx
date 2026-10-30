@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 interface DropdownProps {
@@ -11,10 +12,12 @@ interface DropdownProps {
 }
 
 const ITEM_SELECTOR = '[role="menuitem"]:not([disabled])';
+const GAP = 4;
 
 /**
- * Menu déroulant sans dépendance : fermeture au clic extérieur et à Échap,
- * navigation clavier (↑ ↓ Début Fin) entre les éléments `role="menuitem"`.
+ * Menu déroulant sans dépendance, rendu dans un portail (position fixe) pour ne
+ * jamais être rogné par un conteneur défilant. Fermeture au clic extérieur et à
+ * Échap, navigation clavier (↑ ↓ Début Fin) entre les éléments `role="menuitem"`.
  */
 export function Dropdown({
   trigger,
@@ -24,14 +27,36 @@ export function Dropdown({
   className,
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<React.CSSProperties | null>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const id = useId();
+
+  // Positionne le menu par rapport au déclencheur (recalculé au redimensionnement).
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      // Le conteneur est en `display: contents` : on mesure le déclencheur lui-même.
+      const rect = triggerRef.current?.firstElementChild?.getBoundingClientRect();
+      if (!rect) return;
+      const style: React.CSSProperties = { position: 'fixed' };
+      if (side === 'top') style.bottom = window.innerHeight - rect.top + GAP;
+      else style.top = rect.bottom + GAP;
+      if (align === 'end') style.right = Math.max(8, window.innerWidth - rect.right);
+      else style.left = Math.max(8, rect.left);
+      setPosition(style);
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [open, side, align]);
 
   useEffect(() => {
     if (!open) return;
     const onPointer = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -64,24 +89,28 @@ export function Dropdown({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
-      <div>{trigger({ open, toggle: () => setOpen((o) => !o) })}</div>
-      {open && (
-        <div
-          id={id}
-          ref={menuRef}
-          role="menu"
-          className={cn(
-            'absolute z-50 min-w-44 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',
-            side === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
-            align === 'end' ? 'right-0' : 'left-0',
-            className,
-          )}
-        >
-          {children(() => setOpen(false))}
-        </div>
-      )}
-    </div>
+    <>
+      <div ref={triggerRef} className="contents">
+        {trigger({ open, toggle: () => setOpen((o) => !o) })}
+      </div>
+      {open &&
+        position &&
+        createPortal(
+          <div
+            id={id}
+            ref={menuRef}
+            role="menu"
+            style={position}
+            className={cn(
+              'z-50 min-w-44 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg',
+              className,
+            )}
+          >
+            {children(() => setOpen(false))}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
