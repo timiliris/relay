@@ -15,27 +15,40 @@ use tokio_util::sync::CancellationToken;
 use crate::{AppError, AppResult};
 use sse::{Chunk, SseData, SseParser};
 
-const BASE_URL: &str = "https://openrouter.ai/api/v1";
+pub const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
+/// Variable d'environnement permettant de viser un autre serveur (tests, proxy).
+pub const BASE_URL_ENV: &str = "RELAY_OPENROUTER_BASE_URL";
 /// En-têtes recommandés par OpenRouter pour identifier l'application.
 const REFERER: &str = "https://github.com/example/relay";
 const TITLE: &str = "Relay";
 
 pub struct OpenRouterState {
     pub client: reqwest::Client,
+    pub base_url: String,
     /// Flux en cours, annulables par identifiant de requête.
     streams: Mutex<HashMap<String, CancellationToken>>,
 }
 
 impl OpenRouterState {
     pub fn new() -> Self {
+        let base_url = std::env::var(BASE_URL_ENV).unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
+        Self::with_base_url(base_url)
+    }
+
+    pub fn with_base_url(base_url: impl Into<String>) -> Self {
         let client = reqwest::Client::builder()
             .user_agent(concat!("relay/", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("client HTTP");
         Self {
             client,
+            base_url: base_url.into().trim_end_matches('/').to_string(),
             streams: Mutex::new(HashMap::new()),
         }
+    }
+
+    fn url(&self, path: &str) -> String {
+        format!("{}{path}", self.base_url)
     }
 
     pub fn register(&self, request_id: &str) -> CancellationToken {
@@ -134,6 +147,11 @@ struct UsageOption {
 }
 
 #[derive(Serialize)]
+struct ReasoningOption {
+    enabled: bool,
+}
+
+#[derive(Serialize)]
 struct Plugin {
     id: &'static str,
 }
@@ -146,11 +164,6 @@ struct ProviderPrefs {
     ignore: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     data_collection: Option<&'static str>,
-}
-
-#[derive(Serialize)]
-struct ReasoningOption {
-    enabled: bool,
 }
 
 impl<'a> Body<'a> {
@@ -182,7 +195,7 @@ fn provider_prefs(req: &ChatRequest) -> Option<ProviderPrefs> {
 }
 
 /// Événements relayés au frontend pendant un streaming.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum StreamEvent {
     Delta {
@@ -259,27 +272,27 @@ async fn ensure_success(response: reqwest::Response) -> AppResult<reqwest::Respo
 
 /// Liste publique des modèles (aucune clé nécessaire). Renvoyée brute : le
 /// frontend ne garde que les champs qu'il affiche (`src/lib/openrouter.ts`).
-pub async fn models(client: &reqwest::Client) -> AppResult<serde_json::Value> {
-    let response = client.get(format!("{BASE_URL}/models")).send().await?;
+pub async fn models(state: &OpenRouterState) -> AppResult<serde_json::Value> {
+    let response = state.client.get(state.url("/models")).send().await?;
     let envelope: Envelope<serde_json::Value> = ensure_success(response).await?.json().await?;
     Ok(envelope.data)
 }
 
-pub async fn credits(client: &reqwest::Client, api_key: &str) -> AppResult<Credits> {
-    let response = authed(client.get(format!("{BASE_URL}/credits")), api_key)
+pub async fn credits(state: &OpenRouterState, api_key: &str) -> AppResult<Credits> {
+    let response = authed(state.client.get(state.url("/credits")), api_key)
         .send()
         .await?;
     let envelope: Envelope<Credits> = ensure_success(response).await?.json().await?;
     Ok(envelope.data)
 }
 
-/// Complétion sans streaming (titres automatiques, etc.).
+/// Complétion sans streaming (titres automatiques, résumés, etc.).
 pub async fn complete(
-    client: &reqwest::Client,
+    state: &OpenRouterState,
     api_key: &str,
     request: &ChatRequest,
 ) -> AppResult<String> {
-    let response = authed(client.post(format!("{BASE_URL}/chat/completions")), api_key)
+    let response = authed(state.client.post(state.url("/chat/completions")), api_key)
         .json(&Body::new(request, false))
         .send()
         .await?;
@@ -298,13 +311,13 @@ pub async fn complete(
 /// Complétion en streaming : chaque fragment est transmis à `emit`.
 /// L'annulation via `cancel` termine proprement par un `Done { "cancelled" }`.
 pub async fn stream(
-    client: &reqwest::Client,
+    state: &OpenRouterState,
     api_key: &str,
     request: &ChatRequest,
     cancel: CancellationToken,
     emit: impl Fn(StreamEvent),
 ) -> AppResult<()> {
-    let response = authed(client.post(format!("{BASE_URL}/chat/completions")), api_key)
+    let response = authed(state.client.post(state.url("/chat/completions")), api_key)
         .json(&Body::new(request, true))
         .send()
         .await?;
@@ -369,14 +382,19 @@ pub async fn stream(
 
 #[cfg(test)]
 mod tests {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::sync::Mutex;
+    use std::time::Duration;
+
     use super::*;
 
-    fn request() -> ChatRequest {
+    fn request(model: &str, prompt: &str) -> ChatRequest {
         ChatRequest {
-            model: "openrouter/auto".into(),
+            model: model.into(),
             messages: vec![ChatMessage {
                 role: "user".into(),
-                content: serde_json::Value::String("Salut".into()),
+                content: serde_json::Value::String(prompt.into()),
             }],
             temperature: Some(0.7),
             max_tokens: None,
@@ -389,22 +407,255 @@ mod tests {
         }
     }
 
+    /// Serveur HTTP minimal qui répond à chaque connexion par un flux SSE scénarisé.
+    /// `lines` sont envoyées avec `delay` entre chacune ; la connexion est ensuite fermée.
+    fn sse_server(lines: Vec<&'static str>, delay: Duration) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("port local");
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { continue };
+                let lines = lines.clone();
+                std::thread::spawn(move || {
+                    let mut buf = [0u8; 8192];
+                    let _ = stream.read(&mut buf);
+                    let _ = stream.write_all(
+                        b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n",
+                    );
+                    for line in lines {
+                        if stream.write_all(line.as_bytes()).is_err() {
+                            return;
+                        }
+                        let _ = stream.flush();
+                        std::thread::sleep(delay);
+                    }
+                });
+            }
+        });
+        format!("http://{addr}")
+    }
+
+    fn collect(events: &Mutex<Vec<StreamEvent>>) -> Vec<StreamEvent> {
+        events.lock().unwrap().clone()
+    }
+
+    #[tokio::test]
+    async fn streams_a_full_response_from_a_local_server() {
+        let base = sse_server(
+            vec![
+                ": OPENROUTER PROCESSING\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Bon\"}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"jour\"},\"finish_reason\":\"stop\"}]}\n\n",
+                "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":2,\"cost\":0.0001}}\n\n",
+                "data: [DONE]\n\n",
+            ],
+            Duration::from_millis(10),
+        );
+        let state = OpenRouterState::with_base_url(base);
+        let events = Mutex::new(Vec::new());
+        stream(
+            &state,
+            "test-key",
+            &request("test/model", "Salut"),
+            CancellationToken::new(),
+            |e| events.lock().unwrap().push(e),
+        )
+        .await
+        .expect("flux complet");
+
+        assert_eq!(
+            collect(&events),
+            vec![
+                StreamEvent::Delta {
+                    content: "Bon".into()
+                },
+                StreamEvent::Delta {
+                    content: "jour".into()
+                },
+                StreamEvent::Usage {
+                    prompt_tokens: 5,
+                    completion_tokens: 2,
+                    cost: Some(0.0001)
+                },
+                StreamEvent::Done {
+                    finish_reason: Some("stop".into())
+                },
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn cancellation_stops_the_stream_promptly() {
+        let base = sse_server(
+            vec![
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Début\"}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"content\":\" suite\"}}]}\n\n",
+                "data: [DONE]\n\n",
+            ],
+            Duration::from_secs(5),
+        );
+        let state = OpenRouterState::with_base_url(base);
+        let token = state.register("req-1");
+        let events = Mutex::new(Vec::new());
+        let started = std::time::Instant::now();
+
+        let cancel_after_first = |e: StreamEvent| {
+            if matches!(e, StreamEvent::Delta { .. }) {
+                state.cancel("req-1");
+            }
+            events.lock().unwrap().push(e);
+        };
+        stream(
+            &state,
+            "test-key",
+            &request("test/model", "Salut"),
+            token,
+            cancel_after_first,
+        )
+        .await
+        .expect("annulation propre");
+        state.finish("req-1");
+
+        assert!(
+            started.elapsed() < Duration::from_secs(3),
+            "l'annulation doit être immédiate"
+        );
+        assert_eq!(
+            collect(&events),
+            vec![
+                StreamEvent::Delta {
+                    content: "Début".into()
+                },
+                StreamEvent::Done {
+                    finish_reason: Some("cancelled".into())
+                },
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn api_errors_are_mapped_with_status_and_message() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { continue };
+                let mut buf = [0u8; 8192];
+                let _ = stream.read(&mut buf);
+                let body = r#"{"error":{"message":"No auth credentials found","code":401}}"#;
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        let state = OpenRouterState::with_base_url(format!("http://{addr}"));
+        let err = credits(&state, "bad-key").await.expect_err("401 attendu");
+        match err {
+            AppError::Api { status, message } => {
+                assert_eq!(status, 401);
+                assert_eq!(message, "No auth credentials found");
+            }
+            other => panic!("erreur inattendue : {other:?}"),
+        }
+    }
+
     /// Vérifie le client HTTP (TLS, en-têtes) et la forme de la réponse sur l'API réelle.
     /// Réseau requis : `cargo test -- --ignored fetch_models_live`.
     #[tokio::test]
     #[ignore]
     async fn fetch_models_live() {
         let state = OpenRouterState::new();
-        let models = models(&state.client).await.expect("liste des modèles");
+        let models = models(&state).await.expect("liste des modèles");
         let list = models.as_array().expect("tableau de modèles");
         assert!(list.len() > 50, "seulement {} modèles", list.len());
         assert!(list[0].get("id").and_then(|v| v.as_str()).is_some());
         assert!(list[0].get("pricing").is_some());
     }
 
+    /// Parcours réel de bout en bout : clé lue dans le trousseau système, modèle gratuit
+    /// choisi dans le catalogue, réponse streamée. Réseau + clé configurée requis :
+    /// `cargo test -- --ignored stream_chat_live`.
+    #[tokio::test]
+    #[ignore]
+    async fn stream_chat_live() {
+        let api_key = crate::secrets::get_api_key()
+            .expect("trousseau")
+            .expect("aucune clé OpenRouter dans le trousseau");
+        let state = OpenRouterState::new();
+
+        // Les modèles gratuits sont parfois indisponibles (503) : on en essaie plusieurs.
+        let models = models(&state).await.expect("modèles");
+        let free_models: Vec<String> = models
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["pricing"]["prompt"] == "0" && m["pricing"]["completion"] == "0")
+            .filter_map(|m| m["id"].as_str())
+            .filter(|id| id.ends_with(":free"))
+            .take(6)
+            .map(str::to_string)
+            .collect();
+        assert!(
+            !free_models.is_empty(),
+            "aucun modèle gratuit dans le catalogue"
+        );
+
+        let prompt = "Réponds uniquement par le mot OK.";
+        let mut last_error = None;
+        for free_model in &free_models {
+            let events = Mutex::new(Vec::new());
+            let result = stream(
+                &state,
+                &api_key,
+                &request(free_model, prompt),
+                CancellationToken::new(),
+                |e| events.lock().unwrap().push(e),
+            )
+            .await;
+            let events = collect(&events);
+            if let Err(err) = result {
+                println!("{free_model} : {err}");
+                last_error = Some(err.to_string());
+                continue;
+            }
+            if let Some(StreamEvent::Error { message }) = events
+                .iter()
+                .find(|e| matches!(e, StreamEvent::Error { .. }))
+            {
+                println!("{free_model} : {message}");
+                last_error = Some(message.clone());
+                continue;
+            }
+            let text: String = events
+                .iter()
+                .filter_map(|e| match e {
+                    StreamEvent::Delta { content } => Some(content.as_str()),
+                    _ => None,
+                })
+                .collect();
+            assert!(!text.trim().is_empty(), "aucun texte reçu de {free_model}");
+            assert!(
+                matches!(events.last(), Some(StreamEvent::Done { .. })),
+                "le flux doit se terminer par Done : {events:?}"
+            );
+            assert!(
+                events
+                    .iter()
+                    .any(|e| matches!(e, StreamEvent::Usage { .. })),
+                "l'usage doit être renvoyé : {events:?}"
+            );
+            println!("modèle {free_model} → {text:?}");
+            return;
+        }
+        panic!("aucun modèle gratuit n'a répondu : {last_error:?}");
+    }
+
     #[test]
     fn body_omits_unset_parameters() {
-        let json = serde_json::to_value(Body::new(&request(), true)).unwrap();
+        let json =
+            serde_json::to_value(Body::new(&request("openrouter/auto", "Salut"), true)).unwrap();
         assert_eq!(json["stream"], true);
         assert_eq!(json["usage"]["include"], true);
         assert_eq!(json["temperature"], 0.7);
@@ -416,16 +667,28 @@ mod tests {
     }
 
     #[test]
+    fn body_keeps_multimodal_content_untouched() {
+        let parts = serde_json::json!([
+            { "type": "text", "text": "Regarde" },
+            { "type": "image_url", "image_url": { "url": "data:image/png;base64,AAA" } }
+        ]);
+        let mut req = request("test/vision", "");
+        req.messages[0].content = parts.clone();
+        let json = serde_json::to_value(Body::new(&req, true)).unwrap();
+        assert_eq!(json["messages"][0]["content"], parts);
+    }
+
+    #[test]
     fn body_includes_openrouter_options() {
-        let request = ChatRequest {
+        let req = ChatRequest {
             reasoning: true,
             web_search: true,
             provider_sort: Some("price".into()),
             ignore_providers: vec!["OpenAI".into()],
             data_collection_deny: true,
-            ..request()
+            ..request("openrouter/auto", "Salut")
         };
-        let json = serde_json::to_value(Body::new(&request, false)).unwrap();
+        let json = serde_json::to_value(Body::new(&req, false)).unwrap();
         assert_eq!(json["reasoning"]["enabled"], true);
         assert_eq!(json["plugins"][0]["id"], "web");
         assert_eq!(json["provider"]["sort"], "price");

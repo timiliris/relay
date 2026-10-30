@@ -12,12 +12,12 @@ fn api_key() -> AppResult<String> {
 
 #[tauri::command]
 pub async fn fetch_models(state: State<'_, OpenRouterState>) -> AppResult<serde_json::Value> {
-    openrouter::models(&state.client).await
+    openrouter::models(&state).await
 }
 
 #[tauri::command]
 pub async fn fetch_credits(state: State<'_, OpenRouterState>) -> AppResult<Credits> {
-    openrouter::credits(&state.client, &api_key()?).await
+    openrouter::credits(&state, &api_key()?).await
 }
 
 /// Complétion non streamée (titre automatique d'une conversation, par exemple).
@@ -26,7 +26,7 @@ pub async fn complete_chat(
     state: State<'_, OpenRouterState>,
     request: ChatRequest,
 ) -> AppResult<String> {
-    openrouter::complete(&state.client, &api_key()?, &request).await
+    openrouter::complete(&state, &api_key()?, &request).await
 }
 
 /// Complétion en streaming. Les fragments arrivent sur `on_event` ; la commande
@@ -40,7 +40,7 @@ pub async fn stream_chat(
 ) -> AppResult<()> {
     let api_key = api_key()?;
     let cancel = state.register(&request_id);
-    let result = openrouter::stream(&state.client, &api_key, &request, cancel, |event| {
+    let result = openrouter::stream(&state, &api_key, &request, cancel, |event| {
         if let Err(err) = on_event.send(event) {
             log::warn!("envoi d'un événement de streaming impossible : {err}");
         }

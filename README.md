@@ -122,6 +122,20 @@ L'arrêt (`cancel_stream`) annule la requête côté Rust ; ce qui a déjà ét�
 - **Schéma** : ajouter une migration dans `src-tauri/src/db.rs` et adapter `src/lib/db.ts`.
 - **Limites** : taille des pièces jointes (`MAX_ATTACHMENT_BYTES`) et extensions acceptées dans `src/lib/attachments.ts`.
 
+## Avant une distribution publique
+
+Deux décisions appartiennent à l'éditeur de l'application et ne sont pas prises dans ce dépôt :
+
+1. **Identifiant d'application** : `com.example.relay` est un identifiant provisoire. Il détermine les dossiers de données (`%APPDATA%\<identifier>`), l'entrée du trousseau et l'instance unique ; le changer après une première installation déplace les données des utilisateurs. Fixez-le une fois pour toutes (`identifier` dans `src-tauri/tauri.conf.json`, `SERVICE` dans `src-tauri/src/secrets.rs`) avant la première version distribuée.
+2. **Signature des binaires** : sans certificat, Windows (SmartScreen) et macOS (Gatekeeper) affichent un avertissement à l'installation. Le workflow de release signe et notarise automatiquement dès que les secrets `APPLE_*` sont fournis ; pour Windows, voir la section ci-dessous.
+
+## Vérification de bout en bout
+
+- `pnpm test` couvre l'orchestration complète côté frontend (envoi, erreur d'API, édition avec versions, régénération, continuation) avec l'API et la base simulées.
+- `cargo test` couvre le client Rust contre un serveur SSE local : flux complet, annulation immédiate, erreurs d'API mappées.
+- `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` exécute deux tests réels : liste des modèles, puis une réponse streamée par un modèle gratuit avec la clé lue dans le trousseau du système (la clé ne sort jamais du processus Rust).
+- `RELAY_OPENROUTER_BASE_URL` permet de viser un autre serveur (proxy, environnement de test).
+
 ## Publication, mises à jour, CI
 
 Hérité du template : CI sur PR (lint, types, tests, Clippy, cargo-deny, pnpm audit), **release-please** pour le changelog et le bump de version, **release multi-OS** sur tag, updater signé (secrets `TAURI_SIGNING_PRIVATE_KEY*`), signature macOS (secrets `APPLE_*`). Voir les commentaires dans `.github/workflows/*.yml`.
@@ -129,6 +143,7 @@ Hérité du template : CI sur PR (lint, types, tests, Clippy, cargo-deny, pnpm a
 ## Dépannage
 
 - **Clé refusée (401)** : vérifiez la clé dans Paramètres ; les clés OpenRouter commencent par `sk-or-`.
+- **Fournisseur indisponible (503 / 429)** : fréquent sur les modèles gratuits ; l'erreur s'affiche sous le composer, « Régénérer » relance, ou changez de modèle.
 - **Modèle indisponible (404 / 400)** : la liste est mise en cache 6 h, utilisez « Actualiser la liste » dans le sélecteur.
 - **« Continuer » repart de zéro** : certains fournisseurs ignorent le préremplissage de la réponse ; régénérez ou changez de modèle.
 - **Images refusées** : le modèle n'accepte pas les images (filtre « Vision » dans le sélecteur).
