@@ -133,6 +133,9 @@ Sans secrets de signature, la release se construit quand même : les installeurs
 
 ## Vérification de bout en bout
 
+La fiche complète des vérifications (automatisées et réelles, avec résultats) est dans [docs/QA.md](docs/QA.md).
+`powershell -NoProfile -File scripts/verify-release.ps1` contrôle les signatures Authenticode et les artefacts d'updater d'un build.
+
 - `pnpm test` couvre l'orchestration complète côté frontend (envoi, erreur d'API, édition avec versions, régénération, continuation) avec l'API et la base simulées.
 - `cargo test` couvre le client Rust contre un serveur SSE local : flux complet, annulation immédiate, erreurs d'API mappées.
 - `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` exécute deux tests réels : liste des modèles, puis une réponse streamée par un modèle gratuit avec la clé lue dans le trousseau du système (la clé ne sort jamais du processus Rust).
