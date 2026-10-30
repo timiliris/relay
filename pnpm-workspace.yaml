@@ -1,0 +1,5 @@
+# Paramètres pnpm (pnpm >= 10 lit ce fichier au lieu du champ "pnpm" de package.json)
+# Scripts d'installation autorisés (pnpm les bloque par défaut).
+allowBuilds:
+  esbuild: true
+  lefthook: true

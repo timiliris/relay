@@ -1,0 +1,53 @@
+# Configuration cargo-deny (https://embarkstudios.github.io/cargo-deny/).
+# Exécution locale : `pnpm rust:deny` (nécessite `cargo install cargo-deny`).
+
+[graph]
+all-features = false
+
+[advisories]
+# Une vulnérabilité connue ou une crate retirée (yanked) fait échouer la CI.
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+# Crates non maintenues : signalées seulement pour nos dépendances directes
+# (l'arbre Tauri en contient quelques-unes, hors de notre contrôle).
+unmaintained = "workspace"
+ignore = [
+  # Advisories acceptés en connaissance de cause. À revoir à chaque mise à jour de Tauri :
+  # retirer l'entrée dès que la crate corrigée est tirée par l'arbre de dépendances.
+  # quick-xml 0.38 est imposé par tauri-runtime-wry ; correctif dans quick-xml >= 0.41.
+  # Impact : déni de service sur du XML malveillant, non exposé par cette application.
+  { id = "RUSTSEC-2026-0194", reason = "transitif via tauri-runtime-wry, pas d'entrée XML non fiable" },
+  { id = "RUSTSEC-2026-0195", reason = "transitif via tauri-runtime-wry, pas d'entrée XML non fiable" },
+]
+
+[licenses]
+# Liste blanche des licences acceptées dans l'arbre de dépendances.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "MPL-2.0",
+  "CC0-1.0",
+  "Unicode-3.0",
+  "BSL-1.0",
+  "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+
+[licenses.private]
+ignore = true
+
+[bans]
+# L'arbre Tauri contient inévitablement des doublons de versions : non signalés.
+multiple-versions = "allow"
+wildcards = "allow"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

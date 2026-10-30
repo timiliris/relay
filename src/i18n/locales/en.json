@@ -1,0 +1,176 @@
+{
+  "app": {
+    "name": "Relay",
+    "tagline": "Desktop client for OpenRouter"
+  },
+  "titlebar": {
+    "menu": "Menu",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
+  },
+  "common": {
+    "onlyInApp": "Only available inside the app (pnpm app:dev).",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "rename": "Rename",
+    "copy": "Copy",
+    "copied": "Copied",
+    "retry": "Retry",
+    "search": "Search",
+    "close": "Close",
+    "settings": "Settings",
+    "back": "Back"
+  },
+  "sidebar": {
+    "newChat": "New chat",
+    "search": "Search conversations…",
+    "pinned": "Pinned",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "week": "Previous 7 days",
+    "older": "Older",
+    "empty": "No conversations yet. Ask your first question!",
+    "noResults": "No results.",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "deleteConfirm": "Delete “{{title}}”? This cannot be undone.",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
+  },
+  "chat": {
+    "placeholder": "Write your message… (Enter to send, Shift+Enter for a new line)",
+    "send": "Send",
+    "stop": "Stop",
+    "regenerate": "Regenerate",
+    "emptyTitle": "What do you want to explore?",
+    "emptySubtitle": "Pick a model, ask your question: the answer streams in live.",
+    "suggestions": [
+      "Explain the difference between a mutex and a semaphore",
+      "Write a polite email to reschedule a meeting",
+      "Give me three beginner Rust project ideas",
+      "Summarize the advantages of Tauri over Electron"
+    ],
+    "thinking": "Thinking…",
+    "reasoning": "Reasoning",
+    "tokens": "{{prompt}} + {{completion}} tokens",
+    "cost": "${{cost}}",
+    "copyMessage": "Copy message",
+    "deleteMessage": "Delete message",
+    "export": "Export as Markdown",
+    "exported": "Conversation exported.",
+    "noKeyTitle": "API key missing",
+    "noKeyBody": "Add your OpenRouter key in Settings to get started.",
+    "goToSettings": "Open settings",
+    "cancelled": "Response interrupted.",
+    "youLabel": "You",
+    "untitled": "New chat",
+    "conversationCost": "Total cost: ${{cost}}",
+    "systemPromptActive": "System prompt active",
+    "titlePrompt": "Write a short title (6 words max, no quotes or trailing punctuation) summarizing the following request. Reply with the title only, in the request's language."
+  },
+  "model": {
+    "pick": "Pick a model",
+    "search": "Search models…",
+    "favorites": "Favorites",
+    "all": "All models",
+    "context": "{{tokens}} context tokens",
+    "price": "${{prompt}} / ${{completion}} per M tokens",
+    "free": "Free",
+    "noResults": "No model matches.",
+    "refresh": "Refresh list",
+    "count_one": "{{count}} model",
+    "count_other": "{{count}} models",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "loadError": "Could not load the model list."
+  },
+  "params": {
+    "title": "Generation settings",
+    "temperature": "Temperature",
+    "maxTokens": "Max tokens",
+    "maxTokensAuto": "Auto",
+    "topP": "Top P",
+    "systemPrompt": "System prompt",
+    "systemPromptPlaceholder": "E.g.: You are a concise assistant.",
+    "reasoning": "Show reasoning (supported models)",
+    "reset": "Reset to defaults"
+  },
+  "settings": {
+    "title": "Settings",
+    "apiKey": "OpenRouter API key",
+    "apiKeyPlaceholder": "sk-or-v1-…",
+    "apiKeyHelp": "Stored in the system keychain, never in a file.",
+    "apiKeyConfigured": "Key configured: {{hint}}",
+    "apiKeyMissing": "No key configured.",
+    "apiKeySaved": "Key saved.",
+    "apiKeyCleared": "Key removed.",
+    "getKey": "Get a key",
+    "testConnection": "Test connection",
+    "credits": "Credits",
+    "creditsRemaining": "${{amount}} remaining",
+    "creditsUsed": "${{amount}} used of ${{total}}",
+    "defaults": "Defaults for new conversations",
+    "defaultModel": "Default model",
+    "appearance": "Appearance",
+    "startup": "Startup",
+    "autostart": "Launch at login",
+    "autostartHint": "Relay starts minimized in the system tray.",
+    "shortcut": "Global shortcut",
+    "shortcutHint": "{{shortcut}} shows or hides the window.",
+    "notifications": "Notifications",
+    "notifyOnComplete": "Notify when a response finishes in the background",
+    "data": "Data",
+    "exportAll": "Export all conversations (JSON)",
+    "exportedAll": "Export complete.",
+    "about": "About",
+    "version": "Version {{version}}",
+    "checkUpdates": "Check for updates",
+    "docs": "OpenRouter documentation"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light theme",
+    "dark": "Dark theme",
+    "system": "System theme"
+  },
+  "language": {
+    "label": "Language",
+    "system": "Automatic",
+    "en": "English",
+    "fr": "Français"
+  },
+  "updates": {
+    "status": {
+      "checking": "Checking…",
+      "upToDate": "You're up to date.",
+      "available": "Update available (v{{version}}).",
+      "downloading": "Downloading… {{percent}} %",
+      "installed": "Installed, restarting…",
+      "error": "Check failed: {{detail}}"
+    },
+    "dialog": {
+      "title": "Update",
+      "titleAvailable": "Update available",
+      "upToDate": "You already have the latest version.",
+      "available": "Version {{version}} is available.",
+      "install": "Install and restart",
+      "later": "Later",
+      "failed": "Could not check for updates."
+    }
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "retry": "Retry"
+  },
+  "errors": {
+    "unknown": "Unknown error",
+    "api_key_missing": "No OpenRouter API key configured.",
+    "api_key_empty": "The API key cannot be empty.",
+    "network": "Could not reach OpenRouter. Check your connection.",
+    "keyring": "Could not access the system keychain."
+  }
+}

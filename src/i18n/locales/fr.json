@@ -1,0 +1,176 @@
+{
+  "app": {
+    "name": "Relay",
+    "tagline": "Client de bureau pour OpenRouter"
+  },
+  "titlebar": {
+    "menu": "Menu",
+    "minimize": "Réduire",
+    "maximize": "Agrandir",
+    "restore": "Restaurer",
+    "close": "Fermer"
+  },
+  "common": {
+    "onlyInApp": "Disponible uniquement dans l'application (pnpm app:dev).",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "rename": "Renommer",
+    "copy": "Copier",
+    "copied": "Copié",
+    "retry": "Réessayer",
+    "search": "Rechercher",
+    "close": "Fermer",
+    "settings": "Paramètres",
+    "back": "Retour"
+  },
+  "sidebar": {
+    "newChat": "Nouvelle conversation",
+    "search": "Rechercher une conversation…",
+    "pinned": "Épinglées",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "week": "7 derniers jours",
+    "older": "Plus anciennes",
+    "empty": "Aucune conversation. Posez une première question !",
+    "noResults": "Aucun résultat.",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "deleteConfirm": "Supprimer « {{title}} » ? Cette action est définitive.",
+    "collapse": "Replier le panneau",
+    "expand": "Déplier le panneau"
+  },
+  "chat": {
+    "placeholder": "Écrivez votre message… (Entrée pour envoyer, Maj+Entrée pour une nouvelle ligne)",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "regenerate": "Régénérer",
+    "emptyTitle": "Que voulez-vous explorer ?",
+    "emptySubtitle": "Choisissez un modèle, posez votre question : la réponse arrive en streaming.",
+    "suggestions": [
+      "Explique-moi la différence entre un mutex et un sémaphore",
+      "Rédige un e-mail poli pour décaler une réunion",
+      "Donne-moi trois idées de projets Rust pour débuter",
+      "Résume les avantages de Tauri par rapport à Electron"
+    ],
+    "thinking": "Réflexion…",
+    "reasoning": "Raisonnement",
+    "tokens": "{{prompt}} + {{completion}} tokens",
+    "cost": "{{cost}} $",
+    "copyMessage": "Copier le message",
+    "deleteMessage": "Supprimer le message",
+    "export": "Exporter en Markdown",
+    "exported": "Conversation exportée.",
+    "noKeyTitle": "Clé API manquante",
+    "noKeyBody": "Ajoutez votre clé OpenRouter dans les paramètres pour commencer.",
+    "goToSettings": "Ouvrir les paramètres",
+    "cancelled": "Réponse interrompue.",
+    "youLabel": "Vous",
+    "untitled": "Nouvelle conversation",
+    "conversationCost": "Coût total : {{cost}} $",
+    "systemPromptActive": "Instruction système active",
+    "titlePrompt": "Donne un titre court (6 mots maximum, sans guillemets ni ponctuation finale) résumant la demande suivante. Réponds uniquement par le titre, dans la langue de la demande."
+  },
+  "model": {
+    "pick": "Choisir un modèle",
+    "search": "Rechercher un modèle…",
+    "favorites": "Favoris",
+    "all": "Tous les modèles",
+    "context": "{{tokens}} tokens de contexte",
+    "price": "{{prompt}} $ / {{completion}} $ par M tokens",
+    "free": "Gratuit",
+    "noResults": "Aucun modèle ne correspond.",
+    "refresh": "Actualiser la liste",
+    "count_one": "{{count}} modèle",
+    "count_other": "{{count}} modèles",
+    "favorite": "Ajouter aux favoris",
+    "unfavorite": "Retirer des favoris",
+    "loadError": "Impossible de charger la liste des modèles."
+  },
+  "params": {
+    "title": "Paramètres de génération",
+    "temperature": "Température",
+    "maxTokens": "Tokens max",
+    "maxTokensAuto": "Auto",
+    "topP": "Top P",
+    "systemPrompt": "Instruction système",
+    "systemPromptPlaceholder": "Ex. : Tu es un assistant concis qui répond en français.",
+    "reasoning": "Afficher le raisonnement (modèles compatibles)",
+    "reset": "Valeurs par défaut"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "apiKey": "Clé API OpenRouter",
+    "apiKeyPlaceholder": "sk-or-v1-…",
+    "apiKeyHelp": "Stockée dans le trousseau du système, jamais dans un fichier.",
+    "apiKeyConfigured": "Clé configurée : {{hint}}",
+    "apiKeyMissing": "Aucune clé configurée.",
+    "apiKeySaved": "Clé enregistrée.",
+    "apiKeyCleared": "Clé supprimée.",
+    "getKey": "Obtenir une clé",
+    "testConnection": "Tester la connexion",
+    "credits": "Crédits",
+    "creditsRemaining": "{{amount}} $ restants",
+    "creditsUsed": "{{amount}} $ utilisés sur {{total}} $",
+    "defaults": "Valeurs par défaut des nouvelles conversations",
+    "defaultModel": "Modèle par défaut",
+    "appearance": "Apparence",
+    "startup": "Démarrage",
+    "autostart": "Lancer au démarrage de la session",
+    "autostartHint": "Relay démarre réduit dans la zone de notification.",
+    "shortcut": "Raccourci global",
+    "shortcutHint": "{{shortcut}} affiche ou masque la fenêtre.",
+    "notifications": "Notifications",
+    "notifyOnComplete": "Prévenir quand une réponse se termine en arrière-plan",
+    "data": "Données",
+    "exportAll": "Exporter toutes les conversations (JSON)",
+    "exportedAll": "Export terminé.",
+    "about": "À propos",
+    "version": "Version {{version}}",
+    "checkUpdates": "Rechercher des mises à jour",
+    "docs": "Documentation OpenRouter"
+  },
+  "theme": {
+    "label": "Thème",
+    "light": "Thème clair",
+    "dark": "Thème sombre",
+    "system": "Thème du système"
+  },
+  "language": {
+    "label": "Langue",
+    "system": "Automatique",
+    "en": "English",
+    "fr": "Français"
+  },
+  "updates": {
+    "status": {
+      "checking": "Vérification…",
+      "upToDate": "Vous êtes à jour.",
+      "available": "Mise à jour disponible (v{{version}}).",
+      "downloading": "Téléchargement… {{percent}} %",
+      "installed": "Installée, redémarrage…",
+      "error": "Échec de la vérification : {{detail}}"
+    },
+    "dialog": {
+      "title": "Mise à jour",
+      "titleAvailable": "Mise à jour disponible",
+      "upToDate": "Vous utilisez déjà la dernière version.",
+      "available": "La version {{version}} est disponible.",
+      "install": "Installer et redémarrer",
+      "later": "Plus tard",
+      "failed": "Impossible de vérifier les mises à jour."
+    }
+  },
+  "errorBoundary": {
+    "title": "Une erreur est survenue",
+    "retry": "Réessayer"
+  },
+  "errors": {
+    "unknown": "Erreur inconnue",
+    "api_key_missing": "Aucune clé API OpenRouter configurée.",
+    "api_key_empty": "La clé API ne peut pas être vide.",
+    "network": "Connexion à OpenRouter impossible. Vérifiez votre réseau.",
+    "keyring": "Accès au trousseau du système impossible."
+  }
+}

@@ -1,0 +1,4 @@
+# Toolchain Rust utilisée par rustup pour ce projet (CI comprise).
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

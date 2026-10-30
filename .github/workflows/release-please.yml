@@ -1,0 +1,22 @@
+name: Release Please
+
+# À chaque push sur main, release-please ouvre ou met à jour une PR de release
+# (changelog + bump de version d'après les Conventional Commits). Fusionner cette PR
+# crée le tag `vX.Y.Z` et la release GitHub ; le workflow `release.yml` y attache
+# ensuite les installeurs.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

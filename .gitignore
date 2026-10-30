@@ -1,0 +1,35 @@
+# Dépendances
+node_modules
+
+# Build frontend
+dist
+dist-ssr
+*.local
+
+# Tests / couverture
+coverage
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Éditeurs / OS
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Tauri (Rust)
+src-tauri/target
+src-tauri/gen/schemas
+
+# Clés de signature de l'updater : ne JAMAIS les versionner
+*.key
+*.key.pub
