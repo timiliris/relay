@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-show",
+    "core:window:allow-set-focus",
     "core:window:allow-set-theme",
     "core:window:allow-set-title",
     "core:window:allow-minimize",
@@ -23,6 +24,7 @@
     "os:default",
     "process:default",
     "sql:default",
+    "sql:allow-execute",
     "store:default",
     "updater:default",
     "window-state:default"
