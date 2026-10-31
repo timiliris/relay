@@ -38,6 +38,25 @@ Couverture fonctionnelle des tests :
 | Détection de mise à jour en production  | build signé avec endpoint local, `latest.json` 0.1.1 servi en HTTP local                                 | Démarrage en mode production (`tauri.localhost`), reprise des données, « Mise à jour disponible : 0.1.1 » dans le journal 3 s après le lancement                                                                   |
 | Interface                               | audit dans le navigateur (données de démo) en clair et sombre, 1000 × 620                                | Accueil, conversation (code, tableau, LaTeX, Mermaid, pièces jointes, versions), menus en portail, modales intégrées, palette Ctrl+K, Paramètres, Comparer, Usage, Bienvenue : aucun défaut, aucune erreur console |
 
+## Release de production (31 octobre 2026)
+
+| Étape            | Résultat                                                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Dépôt            | `timiliris/relay` (privé), `main` poussé, secret `TAURI_SIGNING_PRIVATE_KEY` enregistré                                                   |
+| CI sur `main`    | Frontend (lint, types, tests, build), Rust (fmt, clippy, tests), Sécurité (cargo-deny, pnpm audit) : succès                               |
+| Release `v0.1.0` | https://github.com/timiliris/relay/releases/tag/v0.1.0                                                                                    |
+| Windows          | `Relay_0.1.0_x64_en-US.msi`, `Relay_0.1.0_x64-setup.exe` + `.sig`                                                                         |
+| Linux            | `Relay_0.1.0_amd64.deb`, `Relay-0.1.0-1.x86_64.rpm`, `Relay_0.1.0_amd64.AppImage` + `.sig`                                                |
+| macOS            | `Relay_0.1.0_aarch64.dmg`, `Relay_0.1.0_x64.dmg`, `Relay_aarch64.app.tar.gz`, `Relay_x64.app.tar.gz` + `.sig`                             |
+| `latest.json`    | 11 cibles (windows, linux, darwin aarch64 et x86_64), signatures minisign dont l'identifiant de clé correspond à la clé publique de l'app |
+
+Incident corrigé pendant la mise en production : une variable `APPLE_CERTIFICATE` vide faisait échouer la signature macOS ;
+le workflow n'exporte désormais les secrets de signature que s'ils sont renseignés, et accepte une relance manuelle par tag.
+
+Reste à la charge de l'éditeur : certificats de signature (différés), passage du dépôt en public (ou autre hébergement de
+`latest.json`) pour que l'updater atteigne les releases, et le réglage « Allow GitHub Actions to create and approve pull
+requests » pour que release-please ouvre ses PR.
+
 ## Procédure : tester l'updater en local
 
 1. Construire avec une surcharge de configuration (identifiant distinct, endpoint `http://127.0.0.1:8787/latest.json`, `dangerousInsecureTransportProtocol: true`, `createUpdaterArtifacts: true`) et `TAURI_SIGNING_PRIVATE_KEY` défini :

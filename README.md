@@ -145,6 +145,12 @@ La fiche complète des vérifications (automatisées et réelles, avec résultat
 
 Hérité du template : CI sur PR (lint, types, tests, Clippy, cargo-deny, pnpm audit), **release-please** pour le changelog et le bump de version, **release multi-OS** sur tag, updater signé (secrets `TAURI_SIGNING_PRIVATE_KEY*`), signature macOS (secrets `APPLE_*`). Voir les commentaires dans `.github/workflows/*.yml`.
 
+Reconstruire une release existante depuis `main` (après un correctif du workflow, par exemple) :
+`gh workflow run release.yml -f tag=v0.1.0`. release-please a besoin que le dépôt autorise les workflows à ouvrir des PR
+(Settings → Actions → General → « Allow GitHub Actions to create and approve pull requests »). L'updater lit `latest.json`
+sur les releases GitHub : le dépôt doit être public, ou l'endpoint pointer vers un hébergement accessible, pour que les
+mises à jour fonctionnent.
+
 ## Dépannage
 
 - **Clé refusée (401)** : vérifiez la clé dans Paramètres ; les clés OpenRouter commencent par `sk-or-`.
