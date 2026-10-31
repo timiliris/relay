@@ -7,6 +7,10 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag de la release à (re)construire, ex. v0.1.0"
+        required: true
 
 permissions:
   contents: write
@@ -82,14 +86,18 @@ jobs:
           TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
           TRUSTED_SIGNING_PROFILE: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
         run: |
-          for name in TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD                       APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY                       APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID                       AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET                       TRUSTED_SIGNING_ENDPOINT TRUSTED_SIGNING_ACCOUNT TRUSTED_SIGNING_PROFILE; do
+          names="TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          names="$names APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID"
+          names="$names AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET TRUSTED_SIGNING_ENDPOINT TRUSTED_SIGNING_ACCOUNT TRUSTED_SIGNING_PROFILE"
+          for name in $names; do
             value="${!name}"
             if [ -n "$value" ]; then
               delimiter="EOF_$(openssl rand -hex 8)"
-              printf '%s<<%s
-%s
-%s
-' "$name" "$delimiter" "$value" "$delimiter" >> "$GITHUB_ENV"
+              {
+                echo "$name<<$delimiter"
+                echo "$value"
+                echo "$delimiter"
+              } >> "$GITHUB_ENV"
               echo "$name : fourni"
             fi
           done
@@ -107,8 +115,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Le CLI Tauri lit ces variables pour signer et notariser les bundles macOS.
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Relay ${{ github.ref_name }}"
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: "Relay ${{ inputs.tag || github.ref_name }}"
           releaseBody: "Téléchargez l’installeur correspondant à votre système ci-dessous."
           # La release est normalement créée par release-please ; tauri-action y attache
           # les installeurs. Pour un tag poussé à la main, elle est créée ici.
