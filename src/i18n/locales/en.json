@@ -136,7 +136,9 @@
     "showEarlier": "Show {{count}} earlier messages",
     "scrollToBottom": "Jump to the end",
     "imageAlt": "Attached image: {{name}}",
-    "mermaidError": "Invalid Mermaid diagram."
+    "mermaidError": "Invalid Mermaid diagram.",
+    "responding": "Responding…",
+    "responseDone": "Response complete."
   },
   "search": {
     "title": "Search",
@@ -166,7 +168,11 @@
     "filterVision": "Vision",
     "filterFree": "Free",
     "filterReasoning": "Reasoning",
-    "vision": "Accepts images"
+    "vision": "Accepts images",
+    "sort": "Sort",
+    "sortName": "Name",
+    "sortPrice": "Price",
+    "sortContext": "Context"
   },
   "params": {
     "title": "Generation settings",
@@ -207,7 +213,8 @@
     "addModel": "Add a model",
     "removeModel": "Remove this model",
     "empty": "Pick up to three models, then ask your question.",
-    "waiting": "Waiting…"
+    "waiting": "Waiting…",
+    "continueChat": "Continue in a chat"
   },
   "usage": {
     "title": "Usage",
@@ -297,7 +304,8 @@
     "checkUpdates": "Check for updates",
     "docs": "OpenRouter documentation",
     "autoUpdate": "Install updates automatically",
-    "autoUpdateHint": "Downloaded and installed without confirmation at startup; otherwise you are asked first."
+    "autoUpdateHint": "Downloaded and installed without confirmation at startup; otherwise you are asked first.",
+    "shortcutSidebar": "Show / hide the history"
   },
   "onboarding": {
     "welcome": "Welcome to Relay",

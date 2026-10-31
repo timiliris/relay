@@ -578,6 +578,7 @@ export function SettingsPage() {
               <Shortcut keys={`${MOD}+N`} label={t('settings.shortcutNewChat')} />
               <Shortcut keys={`${MOD}+K`} label={t('settings.shortcutSearch')} />
               <Shortcut keys={`${MOD}+,`} label={t('settings.shortcutSettings')} />
+              <Shortcut keys={`${MOD}+B`} label={t('settings.shortcutSidebar')} />
               <Shortcut keys="Échap" label={t('settings.shortcutStop')} />
               <Shortcut keys="↑" label={t('settings.shortcutLastMessage')} />
               <Shortcut

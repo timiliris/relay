@@ -145,6 +145,14 @@ export async function deleteMessage(message: Message): Promise<void> {
   await chat.reload();
 }
 
+/** Relance après une erreur : régénère la dernière réponse, ou répond au dernier message utilisateur. */
+export async function retryLast(conversation: Conversation): Promise<void> {
+  const last = useChat.getState().messages.at(-1);
+  if (!last) return;
+  if (last.role === 'assistant') await regenerate(conversation, last);
+  else await runAssistant(conversation, last.id);
+}
+
 export function stopStreaming(): void {
   const stream = useChat.getState().stream;
   if (stream) void openrouter.cancelStream(stream.requestId);
@@ -271,18 +279,37 @@ async function runAssistant(
     await msgRepo.update(assistant.id, { content: acc.content, reasoning: acc.reasoning || null });
   };
 
+  // Les fragments arrivent plus vite que l'écran ne se rafraîchit : on les regroupe
+  // par frame pour ne déclencher qu'un rendu React par ~16 ms.
+  const pending = { content: '', reasoning: '', scheduled: false };
+  const flush = () => {
+    pending.scheduled = false;
+    if (pending.content) useChat.getState().appendDelta(assistant.id, pending.content);
+    if (pending.reasoning) useChat.getState().appendReasoning(assistant.id, pending.reasoning);
+    pending.content = '';
+    pending.reasoning = '';
+  };
+  const schedule = () => {
+    if (pending.scheduled) return;
+    pending.scheduled = true;
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
+    else setTimeout(flush, 16);
+  };
+
   chat.beginStream(conversation.id, requestId, assistant.id);
   try {
     await openrouter.streamChat(requestId, buildRequest(conversation, history), (event) => {
       switch (event.type) {
         case 'delta':
           acc.content += event.content;
-          useChat.getState().appendDelta(assistant.id, event.content);
+          pending.content += event.content;
+          schedule();
           if (Date.now() - lastPersist > PERSIST_INTERVAL_MS) void persistPartial();
           break;
         case 'reasoning':
           acc.reasoning += event.content;
-          useChat.getState().appendReasoning(assistant.id, event.content);
+          pending.reasoning += event.content;
+          schedule();
           break;
         case 'usage':
           acc.usage = event;
@@ -298,6 +325,7 @@ async function runAssistant(
   } catch (err) {
     acc.error = errorMessage(err);
   }
+  flush();
 
   const durationMs = Date.now() - startedAt + (resume?.durationMs ?? 0);
   const finishReason = acc.error ? 'error' : (acc.finishReason ?? 'stop');

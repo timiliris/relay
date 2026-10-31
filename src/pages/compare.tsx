@@ -1,4 +1,5 @@
-import { Columns3, Plus, Square, X } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { Columns3, MessageSquarePlus, Plus, Square, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Markdown } from '@/components/markdown';
@@ -7,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { IconButton } from '@/components/ui/tooltip-button';
 import { useWindowTitle } from '@/hooks/use-window-title';
-import { newId } from '@/lib/db';
+import { messages as messageRepo, newId } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { openrouter } from '@/lib/openrouter';
-import { errorMessage, isTauri } from '@/lib/tauri';
+import { errorMessage as describeError, errorMessage, isTauri } from '@/lib/tauri';
+import { useConversations } from '@/stores/conversations';
 import { useSettings } from '@/stores/settings';
+import { toast } from '@/stores/toast';
 
 interface Column {
   id: string;
@@ -32,7 +35,10 @@ export function ComparePage() {
   const { t } = useTranslation();
   useWindowTitle(t('compare.title'));
   const settings = useSettings();
+  const navigate = useNavigate();
+  const createConversation = useConversations((s) => s.create);
   const inTauri = isTauri();
+  const [lastPrompt, setLastPrompt] = useState('');
   const [prompt, setPrompt] = useState('');
   const [columns, setColumns] = useState<Column[]>(() => [blank(settings.defaultModel)]);
   const requests = useRef<Map<string, string>>(new Map());
@@ -48,6 +54,7 @@ export function ComparePage() {
   const run = async () => {
     const text = prompt.trim();
     if (!text || running) return;
+    setLastPrompt(text);
     await Promise.all(
       columns.map(async (column) => {
         const requestId = newId();
@@ -103,6 +110,48 @@ export function ComparePage() {
         }
       }),
     );
+  };
+
+  /** Poursuit l'échange d'une colonne dans une vraie conversation (question + réponse conservées). */
+  const continueInChat = async (column: Column) => {
+    try {
+      const conversation = await createConversation({
+        title: lastPrompt.slice(0, 60),
+        model: column.model,
+        systemPrompt: settings.systemPrompt.trim() || null,
+      });
+      const user = await messageRepo.add({
+        conversationId: conversation.id,
+        parentId: null,
+        role: 'user',
+        content: lastPrompt,
+        reasoning: null,
+        attachments: [],
+        model: null,
+        promptTokens: null,
+        completionTokens: null,
+        cost: null,
+        finishReason: null,
+        durationMs: null,
+      });
+      await messageRepo.add({
+        conversationId: conversation.id,
+        parentId: user.id,
+        role: 'assistant',
+        content: column.content,
+        reasoning: column.reasoning || null,
+        attachments: [],
+        model: column.model,
+        promptTokens: null,
+        completionTokens: column.tokens,
+        cost: column.cost,
+        finishReason: 'stop',
+        durationMs: column.durationMs,
+      });
+      await navigate({ to: '/chat/$conversationId', params: { conversationId: conversation.id } });
+    } catch (err) {
+      toast.error(describeError(err));
+    }
   };
 
   const stop = () => {
@@ -171,6 +220,16 @@ export function ComparePage() {
                 )}
                 {column.cost !== null && (
                   <span>{t('chat.cost', { cost: formatCost(column.cost) })}</span>
+                )}
+                {column.status === 'done' && column.content && (
+                  <button
+                    type="button"
+                    onClick={() => void continueInChat(column)}
+                    className="ml-auto inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <MessageSquarePlus className="size-3.5" />
+                    {t('compare.continueChat')}
+                  </button>
                 )}
               </div>
             )}

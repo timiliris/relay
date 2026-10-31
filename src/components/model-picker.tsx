@@ -9,8 +9,10 @@ import { useSettings } from '@/stores/settings';
 import { Button } from './ui/button';
 import { Dropdown } from './ui/dropdown';
 import { Input } from './ui/input';
+import { Select } from './ui/select';
 
 type Filter = 'all' | 'favorites' | 'vision' | 'free' | 'reasoning';
+type Sort = 'name' | 'price' | 'context';
 const FILTERS: Filter[] = ['all', 'favorites', 'vision', 'free', 'reasoning'];
 
 interface ModelPickerProps {
@@ -36,6 +38,7 @@ export function ModelPicker({
   const toggleFavorite = useSettings((s) => s.toggleFavorite);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<Sort>('name');
 
   useEffect(() => {
     void load();
@@ -52,11 +55,19 @@ export function ModelPicker({
     if (filter === 'free')
       list = list.filter((m) => m.promptPrice === 0 && m.completionPrice === 0);
     if (filter === 'reasoning') list = list.filter((m) => m.supportsReasoning);
+    list = [...list].sort((a, b) =>
+      sort === 'price'
+        ? a.promptPrice + a.completionPrice - (b.promptPrice + b.completionPrice) ||
+          a.name.localeCompare(b.name)
+        : sort === 'context'
+          ? b.contextLength - a.contextLength || a.name.localeCompare(b.name)
+          : a.name.localeCompare(b.name),
+    );
     const fav = list.filter((m) => favorites.includes(m.id));
     const rec = list.filter((m) => !favorites.includes(m.id) && recents.includes(m.id));
     const rest = list.filter((m) => !favorites.includes(m.id) && !recents.includes(m.id));
     return { fav, rec, rest, count: list.length };
-  }, [models, query, filter, favorites, recents]);
+  }, [models, query, filter, sort, favorites, recents]);
 
   const row = (m: ModelInfo, close: () => void) => (
     <Row
@@ -135,6 +146,16 @@ export function ModelPicker({
                 {t(`model.filter${f.charAt(0).toUpperCase()}${f.slice(1)}` as 'model.filterAll')}
               </button>
             ))}
+            <Select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as Sort)}
+              aria-label={t('model.sort')}
+              className="ml-auto h-6 shrink-0 py-0 text-[11px]"
+            >
+              <option value="name">{t('model.sortName')}</option>
+              <option value="price">{t('model.sortPrice')}</option>
+              <option value="context">{t('model.sortContext')}</option>
+            </Select>
           </div>
           <div className="overflow-y-auto p-1">
             {status === 'error' && models.length === 0 && (

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useThrottledValue } from '@/hooks/use-throttled-value';
 import { formatBytes } from '@/lib/attachments';
 import type { Attachment, Message } from '@/lib/db';
 import { formatCost } from '@/lib/format';
@@ -52,6 +53,8 @@ export function MessageBubble({
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
+  // Pendant le streaming, le Markdown est re-rendu au plus toutes les 80 ms.
+  const displayed = useThrottledValue(message.content, 80, streaming);
   const isUser = message.role === 'user';
   const hasUsage = message.promptTokens !== null && message.completionTokens !== null;
   const seconds = message.durationMs ? message.durationMs / 1000 : null;
@@ -169,8 +172,8 @@ export function MessageBubble({
         {showReasoning && message.reasoning && (
           <Reasoning text={message.reasoning} streaming={streaming && !message.content} />
         )}
-        {message.content ? (
-          <Markdown className="text-sm">{message.content}</Markdown>
+        {displayed ? (
+          <Markdown className="text-sm">{displayed}</Markdown>
         ) : (
           streaming && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -183,7 +186,7 @@ export function MessageBubble({
             </p>
           )
         )}
-        {streaming && message.content && (
+        {streaming && displayed && (
           <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-foreground align-text-bottom" />
         )}
         {!streaming && (

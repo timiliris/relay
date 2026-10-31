@@ -1,9 +1,10 @@
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/hooks/use-language';
 import { useShortcuts } from '@/hooks/use-shortcuts';
 import { useTheme } from '@/hooks/use-theme';
 import { useApiKey } from '@/stores/api-key';
+import { useConversations } from '@/stores/conversations';
 import { useModels } from '@/stores/models';
 import { useSettings } from '@/stores/settings';
 import { ConversationSidebar } from './conversation-sidebar';
@@ -20,7 +21,9 @@ export function AppShell() {
   useLanguage();
   const refreshKey = useApiKey((s) => s.refresh);
   const loadModels = useModels((s) => s.load);
-  const { fontSize, accent, density, onboarded } = useSettings();
+  const { fontSize, accent, density, onboarded, lastConversationId } = useSettings();
+  const { items, loaded } = useConversations();
+  const restored = useRef(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [searchOpen, setSearchOpen] = useState(false);
@@ -31,6 +34,18 @@ export function AppShell() {
     void refreshKey();
     void loadModels();
   }, [refreshKey, loadModels]);
+
+  // Reprise de la conversation ouverte lors de la dernière session (une seule fois, au lancement).
+  useEffect(() => {
+    if (restored.current || !loaded || !onboarded || pathname !== '/') return;
+    restored.current = true;
+    if (lastConversationId && items.some((c) => c.id === lastConversationId)) {
+      void navigate({
+        to: '/chat/$conversationId',
+        params: { conversationId: lastConversationId },
+      });
+    }
+  }, [loaded, onboarded, pathname, lastConversationId, items, navigate]);
 
   // Premier lancement : assistant de bienvenue.
   useEffect(() => {
