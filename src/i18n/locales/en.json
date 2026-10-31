@@ -295,7 +295,9 @@
     "about": "About",
     "version": "Version {{version}}",
     "checkUpdates": "Check for updates",
-    "docs": "OpenRouter documentation"
+    "docs": "OpenRouter documentation",
+    "autoUpdate": "Install updates automatically",
+    "autoUpdateHint": "Downloaded and installed without confirmation at startup; otherwise you are asked first."
   },
   "onboarding": {
     "welcome": "Welcome to Relay",

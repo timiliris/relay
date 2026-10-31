@@ -667,6 +667,13 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-2 text-sm">
+            <Row label={t('settings.autoUpdate')} hint={t('settings.autoUpdateHint')}>
+              <Switch
+                checked={settings.autoUpdate}
+                onCheckedChange={(v) => settings.patch({ autoUpdate: v })}
+                aria-label={t('settings.autoUpdate')}
+              />
+            </Row>
             <Button
               variant="outline"
               size="sm"

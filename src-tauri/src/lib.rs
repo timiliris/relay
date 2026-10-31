@@ -32,7 +32,10 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // `--minimized` est passé par le lanceur de démarrage automatique (plugin autostart).
-    let start_hidden = std::env::args().any(|arg| arg == "--minimized");
+    let args: Vec<String> = std::env::args().collect();
+    let start_hidden = args.iter().any(|arg| arg == "--minimized");
+    // `--auto-update` installe les mises à jour sans confirmation (déploiements pilotés, tests).
+    let auto_update = args.iter().any(|arg| arg == "--auto-update");
 
     let builder = tauri::Builder::default();
 
@@ -73,11 +76,12 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(db::init())
-        .manage(state::AppState::new(start_hidden))
+        .manage(state::AppState::new(start_hidden, auto_update))
         .manage(openrouter::OpenRouterState::new())
         .invoke_handler(tauri::generate_handler![
             commands::app::set_language,
             commands::app::should_start_hidden,
+            commands::app::should_auto_update,
             commands::app::show_app_menu,
             commands::openrouter::fetch_models,
             commands::openrouter::fetch_credits,

@@ -59,6 +59,8 @@ export interface SettingsData extends GenerationParams {
   messagesPageSize: number;
   onboarded: boolean;
   presetsSeeded: boolean;
+  /** Installer les mises à jour sans confirmation. */
+  autoUpdate: boolean;
 }
 
 export interface SettingsState extends SettingsData {
@@ -89,6 +91,7 @@ const defaults: SettingsData = {
   messagesPageSize: 60,
   onboarded: false,
   presetsSeeded: false,
+  autoUpdate: false,
   ...defaultGeneration,
 };
 

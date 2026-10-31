@@ -5,6 +5,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { attachConsole, info } from '@tauri-apps/plugin-log';
+import { useSettings } from '@/stores/settings';
 import { commands, isTauri } from './tauri';
 import { checkForUpdates } from './updater';
 
@@ -40,7 +41,12 @@ export async function bootstrap(): Promise<void> {
       if (reload || devtools) e.preventDefault();
     });
 
-    // Vérification silencieuse des mises à jour quelques secondes après le lancement.
-    setTimeout(() => void checkForUpdates({ silent: true }), 3000);
+    // Vérification silencieuse des mises à jour quelques secondes après le lancement ;
+    // installation sans confirmation si `--auto-update` ou si le réglage est activé.
+    const forced = await commands.shouldAutoUpdate().catch(() => false);
+    setTimeout(() => {
+      const autoInstall = forced || useSettings.getState().autoUpdate;
+      void checkForUpdates({ silent: true, autoInstall });
+    }, 3000);
   }
 }
