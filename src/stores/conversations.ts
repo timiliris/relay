@@ -1,6 +1,7 @@
 /** Conversations (historique), dossiers et presets, synchronisés avec SQLite. */
 import { create } from 'zustand';
 import { resolveLanguage } from '@/i18n';
+import { adultPresetId, adultPresets } from '@/lib/adult-presets';
 import {
   type Conversation,
   type ConversationPatch,
@@ -10,7 +11,7 @@ import {
   presets as presetRepo,
   conversations as repo,
 } from '@/lib/db';
-import { defaultPresetId, defaultPresets } from '@/lib/default-presets';
+import { type DefaultPreset, defaultPresetId, defaultPresets } from '@/lib/default-presets';
 import { devFixturesEnabled, sampleConversations, sampleFolders } from '@/lib/dev-fixtures';
 import { defaultPersona } from '@/lib/persona';
 import { isTauri } from '@/lib/tauri';
@@ -40,6 +41,8 @@ interface ConversationsState {
   savePreset: (preset: Parameters<typeof presetRepo.save>[0]) => Promise<Preset>;
   /** Ajoute les personas par défaut manquants ; renvoie le nombre créé. */
   restoreDefaultPresets: () => Promise<number>;
+  /** Ajoute le pack de personas 18+ manquants (après confirmation d'âge) ; renvoie le nombre créé. */
+  addAdultPresets: () => Promise<number>;
   removePreset: (id: string) => Promise<void>;
 }
 
@@ -52,6 +55,33 @@ export const useConversations = create<ConversationsState>()((set, get) => {
   const update = async (id: string, patch: ConversationPatch) => {
     await repo.update(id, patch);
     set((s) => ({ items: sort(s.items.map((c) => (c.id === id ? { ...c, ...patch } : c))) }));
+  };
+
+  /** Crée les personas d'un pack absents de la base (identifiant stable par clé) ; renvoie le nombre créé. */
+  const seedPresets = async (
+    pack: DefaultPreset[],
+    idOf: (key: string) => string,
+  ): Promise<number> => {
+    const existing = new Set(get().presets.map((p) => p.id));
+    let created = 0;
+    for (const [index, preset] of pack.entries()) {
+      const id = idOf(preset.key);
+      if (existing.has(id)) continue;
+      await get().savePreset({
+        id,
+        name: preset.name,
+        systemPrompt: preset.systemPrompt,
+        model: null,
+        temperature: preset.temperature,
+        topP: preset.topP,
+        maxTokens: preset.maxTokens,
+        reasoning: preset.reasoning,
+        persona: preset.persona ?? defaultPersona(),
+        position: Date.now() + index,
+      });
+      created++;
+    }
+    return created;
   };
 
   return {
@@ -160,27 +190,14 @@ export const useConversations = create<ConversationsState>()((set, get) => {
     },
     async restoreDefaultPresets() {
       const language = resolveLanguage(useSettings.getState().language);
-      const existing = new Set(get().presets.map((p) => p.id));
-      let created = 0;
-      for (const [index, preset] of defaultPresets(language).entries()) {
-        const id = defaultPresetId(preset.key);
-        if (existing.has(id)) continue;
-        await get().savePreset({
-          id,
-          name: preset.name,
-          systemPrompt: preset.systemPrompt,
-          model: null,
-          temperature: preset.temperature,
-          topP: preset.topP,
-          maxTokens: preset.maxTokens,
-          reasoning: preset.reasoning,
-          persona: preset.persona ?? defaultPersona(),
-          position: index,
-        });
-        created++;
-      }
-      return created;
+      return seedPresets(defaultPresets(language), defaultPresetId);
     },
+
+    async addAdultPresets() {
+      const language = resolveLanguage(useSettings.getState().language);
+      return seedPresets(adultPresets(language), adultPresetId);
+    },
+
     async removePreset(id) {
       await presetRepo.remove(id);
       set((s) => ({

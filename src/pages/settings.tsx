@@ -13,6 +13,7 @@ import {
   KeyRound,
   Plus,
   RefreshCw,
+  ShieldAlert,
   Trash2,
   Upload,
   Wifi,
@@ -192,6 +193,20 @@ export function SettingsPage() {
     await conversations.savePreset(preset);
     setEditingPreset(null);
     toast.success(t('presets.saved'));
+  };
+
+  const addAdultPresets = async () => {
+    if (!settings.adultConfirmed) {
+      const ok = await dialog.confirm({
+        title: t('presets.matureConfirmTitle'),
+        message: t('presets.matureConfirmBody'),
+        confirmLabel: t('presets.matureConfirmYes'),
+      });
+      if (!ok) return;
+      settings.patch({ adultConfirmed: true });
+    }
+    const count = await conversations.addAdultPresets();
+    toast.success(t('presets.adultAdded', { count }));
   };
 
   const importCard = async () => {
@@ -528,6 +543,16 @@ export function SettingsPage() {
                   }
                 >
                   {t('presets.restoreDefaults')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  title={t('presets.addAdultHint')}
+                  onClick={() => void addAdultPresets()}
+                >
+                  <ShieldAlert />
+                  {t('presets.addAdult')}
                 </Button>
                 <Button
                   variant="outline"

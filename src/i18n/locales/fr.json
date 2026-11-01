@@ -392,7 +392,10 @@
       "extractPrompt": "Tu aides à tenir le carnet de mémoire d'un personnage. À partir de la conversation ci-dessous, propose 3 à 5 faits nouveaux, durables et utiles à retenir pour les prochaines conversations (noms, relations, objets, événements marquants, préférences). Une ligne par fait, commençant par « - », au présent, en moins de 120 caractères, dans la langue de la conversation. Ne répète pas les faits déjà connus. Réponds uniquement par la liste, sans commentaire.",
       "source": "Issu de cette conversation",
       "closePanel": "Fermer le volet mémoire"
-    }
+    },
+    "addAdult": "Ajouter les personas 18+",
+    "addAdultHint": "Six personnages de fiction pour adultes (romance, tension, aventure), ajoutés après confirmation d'âge. Jamais installés automatiquement.",
+    "adultAdded": "{{count}} persona(s) 18+ ajouté(s)."
   },
   "compare": {
     "title": "Comparer des modèles",

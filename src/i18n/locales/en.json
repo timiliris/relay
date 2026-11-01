@@ -392,7 +392,10 @@
       "extractPrompt": "You help keep a character's memory notebook. From the conversation below, suggest 3 to 5 new, lasting facts worth remembering for future conversations (names, relationships, items, key events, preferences). One fact per line, starting with “- ”, in the present tense, under 120 characters, in the language of the conversation. Do not repeat already known facts. Reply with the list only, no commentary.",
       "source": "From this conversation",
       "closePanel": "Close memory panel"
-    }
+    },
+    "addAdult": "Add 18+ personas",
+    "addAdultHint": "Six adult-fiction characters (romance, tension, adventure), added after age confirmation. Never installed automatically.",
+    "adultAdded": "{{count}} 18+ persona(s) added."
   },
   "compare": {
     "title": "Compare models",
