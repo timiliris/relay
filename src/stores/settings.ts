@@ -88,7 +88,7 @@ const defaults: SettingsData = {
   ignoreProviders: [],
   dataCollectionDeny: false,
   fontSize: 'md',
-  accent: 'neutral',
+  accent: 'violet',
   density: 'comfortable',
   messagesPageSize: 60,
   onboarded: false,
@@ -133,7 +133,13 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'settings',
-      version: 2,
+      version: 3,
+      // v3 : l'accent coloré devient le défaut ; le « neutre » implicite des anciens profils est converti une fois.
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<SettingsData>;
+        if (version < 3 && state.accent === 'neutral') return { ...state, accent: 'violet' };
+        return state;
+      },
       storage: createJSONStorage(() => (isTauri() ? tauriStorage() : localStorage)),
       partialize: ({ setTheme, setLanguage, patch, toggleFavorite, rememberModel, ...state }) =>
         state,

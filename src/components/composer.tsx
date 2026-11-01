@@ -267,20 +267,30 @@ function ContextGauge({ estimate }: { estimate: ContextEstimate }) {
       title={`${t('chat.context')} : ${detail}`}
       aria-label={`${t('chat.context')} : ${detail}`}
     >
-      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+        {/* Dégradé vert → ambre → rouge sur toute la piste, révélé par la largeur. */}
         <div
-          className={cn(
-            'h-full rounded-full transition-all',
-            estimate.level === 'over'
-              ? 'bg-destructive'
-              : estimate.level === 'warn'
-                ? 'bg-amber-500'
-                : 'bg-primary/60',
-          )}
-          style={{ width: `${percent}%` }}
-        />
+          className="h-full overflow-hidden rounded-full transition-all"
+          style={{ width: `${Math.max(percent, 4)}%` }}
+        >
+          <div
+            className={cn(
+              'h-full w-20 bg-gradient-to-r from-success via-warning to-destructive',
+              estimate.level === 'over' && 'animate-pulse',
+            )}
+          />
+        </div>
       </div>
-      <span className="font-mono text-[10px] text-muted-foreground">
+      <span
+        className={cn(
+          'font-mono text-[10px] tabular-nums',
+          estimate.level === 'over'
+            ? 'font-medium text-destructive'
+            : estimate.level === 'warn'
+              ? 'font-medium text-warning'
+              : 'text-muted-foreground',
+        )}
+      >
         {formatTokens(estimate.used)}
       </span>
     </div>

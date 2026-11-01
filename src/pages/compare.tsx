@@ -197,7 +197,7 @@ export function ComparePage() {
               )}
               {column.status === 'running' && !column.content && (
                 <p className="flex items-center gap-2 text-muted-foreground">
-                  <span className="inline-block size-2 animate-pulse rounded-full bg-muted-foreground" />
+                  <span className="inline-block size-2 animate-pulse rounded-full bg-success" />
                   {column.reasoning ? t('chat.thinking') : t('compare.waiting')}
                 </p>
               )}

@@ -25,6 +25,7 @@ import {
   summarizeOlder,
   switchVersion,
 } from '@/lib/chat-service';
+import { chartBg } from '@/lib/color';
 import { estimateContext } from '@/lib/context';
 import type { Attachment, Message } from '@/lib/db';
 import { formatCost } from '@/lib/format';
@@ -376,7 +377,7 @@ function EmptyState({
     <div className="mx-auto flex min-h-full max-w-2xl animate-slide-up flex-col items-center justify-center gap-6 px-4 py-8 text-center">
       <div className="relative">
         <div
-          className="absolute -inset-6 animate-float rounded-full bg-primary/15 blur-2xl"
+          className="absolute -inset-6 animate-float rounded-full bg-gradient-to-tr from-chart-1/40 via-chart-2/30 to-chart-3/40 blur-2xl"
           aria-hidden="true"
         />
         <div className="relative flex size-12 items-center justify-center rounded-2xl border bg-card shadow-sm">
@@ -388,13 +389,20 @@ function EmptyState({
         <p className="text-sm text-muted-foreground">{t('chat.emptySubtitle')}</p>
       </div>
       <div className="grid w-full gap-2 sm:grid-cols-2">
-        {suggestions.map((s) => (
+        {suggestions.map((s, i) => (
           <button
             key={s}
             type="button"
             onClick={() => onPick(s)}
-            className="rounded-xl border bg-card px-4 py-3 text-left text-sm transition-colors hover:bg-accent"
+            className="group flex items-start gap-3 rounded-xl border bg-card px-4 py-3 text-left text-sm transition-colors hover:bg-accent"
           >
+            <span
+              className={cn(
+                'mt-1.5 size-2 shrink-0 rounded-full transition-transform group-hover:scale-125',
+                chartBg(i),
+              )}
+              aria-hidden="true"
+            />
             {s}
           </button>
         ))}

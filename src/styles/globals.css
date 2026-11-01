@@ -24,6 +24,16 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* Couleurs sémantiques et palette de séries (indépendantes de l'accent). */
+  --success: oklch(0.62 0.17 150);
+  --warning: oklch(0.68 0.17 70);
+  --info: oklch(0.6 0.16 240);
+  --chart-1: oklch(0.58 0.21 295);
+  --chart-2: oklch(0.6 0.17 240);
+  --chart-3: oklch(0.66 0.15 175);
+  --chart-4: oklch(0.74 0.17 75);
+  --chart-5: oklch(0.62 0.21 15);
+  --chart-6: oklch(0.66 0.17 325);
 }
 
 .dark {
@@ -45,6 +55,15 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  --success: oklch(0.76 0.15 150);
+  --warning: oklch(0.82 0.15 80);
+  --info: oklch(0.76 0.13 240);
+  --chart-1: oklch(0.76 0.15 295);
+  --chart-2: oklch(0.76 0.13 240);
+  --chart-3: oklch(0.78 0.13 175);
+  --chart-4: oklch(0.84 0.14 80);
+  --chart-5: oklch(0.76 0.16 15);
+  --chart-6: oklch(0.78 0.14 325);
 }
 
 /* Expose les tokens à Tailwind : bg-background, text-muted-foreground, rounded-lg, etc. */
@@ -64,6 +83,15 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -343,6 +371,33 @@ html.dark[data-accent="green"] {
 html.dark[data-accent="rose"] {
   --primary: oklch(0.75 0.15 10);
   --primary-foreground: oklch(0.2 0.05 10);
+}
+html.dark[data-accent="amber"] {
+  --primary: oklch(0.8 0.15 80);
+  --primary-foreground: oklch(0.25 0.06 80);
+}
+
+/* ---------- Teintes dérivées d'un identifiant (modèle, persona, dossier) ----------
+   L'élément reçoit `--hue` via hueStyle() (lib/color.ts). */
+.hue-text {
+  color: oklch(0.52 0.17 var(--hue));
+}
+.hue-soft {
+  background-color: oklch(0.6 0.17 var(--hue) / 14%);
+}
+.hue-solid {
+  background-color: oklch(0.6 0.17 var(--hue));
+  color: oklch(0.99 0 0);
+}
+.dark .hue-text {
+  color: oklch(0.78 0.14 var(--hue));
+}
+.dark .hue-soft {
+  background-color: oklch(0.75 0.14 var(--hue) / 18%);
+}
+.dark .hue-solid {
+  background-color: oklch(0.72 0.14 var(--hue));
+  color: oklch(0.15 0.03 var(--hue));
 }
 
 /* Mise en évidence d'un message atteint par la recherche. */

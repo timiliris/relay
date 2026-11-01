@@ -1,12 +1,14 @@
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Coins, Hash, type LucideIcon, MessagesSquare } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Segmented } from '@/components/ui/segmented';
 import { useWindowTitle } from '@/hooks/use-window-title';
+import { chartBg } from '@/lib/color';
 import { type UsageRow, usage } from '@/lib/db';
 import { formatCost, formatTokens } from '@/lib/format';
 import { errorMessage, isTauri } from '@/lib/tauri';
+import { cn } from '@/lib/utils';
 import { toast } from '@/stores/toast';
 
 type Period = '7' | '30' | '90';
@@ -67,9 +69,24 @@ export function UsagePage() {
         <p className="text-sm text-muted-foreground">{t('usage.description')}</p>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <Tile label={t('usage.totalCost')} value={`${formatCost(totals.cost)} $`} />
-          <Tile label={t('usage.totalTokens')} value={formatTokens(totals.tokens)} />
-          <Tile label={t('usage.totalMessages')} value={String(totals.messages)} />
+          <Tile
+            label={t('usage.totalCost')}
+            value={`${formatCost(totals.cost)} $`}
+            icon={Coins}
+            tone="bg-success/15 text-success"
+          />
+          <Tile
+            label={t('usage.totalTokens')}
+            value={formatTokens(totals.tokens)}
+            icon={Hash}
+            tone="bg-info/15 text-info"
+          />
+          <Tile
+            label={t('usage.totalMessages')}
+            value={String(totals.messages)}
+            icon={MessagesSquare}
+            tone="bg-chart-1/15 text-chart-1"
+          />
         </div>
 
         {rows.length === 0 ? (
@@ -143,11 +160,29 @@ function aggregate(rows: UsageRow[], keyOf: (r: UsageRow) => string): Aggregate[
   return [...map.values()].sort((a, b) => b.cost - a.cost);
 }
 
-function Tile({ label, value }: { label: string; value: string }) {
+function Tile({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone: string;
+}) {
   return (
-    <div className="rounded-xl border bg-card px-4 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-mono text-xl font-semibold tabular-nums">{value}</p>
+    <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
+      <div
+        className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', tone)}
+        aria-hidden="true"
+      >
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-0.5 truncate font-mono text-xl font-semibold tabular-nums">{value}</p>
+      </div>
     </div>
   );
 }
@@ -161,10 +196,13 @@ function BarList({
 }) {
   return (
     <ul className="flex flex-col gap-2">
-      {items.map((item) => (
+      {items.map((item, i) => (
         <li key={item.key} className="text-sm">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="min-w-0 truncate font-mono text-xs">{item.label}</span>
+            <span className="flex min-w-0 items-center gap-1.5 font-mono text-xs">
+              <span className={cn('size-2 shrink-0 rounded-full', chartBg(i))} aria-hidden="true" />
+              <span className="truncate">{item.label}</span>
+            </span>
             <span className="shrink-0 font-mono text-xs tabular-nums">
               {formatCost(item.cost)} $
             </span>
@@ -174,7 +212,7 @@ function BarList({
             aria-hidden="true"
           >
             <div
-              className="h-full rounded-full bg-primary/70"
+              className={cn('h-full rounded-full transition-all', chartBg(i))}
               style={{ width: `${max > 0 ? Math.max(2, (item.cost / max) * 100) : 0}%` }}
             />
           </div>

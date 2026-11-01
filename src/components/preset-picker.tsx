@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Check, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { hueStyle } from '@/lib/color';
 import type { Conversation, Preset } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import { useConversations } from '@/stores/conversations';
@@ -59,7 +60,11 @@ export function PresetPicker({ conversation }: PresetPickerProps) {
           title={current?.name ?? t('presets.apply')}
           className={cn('gap-1.5 text-muted-foreground', current && 'text-primary')}
         >
-          <UserRound className="size-4" />
+          {current ? (
+            <PresetAvatar preset={current} className="size-4 text-[9px]" />
+          ) : (
+            <UserRound className="size-4" />
+          )}
           <span className="hidden max-w-28 truncate text-xs lg:inline">
             {current?.name ?? t('presets.apply')}
           </span>
@@ -89,6 +94,7 @@ export function PresetPicker({ conversation }: PresetPickerProps) {
                 void apply(p);
               }}
             >
+              <PresetAvatar preset={p} className="size-5 text-[10px]" />
               <span className="flex-1 truncate">{p.name}</span>
               {current?.id === p.id && <Check className="text-primary" />}
             </DropdownItem>
@@ -96,5 +102,21 @@ export function PresetPicker({ conversation }: PresetPickerProps) {
         </>
       )}
     </Dropdown>
+  );
+}
+
+/** Pastille colorée stable par persona (initiale sur teinte dérivée de l'identifiant). */
+export function PresetAvatar({ preset, className }: { preset: Preset; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'hue-solid inline-flex shrink-0 items-center justify-center rounded-full font-semibold leading-none',
+        className,
+      )}
+      style={hueStyle(preset.id)}
+      aria-hidden="true"
+    >
+      {preset.name.trim().charAt(0).toUpperCase() || '?'}
+    </span>
   );
 }

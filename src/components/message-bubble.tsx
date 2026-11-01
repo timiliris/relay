@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useThrottledValue } from '@/hooks/use-throttled-value';
 import { formatBytes } from '@/lib/attachments';
+import { hueStyle } from '@/lib/color';
 import type { Attachment, Message } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -165,8 +166,11 @@ export function MessageBubble({
 
   return (
     <div className="group flex animate-slide-up gap-3">
-      <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border bg-gradient-to-br from-primary/15 to-transparent">
-        <Bot className="size-4 text-primary" />
+      <div
+        className="hue-soft mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border"
+        style={hueStyle(message.model ?? 'assistant')}
+      >
+        <Bot className="hue-text size-4" />
       </div>
       <div className="min-w-0 flex-1">
         {showReasoning && message.reasoning && (
@@ -178,9 +182,9 @@ export function MessageBubble({
           streaming && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-0.5" aria-hidden="true">
-                <span className="size-1.5 animate-dot rounded-full bg-muted-foreground" />
-                <span className="size-1.5 animate-dot rounded-full bg-muted-foreground [animation-delay:0.15s]" />
-                <span className="size-1.5 animate-dot rounded-full bg-muted-foreground [animation-delay:0.3s]" />
+                <span className="size-1.5 animate-dot rounded-full bg-chart-1" />
+                <span className="size-1.5 animate-dot rounded-full bg-chart-2 [animation-delay:0.15s]" />
+                <span className="size-1.5 animate-dot rounded-full bg-chart-3 [animation-delay:0.3s]" />
               </span>
               {t('chat.thinking')}
             </p>
@@ -288,13 +292,13 @@ function Reasoning({ text, streaming }: { text: string; streaming: boolean }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(streaming);
   return (
-    <div className="mb-2 rounded-lg border border-dashed">
+    <div className="mb-2 rounded-lg border border-dashed border-chart-1/40 bg-chart-1/5">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
       >
-        <Brain className={cn('size-3.5', streaming && 'animate-pulse')} />
+        <Brain className={cn('size-3.5 text-chart-1', streaming && 'animate-pulse')} />
         {t('chat.reasoning')}
         <ChevronDown
           className={cn('ml-auto size-3.5 transition-transform', open && 'rotate-180')}

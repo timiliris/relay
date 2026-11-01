@@ -4,6 +4,11 @@ import { cn } from '@/lib/utils';
 import { useToasts } from '@/stores/toast';
 
 const icons = { info: Info, success: CheckCircle2, error: AlertCircle } as const;
+const tones = {
+  info: { icon: 'text-info', border: 'border-info/40' },
+  success: { icon: 'text-success', border: 'border-success/40' },
+  error: { icon: 'text-destructive', border: 'border-destructive/40' },
+} as const;
 
 export function Toaster() {
   const { t } = useTranslation();
@@ -21,15 +26,10 @@ export function Toaster() {
             role="status"
             className={cn(
               'pointer-events-auto flex animate-slide-up items-start gap-2 rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg',
-              toast.kind === 'error' && 'border-destructive/40',
+              tones[toast.kind].border,
             )}
           >
-            <Icon
-              className={cn(
-                'mt-0.5 size-4 shrink-0',
-                toast.kind === 'error' ? 'text-destructive' : 'text-muted-foreground',
-              )}
-            />
+            <Icon className={cn('mt-0.5 size-4 shrink-0', tones[toast.kind].icon)} />
             <span className="flex-1 break-words">{toast.message}</span>
             <button
               type="button"

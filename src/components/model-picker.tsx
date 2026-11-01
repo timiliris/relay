@@ -218,12 +218,10 @@ function Row({
       <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm">{model.name}</span>
-          {vision && (
-            <Eye className="size-3 shrink-0 text-muted-foreground" aria-label={t('model.vision')} />
-          )}
+          {vision && <Eye className="size-3 shrink-0 text-info" aria-label={t('model.vision')} />}
           {model.supportsReasoning && (
             <Brain
-              className="size-3 shrink-0 text-muted-foreground"
+              className="size-3 shrink-0 text-chart-1"
               aria-label={t('model.filterReasoning')}
             />
           )}
@@ -234,7 +232,7 @@ function Row({
           <span className="shrink-0">
             {t('model.context', { tokens: formatTokens(model.contextLength) })}
           </span>
-          <span className="shrink-0">
+          <span className={cn('shrink-0', free && 'font-medium text-success')}>
             {free
               ? t('model.free')
               : t('model.price', {

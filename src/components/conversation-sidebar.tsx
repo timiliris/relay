@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { hueStyle } from '@/lib/color';
 import type { Conversation, Folder as FolderType } from '@/lib/db';
 import { groupConversations } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -167,9 +168,8 @@ export function ConversationSidebar({ onOpenSearch }: SidebarProps) {
     >
       <div className="flex items-center gap-1 p-2">
         <Button
-          variant="outline"
           size="sm"
-          className="flex-1 justify-start gap-2"
+          className="flex-1 justify-start gap-2 shadow-sm shadow-primary/20"
           onClick={() => void navigate({ to: '/' })}
         >
           <Plus className="size-4" />
@@ -226,7 +226,7 @@ export function ConversationSidebar({ onOpenSearch }: SidebarProps) {
                   <ChevronDown
                     className={cn('size-3.5 transition-transform', collapsed && '-rotate-90')}
                   />
-                  <Folder className="size-3.5" />
+                  <Folder className="hue-text size-3.5" style={hueStyle(f.id)} />
                   <span className="truncate">{f.name}</span>
                   <span className="ml-auto font-mono text-[10px]">{inFolder.length}</span>
                 </button>
@@ -459,7 +459,7 @@ function ConversationRow({
             {c.title}
             {streaming && (
               <span
-                className="ml-1.5 inline-block size-1.5 animate-pulse rounded-full bg-primary align-middle"
+                className="ml-1.5 inline-block size-1.5 animate-pulse rounded-full bg-success align-middle"
                 aria-hidden="true"
               />
             )}
