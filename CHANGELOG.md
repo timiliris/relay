@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.4.0](https://github.com/timiliris/relay/compare/v0.3.0...v0.4.0) (2026-11-01)
+
+
+### Nouveautés
+
+* **personas:** personnalité par curseurs, mode jeu de rôle et mode 18+ ([e03483f](https://github.com/timiliris/relay/commit/e03483fd37f2ea0596b74d291f146be4b07ea134))
+
 ## [0.3.0](https://github.com/timiliris/relay/compare/v0.2.0...v0.3.0) (2026-11-01)
 
 
