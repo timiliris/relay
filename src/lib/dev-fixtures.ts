@@ -56,6 +56,17 @@ export const sampleConversations: Conversation[] = [
   },
   {
     ...base,
+    id: 'demo-rp',
+    title: 'Maître du jeu',
+    model: 'anthropic/claude-sonnet-4.5',
+    presetId: 'default-gamemaster',
+    systemPrompt: 'Tu mènes une partie de jeu de rôle textuel.',
+    temperature: 0.9,
+    createdAt: at(2 * day),
+    updatedAt: at(2 * day - 3_600_000),
+  },
+  {
+    ...base,
     id: 'demo-4',
     title: 'Ancienne discussion archivée',
     model: 'openrouter/auto',
@@ -231,5 +242,30 @@ flowchart LR
     },
   ],
   'demo-3': [],
+  'demo-rp': [
+    {
+      ...msgBase,
+      conversationId: 'demo-rp',
+      id: 'r1',
+      parentId: null,
+      active: true,
+      role: 'assistant',
+      model: 'anthropic/claude-sonnet-4.5',
+      content:
+        "La pluie bat les volets de la taverne du Héron Gris. Tu ouvres les yeux sur une table poisseuse, la tête lourde. Le tavernier t'observe en essuyant une chope. « Enfin réveillé. » Que fais-tu ?",
+      finishReason: 'stop',
+      createdAt: at(2 * day),
+    },
+    {
+      ...msgBase,
+      conversationId: 'demo-rp',
+      id: 'r2',
+      parentId: 'r1',
+      active: true,
+      role: 'user',
+      content: 'Je me redresse et je fouille ma poche. 🎲 d20 → [14] = 14',
+      createdAt: at(2 * day - 3_600_000),
+    },
+  ],
   'demo-4': [],
 };
