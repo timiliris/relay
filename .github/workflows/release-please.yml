@@ -11,12 +11,21 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      # Le tag est créé avec GITHUB_TOKEN : GitHub ne déclenche pas `release.yml` sur ce push
+      # (règle anti-boucle). On lance donc le workflow de release explicitement.
+      - if: ${{ steps.release.outputs.release_created }}
+        run: gh workflow run release.yml -f tag="$TAG"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag_name }}
