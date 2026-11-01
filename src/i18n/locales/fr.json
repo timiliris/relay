@@ -138,7 +138,29 @@
     "imageAlt": "Image jointe : {{name}}",
     "mermaidError": "Diagramme Mermaid invalide.",
     "responding": "Réponse en cours…",
-    "responseDone": "Réponse terminée."
+    "responseDone": "Réponse terminée.",
+    "snippets": {
+      "menuTitle": "Raccourcis de prompt",
+      "menuHint": "↑↓ pour choisir, Entrée pour insérer, Échap pour fermer",
+      "noMatch": "Aucun raccourci ne correspond à « /{{query}} ».",
+      "title": "Raccourcis de prompt",
+      "description": "Tapez « / » en début de message pour insérer un raccourci. {{selection}} est remplacé par le texte saisi après le déclencheur, {{clipboard}} par le presse-papiers.",
+      "none": "Aucun raccourci pour le moment.",
+      "trigger": "Déclencheur",
+      "triggerPlaceholder": "résume",
+      "titleLabel": "Titre",
+      "titlePlaceholder": "Résumer",
+      "body": "Corps",
+      "bodyPlaceholder": "Résume le texte suivant en cinq points :\n\n{{selection}}",
+      "add": "Ajouter un raccourci",
+      "edit": "Modifier le raccourci",
+      "delete": "Supprimer le raccourci",
+      "deleteConfirm": "Supprimer le raccourci « /{{trigger}} » ?",
+      "restoreDefaults": "Restaurer les défauts",
+      "restored": "Raccourcis par défaut restaurés ({{count}}).",
+      "duplicate": "Le déclencheur « /{{trigger}} » existe déjà.",
+      "saved": "Raccourci enregistré."
+    }
   },
   "search": {
     "title": "Rechercher",
