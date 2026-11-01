@@ -25,7 +25,8 @@ jobs:
       # Le tag est créé avec GITHUB_TOKEN : GitHub ne déclenche pas `release.yml` sur ce push
       # (règle anti-boucle). On lance donc le workflow de release explicitement.
       - if: ${{ steps.release.outputs.release_created }}
-        run: gh workflow run release.yml -f tag="$TAG"
+        # Pas de checkout dans ce job : le dépôt doit être nommé explicitement.
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" -f tag="$TAG"
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag_name }}
