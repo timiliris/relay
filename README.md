@@ -12,6 +12,8 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 - **Pièces jointes** : images (collage, glisser-déposer, sélecteur) pour les modèles vision, PDF, fichiers texte et code inlinés dans le prompt.
 - **Jauge de contexte** (estimation vs fenêtre du modèle), avertissements, **résumé automatique** des anciens messages à la demande.
 - Rendu Markdown complet : coloration syntaxique, **LaTeX** (KaTeX), **diagrammes Mermaid** (chargés à la demande), copie des blocs de code.
+- **Génération d'images** avec les modèles à sortie image d'OpenRouter : images affichées dans la bulle, conservées avec la conversation, enregistrables.
+- **Régénérer avec un autre modèle** depuis une bulle : les versions restent côte à côte, chacune étiquetée par son modèle.
 - Temps de réponse, tokens/seconde, tokens et coût par réponse, coût total par conversation ; **sauvegarde progressive** du texte pendant le flux (rien n'est perdu si l'app se ferme).
 
 **Organisation**
@@ -19,6 +21,9 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 - Historique SQLite groupé par date, **dossiers**, épinglage, **archivage**, renommage, titre automatique.
 - **Recherche globale** (Ctrl+K) dans les titres et le contenu des messages, avec mise en évidence du message trouvé.
 - **Personas** : instructions, modèle et paramètres appliqués en un clic (par conversation ou par défaut), plus une personnalité réglée par six curseurs (chaleur, humour, registre, longueur, créativité, initiative), un mode **jeu de rôle** (fiche de personnage, scénario, rôle du joueur, première réplique, narration, format) et un mode **18+** derrière une confirmation d'âge. Le tout est compilé en une instruction système lisible, visible en aperçu avant d'enregistrer ; neuf personas fournis au premier lancement (dont un maître du jeu), restaurables. Import de fiches **Character Card** V1/V2/V3 (JSON ou PNG, le format de SillyTavern) et export en V2 ; les gabarits `{{char}}` et `{{user}}` sont remplis automatiquement.
+- **Mémoire du personnage** : un carnet de faits par persona (bouton « Mémoriser » sur une bulle, extraction par le modèle), injecté dans l'instruction système de chaque conversation qui l'utilise.
+- **Outils de jeu de rôle** dans le composeur : bascule **HRP** (hors rôle), « **Jouer mon tour** » qui fait écrire la réplique du joueur par le modèle pour relecture, et **jets de dés** (d4 à d100, notation `2d6+3`).
+- **Raccourcis de prompt** déclenchés par `/` (`/résume`, `/traduis`…, gabarits `{{selection}}` et `{{clipboard}}`, gérés dans les paramètres) et **messages épinglés** avec volet de navigation.
 - **Comparaison** : même question envoyée à deux ou trois modèles côte à côte.
 - Page **Usage** : dépenses et tokens par jour et par modèle.
 - **Import** d'exports ChatGPT, Claude ou Relay ; export Markdown par conversation, export JSON complet.
@@ -89,7 +94,7 @@ src-tauri/src/
 ├── openrouter/sse.rs          # Analyseur SSE incrémental (testé)
 ├── secrets.rs                 # Clé API dans le trousseau système
 ├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement)
-├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas, v3 personnalité)
+├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas, v3 personnalité, v4 mémoire, v5 épingles)
 └── menu.rs, tray.rs, shortcut.rs, i18n.rs
 ```
 

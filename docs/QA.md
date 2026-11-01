@@ -109,6 +109,20 @@ Dépendances mises à jour le même jour (8 PR Dependabot fusionnées, CI verte)
 | Lancement du build | **Automatique pour la première fois** : le job release-please a lancé `release.yml` (événement `workflow_dispatch`) grâce à `--repo "$GITHUB_REPOSITORY"`, sans intervention |
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.4.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.4.0 avec 11 cibles                                               |
 
+## Chantiers parallèles fusionnés (1er novembre 2026)
+
+Cinq branches développées en parallèle par des sessions séparées, fusionnées une à une dans `main` (conflits résolus à la main : i18n, `chat.tsx`, composeur, bulles, migrations), puis vérifiées ensemble.
+
+| Chantier                         | Branche                               | Vérification par la session                                                                                                    |
+| -------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Mémoire du personnage            | `claude/persona-memory-26eb98`        | Migration v4, injection dans `buildHistory`, volet Mémoire, action Mémoriser ; extraction par le modèle non exercée hors Tauri |
+| Outils de jeu de rôle            | `claude/rp-tools-b54ed7`              | HRP, Jouer mon tour, dés ; tests du parseur de dés et du composeur                                                             |
+| Génération d'images              | `claude/image-generation-35582e`      | Rust + frontend ; test réel : 1 image produite pour 0,067 $ ; parcours dans l'app Tauri non vérifié                            |
+| Régénérer avec un autre modèle   | `claude/regenerate-with-model-17c882` | `modelOverride`, versions étiquetées ; test Vitest                                                                             |
+| Raccourcis de prompt et épingles | `claude/snippets-and-pins-8ab03e`     | Menu « / », carte de gestion, migration v5, volet des épinglés                                                                 |
+
+Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `cargo fmt`, `cargo clippy -D warnings`, 17 tests Rust ; conversation de démo RP affichée dans le navigateur avec badge RP, compteur de mémoire et outils RP. Trois tests ont dû être adaptés au type de retour `CompletionOutput` introduit par la génération d'images et à l'envoi asynchrone du composeur. Non vérifié : les migrations v4 et v5 sur une base existante et les parcours réseau dans l'app Tauri.
+
 ## Optimisations mesurées (0.1.1)
 
 | Mesure                                   | Avant                       | Après                                                     |
