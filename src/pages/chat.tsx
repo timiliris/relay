@@ -1,13 +1,14 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { ArrowDown, Download, Globe, KeyRound, Scissors, Sparkles, X } from 'lucide-react';
+import { ArrowDown, Download, Globe, KeyRound, Pin, Scissors, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Composer } from '@/components/composer';
 import { GenerationParams } from '@/components/generation-params';
 import { MessageBubble } from '@/components/message-bubble';
 import { ModelPicker } from '@/components/model-picker';
+import { PinnedPanel, pinnedMessages } from '@/components/pinned-panel';
 import { PresetBadges } from '@/components/preset-avatar';
 import { PresetPicker } from '@/components/preset-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   stopStreaming,
   summarizeOlder,
   switchVersion,
+  togglePin,
 } from '@/lib/chat-service';
 import { chartBg } from '@/lib/color';
 import { estimateContext } from '@/lib/context';
@@ -70,6 +72,9 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   });
   const [visibleCount, setVisibleCount] = useState(settings.messagesPageSize);
   const [atBottom, setAtBottom] = useState(true);
+  const [pinsOpen, setPinsOpen] = useState(false);
+  /** Message à atteindre une fois rendu (volet des épinglés). */
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inTauri = isTauri();
@@ -78,6 +83,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   useEffect(() => {
     void open(conversationId);
     setVisibleCount(settings.messagesPageSize);
+    setPinsOpen(false);
   }, [conversationId, open, settings.messagesPageSize]);
 
   // Conversation rouverte au prochain lancement.
@@ -127,6 +133,31 @@ export function ChatPage({ conversationId }: ChatPageProps) {
     const timer = setTimeout(() => el.classList.remove('message-highlight'), 2000);
     return () => clearTimeout(timer);
   }, [hash, messages.length]);
+
+  // Défilement vers un message épinglé, une fois rendu (il peut être dans la partie repliée).
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const el = document.getElementById(`message-${scrollTarget}`);
+    if (!el) return;
+    setScrollTarget(null);
+    setAtBottom(false);
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('message-highlight');
+    const timer = setTimeout(() => el.classList.remove('message-highlight'), 2000);
+    return () => clearTimeout(timer);
+  }, [scrollTarget]);
+
+  const goToMessage = (m: Message) => {
+    const index = messages.findIndex((x) => x.id === m.id);
+    // Révèle la page cachée si le message est au-delà des N derniers affichés.
+    if (index >= 0 && index < messages.length - visibleCount) {
+      setVisibleCount(messages.length - index);
+    }
+    setPinsOpen(false);
+    setScrollTarget(m.id);
+  };
+  const pinned = useMemo(() => pinnedMessages(messages), [messages]);
+  const closePins = useCallback(() => setPinsOpen(false), []);
 
   const guard = (fn: () => Promise<void>) => () => fn().catch((err) => setError(errorMessage(err)));
   const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
@@ -201,6 +232,20 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
           </span>
         )}
+        {conversation && pinned.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('gap-1.5 px-2', pinsOpen && 'bg-accent')}
+            aria-pressed={pinsOpen}
+            aria-label={t('chat.pins.title')}
+            title={t('chat.pins.title')}
+            onClick={() => setPinsOpen((o) => !o)}
+          >
+            <Pin className="size-4 text-warning" />
+            <span className="font-mono text-xs tabular-nums">{pinned.length}</span>
+          </Button>
+        )}
         {conversation && messages.length > 8 && (
           <IconButton label={t('chat.summarize')} onClick={onSummarize} disabled={streaming}>
             <Scissors />
@@ -225,6 +270,12 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         </div>
       )}
 
+      {/* Le volet des épinglés est hors de la zone défilante pour rester en place. */}
+      {pinsOpen && conversation && (
+        <div className="relative z-20">
+          <PinnedPanel messages={messages} onClose={closePins} onGoTo={goToMessage} />
+        </div>
+      )}
       <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto">
         {showEmpty ? (
           <EmptyState suggestions={suggestions} onPick={setDraft} />
@@ -254,6 +305,11 @@ export function ChatPage({ conversationId }: ChatPageProps) {
                     version={siblingIndex(all, m)}
                     onSwitchVersion={canAct ? (dir) => void switchVersion(m, dir) : undefined}
                     onCopy={() => void copy(m.content)}
+                    onTogglePin={
+                      conversation !== null && !isStreamingThis
+                        ? guard(() => togglePin(m))
+                        : undefined
+                    }
                     onDelete={canAct ? () => onDelete(m) : undefined}
                     onEdit={
                       canAct && m.role === 'user'

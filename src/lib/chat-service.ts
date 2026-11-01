@@ -141,6 +141,13 @@ export async function switchVersion(message: Message, direction: 1 | -1): Promis
   );
 }
 
+/** Épingle ou désépingle un message ; la liste ouverte est mise à jour sans rechargement. */
+export async function togglePin(message: Message): Promise<void> {
+  const pinned = !message.pinned;
+  await msgRepo.setPinned(message.id, pinned);
+  useChat.getState().upsert({ ...message, pinned });
+}
+
 export async function deleteMessage(message: Message): Promise<void> {
   const chat = useChat.getState();
   await msgRepo.removeSubtree(message.conversationId, message.id);

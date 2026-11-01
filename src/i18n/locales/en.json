@@ -160,6 +160,17 @@
       "restored": "Default shortcuts restored ({{count}}).",
       "duplicate": "The trigger “/{{trigger}}” already exists.",
       "saved": "Shortcut saved."
+    },
+    "pins": {
+      "pin": "Pin message",
+      "unpin": "Unpin message",
+      "pinned": "Pinned",
+      "title": "Pinned messages",
+      "count_one": "{{count}} pinned message",
+      "count_other": "{{count}} pinned messages",
+      "empty": "No pinned message in this conversation.",
+      "goTo": "Go to message",
+      "you": "You"
     }
   },
   "search": {

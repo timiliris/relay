@@ -101,6 +101,15 @@ fn migrations() -> Vec<Migration> {
         ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "message_pins",
+            sql: "
+            -- Messages épinglés dans une conversation (volet « épinglés », survie au résumé).
+            ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+        ",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

@@ -160,6 +160,17 @@
       "restored": "Raccourcis par défaut restaurés ({{count}}).",
       "duplicate": "Le déclencheur « /{{trigger}} » existe déjà.",
       "saved": "Raccourci enregistré."
+    },
+    "pins": {
+      "pin": "Épingler le message",
+      "unpin": "Désépingler le message",
+      "pinned": "Épinglé",
+      "title": "Messages épinglés",
+      "count_one": "{{count}} message épinglé",
+      "count_other": "{{count}} messages épinglés",
+      "empty": "Aucun message épinglé dans cette conversation.",
+      "goTo": "Aller au message",
+      "you": "Vous"
     }
   },
   "search": {

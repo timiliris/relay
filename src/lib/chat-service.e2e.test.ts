@@ -24,17 +24,25 @@ vi.mock('./db', async (importOriginal) => {
       list: vi.fn(async (conversationId: string) =>
         store.messages.filter((m) => m.conversationId === conversationId),
       ),
-      add: vi.fn(async (input: Omit<Message, 'id' | 'createdAt' | 'active'> & { id?: string }) => {
-        const message: Message = {
-          ...input,
-          id: input.id ?? `m${store.messages.length + 1}`,
-          active: true,
-          createdAt: new Date().toISOString(),
-        };
-        for (const m of store.messages) if (m.parentId === message.parentId) m.active = false;
-        store.messages.push(message);
-        return message;
-      }),
+      add: vi.fn(
+        async (
+          input: Omit<Message, 'id' | 'createdAt' | 'active' | 'pinned'> & {
+            id?: string;
+            pinned?: boolean;
+          },
+        ) => {
+          const message: Message = {
+            ...input,
+            pinned: input.pinned ?? false,
+            id: input.id ?? `m${store.messages.length + 1}`,
+            active: true,
+            createdAt: new Date().toISOString(),
+          };
+          for (const m of store.messages) if (m.parentId === message.parentId) m.active = false;
+          store.messages.push(message);
+          return message;
+        },
+      ),
       update: vi.fn(async (id: string, patch: Partial<Message>) => {
         const m = store.messages.find((x) => x.id === id);
         if (m) Object.assign(m, patch);

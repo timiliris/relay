@@ -59,6 +59,8 @@ export interface Message {
   /** `stop`, `length`, `cancelled`, `error`, ou `streaming` si l'app a été fermée en cours. */
   finishReason: string | null;
   durationMs: number | null;
+  /** Épinglé dans la conversation (volet des épinglés). */
+  pinned: boolean;
   createdAt: string;
 }
 
@@ -137,6 +139,7 @@ interface MessageRow {
   cost: number | null;
   finish_reason: string | null;
   duration_ms: number | null;
+  pinned: number;
   created_at: string;
 }
 
@@ -217,6 +220,7 @@ const toMessage = (r: MessageRow): Message => ({
   cost: r.cost,
   finishReason: r.finish_reason,
   durationMs: r.duration_ms,
+  pinned: r.pinned === 1,
   createdAt: r.created_at,
 });
 
@@ -401,6 +405,7 @@ export type MessagePatch = Partial<
     | 'finishReason'
     | 'durationMs'
     | 'model'
+    | 'pinned'
   >
 >;
 
@@ -415,12 +420,17 @@ export const messages = {
   },
 
   async add(
-    input: Omit<Message, 'id' | 'createdAt' | 'active'> & { id?: string; createdAt?: string },
+    input: Omit<Message, 'id' | 'createdAt' | 'active' | 'pinned'> & {
+      id?: string;
+      createdAt?: string;
+      pinned?: boolean;
+    },
   ): Promise<Message> {
     const message: Message = {
       ...input,
       id: input.id ?? newId(),
       active: true,
+      pinned: input.pinned ?? false,
       createdAt: input.createdAt ?? now(),
     };
     const c = await connection();
@@ -432,8 +442,8 @@ export const messages = {
     await c.execute(
       `INSERT INTO messages
         (id, conversation_id, parent_id, active, role, content, reasoning, attachments, model,
-         prompt_tokens, completion_tokens, cost, finish_reason, duration_ms, created_at)
-       VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+         prompt_tokens, completion_tokens, cost, finish_reason, duration_ms, pinned, created_at)
+       VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         message.id,
         message.conversationId,
@@ -448,6 +458,7 @@ export const messages = {
         message.cost,
         message.finishReason,
         message.durationMs,
+        message.pinned ? 1 : 0,
         message.createdAt,
       ],
     );
@@ -464,6 +475,7 @@ export const messages = {
       finish_reason: patch.finishReason,
       duration_ms: patch.durationMs,
       model: patch.model,
+      pinned: patch.pinned === undefined ? undefined : patch.pinned ? 1 : 0,
     });
     if (!sql) return;
     values.push(id);
@@ -471,6 +483,11 @@ export const messages = {
       `UPDATE messages SET ${sql} WHERE id = $${values.length}`,
       values,
     );
+  },
+
+  /** Épingle ou désépingle un message dans sa conversation. */
+  async setPinned(id: string, pinned: boolean): Promise<void> {
+    await messages.update(id, { pinned });
   },
 
   /** Rend `id` actif parmi ses frères (même conversation, même parent). */

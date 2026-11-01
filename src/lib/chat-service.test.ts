@@ -43,6 +43,7 @@ const msg = (
   completionTokens: null,
   cost: null,
   finishReason: null,
+  pinned: false,
   durationMs: null,
   createdAt: '',
   ...over,
