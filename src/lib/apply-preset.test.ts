@@ -101,7 +101,12 @@ describe('applyPreset', () => {
 
     expect(result?.id).toBe('new');
     expect(created).toHaveLength(1);
-    expect(created[0]).toMatchObject({ title: 'Lyra', presetId: 'p1', temperature: 0.9 });
+    expect(created[0]).toMatchObject({
+      title: 'Lyra',
+      presetId: 'p1',
+      temperature: 0.9,
+      reasoning: false,
+    });
     const prompt = String(created[0]?.systemPrompt);
     expect(prompt.startsWith('Parle en vers.')).toBe(true);
     expect(prompt).toContain('Jeu de rôle : tu incarnes Lyra.');
@@ -167,6 +172,16 @@ describe('applyPreset', () => {
     expect(added).toHaveLength(1);
     expect(added[0]).toMatchObject({ conversationId: 'c1', content: 'Bonsoir.' });
     expect(useChat.getState().messages).toHaveLength(1);
+  });
+
+  it('coupe le raisonnement pour un persona en jeu de rôle même s’il est activé sur la fiche', async () => {
+    const p = preset({ reasoning: true });
+    p.persona.mode = 'roleplay';
+    useChat.setState({ conversationId: 'c1', all: [], messages: [] });
+
+    await applyPreset(conversation, p);
+
+    expect(updated[0]?.[1]).toMatchObject({ reasoning: false });
   });
 
   it('applique un assistant classique aux valeurs par défaut quand aucune conversation n’est ouverte', async () => {

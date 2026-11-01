@@ -210,7 +210,7 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
               </Button>
             </div>
           )}
-          <Field label={t('presets.rpCharacter')}>
+          <Field label={t('presets.rpCharacter')} hint={t('presets.templateHint')}>
             <Textarea
               value={persona.roleplay.character}
               onChange={(e) => setRoleplay({ character: e.target.value })}
@@ -298,9 +298,15 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
             />
           </Field>
           <div className="flex items-center justify-between gap-4">
-            <p>{t('params.reasoning')}</p>
+            <div className="min-w-0">
+              <p>{t('params.reasoning')}</p>
+              {persona.mode === 'roleplay' && (
+                <p className="text-xs text-muted-foreground">{t('presets.reasoningOffRoleplay')}</p>
+              )}
+            </div>
             <Switch
-              checked={preset.reasoning ?? true}
+              checked={persona.mode === 'roleplay' ? false : (preset.reasoning ?? true)}
+              disabled={persona.mode === 'roleplay'}
               onCheckedChange={(v) => onChange({ ...preset, reasoning: v })}
               aria-label={t('params.reasoning')}
             />

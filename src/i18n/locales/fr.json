@@ -279,7 +279,21 @@
     "previewEmpty": "Aucune instruction : ce persona est neutre.",
     "badgeRoleplay": "RP",
     "badgeMature": "18+",
-    "started": "Conversation démarrée avec « {{name}} »."
+    "started": "Conversation démarrée avec « {{name}} ».",
+    "importCard": "Importer une fiche (JSON ou PNG)",
+    "exportCard": "Exporter la fiche de personnage",
+    "cardFilter": "Fiches de personnage",
+    "imported": "Fiche « {{name}} » importée : vérifiez, puis enregistrez.",
+    "importError": "Fiche illisible : {{detail}}",
+    "exported": "Fiche exportée (Character Card V2).",
+    "cardErrors": {
+      "notPng": "Ce fichier n'est pas un PNG valide.",
+      "noChunk": "Ce PNG ne contient pas de fiche de personnage (chunk « chara » ou « ccv3 » absent).",
+      "invalidJson": "La fiche n'est pas un JSON lisible.",
+      "unknownFormat": "Format de fiche inconnu : attendu Character Card V1, V2 ou V3 avec un nom."
+    },
+    "templateHint": "{{char}} et {{user}} sont remplacés par le nom du personnage et celui du joueur.",
+    "reasoningOffRoleplay": "Désactivé en jeu de rôle : le raisonnement n'apporte rien à la narration et casse l'immersion."
   },
   "compare": {
     "title": "Comparer des modèles",

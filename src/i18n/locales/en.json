@@ -279,7 +279,21 @@
     "previewEmpty": "No instruction: this persona is neutral.",
     "badgeRoleplay": "RP",
     "badgeMature": "18+",
-    "started": "Conversation started with “{{name}}”."
+    "started": "Conversation started with “{{name}}”.",
+    "importCard": "Import a card (JSON or PNG)",
+    "exportCard": "Export character card",
+    "cardFilter": "Character cards",
+    "imported": "Card “{{name}}” imported: review it, then save.",
+    "importError": "Unreadable card: {{detail}}",
+    "exported": "Card exported (Character Card V2).",
+    "cardErrors": {
+      "notPng": "This file is not a valid PNG.",
+      "noChunk": "This PNG carries no character card (no “chara” or “ccv3” chunk).",
+      "invalidJson": "The card is not readable JSON.",
+      "unknownFormat": "Unknown card format: expected Character Card V1, V2 or V3 with a name."
+    },
+    "templateHint": "{{char}} and {{user}} are replaced by the character's and the player's names.",
+    "reasoningOffRoleplay": "Off in roleplay: reasoning adds nothing to the narration and breaks immersion."
   },
   "compare": {
     "title": "Compare models",

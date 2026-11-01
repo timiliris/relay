@@ -1,12 +1,14 @@
 import { Link } from '@tanstack/react-router';
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readFile, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { platform } from '@tauri-apps/plugin-os';
 import {
   ArrowLeft,
   BookOpen,
   Download,
+  FileDown,
+  FileUp,
   KeyRound,
   Plus,
   RefreshCw,
@@ -30,6 +32,14 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useWindowTitle } from '@/hooks/use-window-title';
+import { resolveLanguage } from '@/i18n';
+import {
+  CardError,
+  cardFromPreset,
+  parseCharacterCard,
+  presetFromCard,
+  serializeCard,
+} from '@/lib/character-card';
 import { exportAll, newId, type Preset } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { importConversations, parseImport } from '@/lib/import';
@@ -173,6 +183,46 @@ export function SettingsPage() {
     await conversations.savePreset(preset);
     setEditingPreset(null);
     toast.success(t('presets.saved'));
+  };
+
+  const importCard = async () => {
+    try {
+      const path = await open({
+        multiple: false,
+        filters: [{ name: t('presets.cardFilter'), extensions: ['json', 'png'] }],
+      });
+      if (typeof path !== 'string') return;
+      const bytes = await readFile(path);
+      const input = path.toLowerCase().endsWith('.png') ? bytes : new TextDecoder().decode(bytes);
+      const card = parseCharacterCard(input);
+      setEditingPreset(presetFromCard(card, blankPreset(), resolveLanguage(settings.language)));
+      toast.info(t('presets.imported', { name: card.data.name }));
+    } catch (err) {
+      toast.error(
+        err instanceof CardError
+          ? t(`presets.cardErrors.${err.code}`)
+          : t('presets.importError', { detail: errorMessage(err) }),
+      );
+    }
+  };
+
+  const exportCard = async (preset: Preset) => {
+    try {
+      const slug =
+        preset.name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/gi, '-') || 'persona';
+      const path = await save({
+        defaultPath: `${slug}.card.json`,
+        filters: [{ name: t('presets.cardFilter'), extensions: ['json'] }],
+      });
+      if (!path) return;
+      await writeTextFile(path, serializeCard(cardFromPreset(preset)));
+      toast.success(t('presets.exported'));
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   };
 
   const removePreset = async (preset: Preset) => {
@@ -408,6 +458,16 @@ export function SettingsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={t('presets.exportCard')}
+                    title={t('presets.exportCard')}
+                    disabled={!inTauri}
+                    onClick={() => void exportCard(p)}
+                  >
+                    <FileDown />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="text-destructive"
                     aria-label={t('presets.delete')}
                     onClick={() => void removePreset(p)}
@@ -429,6 +489,16 @@ export function SettingsPage() {
                 <Button variant="outline" size="sm" onClick={() => setEditingPreset(blankPreset())}>
                   <Plus />
                   {t('presets.new')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!inTauri}
+                  title={inTauri ? undefined : t('common.onlyInApp')}
+                  onClick={() => void importCard()}
+                >
+                  <FileUp />
+                  {t('presets.importCard')}
                 </Button>
                 <Button
                   variant="outline"

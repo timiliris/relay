@@ -87,12 +87,23 @@ describe('persona', () => {
     expect(out).not.toContain('Mène l’échange');
   });
 
-  it('ne donne une première réplique qu’en jeu de rôle', () => {
+  it('ne donne une première réplique qu’en jeu de rôle, gabarits remplis', () => {
     const p = defaultPersona();
-    p.roleplay.greeting = '  Bonsoir.  ';
-    expect(greetingOf(p)).toBeNull();
+    p.roleplay.greeting = '  Bonsoir {{user}}, je suis {{CHAR}}.  ';
+    expect(greetingOf(preset(p), 'fr')).toBeNull();
     p.mode = 'roleplay';
-    expect(greetingOf(p)).toBe('Bonsoir.');
+    expect(greetingOf(preset(p), 'fr')).toBe('Bonsoir l’utilisateur, je suis Lyra.');
+    p.roleplay.userName = 'Tom';
+    expect(greetingOf(preset(p), 'en')).toBe('Bonsoir Tom, je suis Lyra.');
+  });
+
+  it('remplit {{char}} et {{user}} dans l’instruction composée', () => {
+    const p = defaultPersona();
+    p.mode = 'roleplay';
+    p.roleplay.character = '{{char}} méprise {{user}}.';
+    const out = buildSystemPrompt(preset(p), 'fr') ?? '';
+    expect(out).toContain('Lyra méprise l’utilisateur.');
+    expect(out).not.toContain('{{');
   });
 
   it('relit le JSON stocké en tolérant les champs absents ou invalides', () => {

@@ -241,6 +241,20 @@ const roleplayEn: Partial<TraitPhrases> = {
   },
 };
 
+/** Remplace `{{char}}` et `{{user}}` (insensible à la casse), comme dans les fiches SillyTavern. */
+export function fillTemplate(text: string, vars: { char: string; user: string }): string {
+  return text.replace(/\{\{\s*(char|user)\s*\}\}/gi, (_, key: string) =>
+    key.toLowerCase() === 'char' ? vars.char : vars.user,
+  );
+}
+
+function templateVars(preset: PromptSource, fr: boolean) {
+  return {
+    char: preset.name.trim() || (fr ? 'le personnage' : 'the character'),
+    user: preset.persona.roleplay.userName.trim() || (fr ? 'l’utilisateur' : 'the user'),
+  };
+}
+
 interface PromptSource {
   name: string;
   systemPrompt: string | null;
@@ -268,7 +282,7 @@ export function buildSystemPrompt(preset: PromptSource, language: Language): str
 
   if (persona.mature) blocks.push(fr ? MATURE_FR : MATURE_EN);
 
-  return blocks.length ? blocks.join('\n\n') : null;
+  return blocks.length ? fillTemplate(blocks.join('\n\n'), templateVars(preset, fr)) : null;
 }
 
 const MATURE_FR =
@@ -316,9 +330,9 @@ function roleplayBlock(preset: PromptSource, fr: boolean): string {
   return lines.join('\n');
 }
 
-/** Première réplique à insérer dans une conversation vide, ou `null`. */
-export function greetingOf(persona: Persona): string | null {
-  if (persona.mode !== 'roleplay') return null;
-  const g = persona.roleplay.greeting.trim();
-  return g || null;
+/** Première réplique à insérer dans une conversation vide (gabarits remplis), ou `null`. */
+export function greetingOf(preset: PromptSource, language: Language): string | null {
+  if (preset.persona.mode !== 'roleplay') return null;
+  const g = preset.persona.roleplay.greeting.trim();
+  return g ? fillTemplate(g, templateVars(preset, language === 'fr')) : null;
 }

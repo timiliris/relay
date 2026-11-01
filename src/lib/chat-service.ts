@@ -409,16 +409,18 @@ export async function applyPreset(
   preset: Preset,
 ): Promise<Conversation | null> {
   const s = useSettings.getState();
-  const systemPrompt = buildSystemPrompt(preset, resolveLanguage(s.language));
+  const language = resolveLanguage(s.language);
+  const systemPrompt = buildSystemPrompt(preset, language);
   const params = {
     presetId: preset.id,
     systemPrompt,
     temperature: preset.temperature,
     topP: preset.topP,
     maxTokens: preset.maxTokens,
-    reasoning: preset.reasoning,
+    // En jeu de rôle, le raisonnement affiché n'apporte rien et casse l'immersion.
+    reasoning: preset.persona.mode === 'roleplay' ? false : preset.reasoning,
   };
-  const greeting = greetingOf(preset.persona);
+  const greeting = greetingOf(preset, language);
 
   if (conversation) {
     await useConversations
