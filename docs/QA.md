@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.4.0
+# Fiche de vérification — Relay 0.5.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -122,6 +122,15 @@ Cinq branches développées en parallèle par des sessions séparées, fusionné
 | Raccourcis de prompt et épingles | `claude/snippets-and-pins-8ab03e`     | Menu « / », carte de gestion, migration v5, volet des épinglés                                                                 |
 
 Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `cargo fmt`, `cargo clippy -D warnings`, 17 tests Rust ; conversation de démo RP affichée dans le navigateur avec badge RP, compteur de mémoire et outils RP. Trois tests ont dû être adaptés au type de retour `CompletionOutput` introduit par la génération d'images et à l'envoi asynchrone du composeur. Non vérifié : les migrations v4 et v5 sur une base existante et les parcours réseau dans l'app Tauri.
+
+## Release 0.5.0 (1er novembre 2026)
+
+| Étape              | Résultat                                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenu            | Fiches Character Card, mémoire du personnage, outils de jeu de rôle, génération d'images, régénération ciblée, raccourcis de prompt, épingles |
+| PR release-please  | `chore(main): release 0.5.0` ; `Cargo.lock` aligné sur la branche de la PR ; CI verte avant fusion                                            |
+| Lancement du build | Automatique (seconde fois) : `release.yml` lancé par le job release-please via `workflow_dispatch`                                            |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.5.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.5.0 avec 11 cibles                |
 
 ## Optimisations mesurées (0.1.1)
 
