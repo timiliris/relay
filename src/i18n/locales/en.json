@@ -76,7 +76,6 @@
     "placeholder": "Write your message… (Enter to send, Shift+Enter for a new line)",
     "send": "Send",
     "stop": "Stop",
-    "regenerate": "Regenerate",
     "emptyTitle": "What do you want to explore?",
     "emptySubtitle": "Pick a model, ask your question: the answer streams in live.",
     "suggestions": [
@@ -138,7 +137,13 @@
     "imageAlt": "Attached image: {{name}}",
     "mermaidError": "Invalid Mermaid diagram.",
     "responding": "Responding…",
-    "responseDone": "Response complete."
+    "responseDone": "Response complete.",
+    "regenerate": {
+      "action": "Regenerate",
+      "with": "Regenerate with…",
+      "unknownModel": "unknown model",
+      "versions": "Versions"
+    }
   },
   "search": {
     "title": "Search",

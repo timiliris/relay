@@ -76,7 +76,6 @@
     "placeholder": "Écrivez votre message… (Entrée pour envoyer, Maj+Entrée pour une nouvelle ligne)",
     "send": "Envoyer",
     "stop": "Arrêter",
-    "regenerate": "Régénérer",
     "emptyTitle": "Que voulez-vous explorer ?",
     "emptySubtitle": "Choisissez un modèle, posez votre question : la réponse arrive en streaming.",
     "suggestions": [
@@ -138,7 +137,13 @@
     "imageAlt": "Image jointe : {{name}}",
     "mermaidError": "Diagramme Mermaid invalide.",
     "responding": "Réponse en cours…",
-    "responseDone": "Réponse terminée."
+    "responseDone": "Réponse terminée.",
+    "regenerate": {
+      "action": "Régénérer",
+      "with": "Régénérer avec…",
+      "unknownModel": "modèle inconnu",
+      "versions": "Versions"
+    }
   },
   "search": {
     "title": "Rechercher",

@@ -10,6 +10,7 @@ import {
   Pencil,
   Play,
   RefreshCw,
+  Shuffle,
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -20,7 +21,9 @@ import { hueStyle } from '@/lib/color';
 import type { Attachment, Message, Preset } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useModels } from '@/stores/models';
 import { Markdown } from './markdown';
+import { ModelPicker } from './model-picker';
 import { PresetAvatar } from './preset-avatar';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -32,12 +35,14 @@ export interface MessageBubbleProps {
   showReasoning: boolean;
   /** Persona de la conversation : son avatar remplace l'icône générique de l'assistant. */
   persona?: Preset | undefined;
-  /** Position parmi les versions (frères) ; masqué si total ≤ 1. */
-  version?: { index: number; total: number } | undefined;
+  /** Position parmi les versions (frères) ; masqué si total ≤ 1. `models` : modèle de chaque version. */
+  version?: { index: number; total: number; models?: (string | null)[] } | undefined;
   onSwitchVersion?: ((direction: 1 | -1) => void) | undefined;
   onCopy?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
   onRegenerate?: (() => void) | undefined;
+  /** Régénère avec un autre modèle, choisi dans un sélecteur (la conversation garde le sien). */
+  onRegenerateWith?: ((modelId: string) => void) | undefined;
   onContinue?: (() => void) | undefined;
   onEdit?: ((text: string) => void) | undefined;
 }
@@ -52,12 +57,18 @@ export function MessageBubble({
   onCopy,
   onDelete,
   onRegenerate,
+  onRegenerateWith,
   onContinue,
   onEdit,
 }: MessageBubbleProps) {
   const { t } = useTranslation();
+  const modelById = useModels((s) => s.byId);
+  const modelName = (id: string | null) =>
+    id ? (modelById(id)?.name ?? id) : t('chat.regenerate.unknownModel');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
+  // Le sélecteur s'ouvre vers le haut quand la bulle est proche du bas (cas du dernier message).
+  const [pickerSide, setPickerSide] = useState<'top' | 'bottom'>('bottom');
   // Pendant le streaming, le Markdown est re-rendu au plus toutes les 80 ms.
   const displayed = useThrottledValue(message.content, 80, streaming);
   const isUser = message.role === 'user';
@@ -66,6 +77,18 @@ export function MessageBubble({
   const tps =
     seconds && message.completionTokens ? Math.round(message.completionTokens / seconds) : null;
 
+  // Info-bulle : position, puis le modèle de chaque version pour les comparer d'un coup d'œil.
+  const versionTitle = version
+    ? [
+        t('chat.version', version),
+        ...(version.models?.some(Boolean)
+          ? [
+              `${t('chat.regenerate.versions')} :`,
+              ...version.models.map((m, i) => `${i + 1}. ${modelName(m)}`),
+            ]
+          : []),
+      ].join('\n')
+    : '';
   const versionNav = version && version.total > 1 && onSwitchVersion && (
     <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
       <button
@@ -77,7 +100,7 @@ export function MessageBubble({
       >
         <ChevronLeft className="size-3.5" />
       </button>
-      <span className="font-mono" title={t('chat.version', version)}>
+      <span className="font-mono" title={versionTitle}>
         {version.index}/{version.total}
       </span>
       <button
@@ -204,7 +227,11 @@ export function MessageBubble({
         {!streaming && (
           <div className="mt-1 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {versionNav}
-            {message.model && <span className="truncate font-mono">{message.model}</span>}
+            {message.model && (
+              <span className="truncate font-mono" title={message.model}>
+                {modelName(message.model)}
+              </span>
+            )}
             {hasUsage && (
               <span>
                 {t('chat.tokens', {
@@ -238,9 +265,33 @@ export function MessageBubble({
                 </IconButton>
               )}
               {onRegenerate && (
-                <IconButton label={t('chat.regenerate')} onClick={onRegenerate}>
+                <IconButton label={t('chat.regenerate.action')} onClick={onRegenerate}>
                   <RefreshCw />
                 </IconButton>
+              )}
+              {onRegenerateWith && (
+                <ModelPicker
+                  value={message.model ?? ''}
+                  onChange={onRegenerateWith}
+                  align="end"
+                  side={pickerSide}
+                  trigger={({ open, toggle }) => (
+                    <IconButton
+                      label={t('chat.regenerate.with')}
+                      aria-haspopup="menu"
+                      aria-expanded={open}
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        const below = window.innerHeight - r.bottom;
+                        setPickerSide(below < 400 && r.top > below ? 'top' : 'bottom');
+                        toggle();
+                      }}
+                      className={cn(open && 'bg-accent')}
+                    >
+                      <Shuffle />
+                    </IconButton>
+                  )}
+                />
               )}
               {onDelete && (
                 <IconButton label={t('chat.deleteMessage')} onClick={onDelete}>

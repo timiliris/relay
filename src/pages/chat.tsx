@@ -32,7 +32,7 @@ import type { Attachment, Message } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { supportsImages } from '@/lib/openrouter';
 import { errorMessage, isTauri } from '@/lib/tauri';
-import { siblingIndex } from '@/lib/tree';
+import { siblingIndex, siblingsOf } from '@/lib/tree';
 import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
 import { useChat } from '@/stores/chat';
@@ -251,7 +251,10 @@ export function ChatPage({ conversationId }: ChatPageProps) {
                     streaming={isStreamingThis}
                     showReasoning={showReasoning}
                     persona={preset ?? undefined}
-                    version={siblingIndex(all, m)}
+                    version={{
+                      ...siblingIndex(all, m),
+                      models: siblingsOf(all, m).map((s) => s.model),
+                    }}
                     onSwitchVersion={canAct ? (dir) => void switchVersion(m, dir) : undefined}
                     onCopy={() => void copy(m.content)}
                     onDelete={canAct ? () => onDelete(m) : undefined}
@@ -263,6 +266,11 @@ export function ChatPage({ conversationId }: ChatPageProps) {
                     onRegenerate={
                       canAct && m.role === 'assistant' && isLast
                         ? guard(() => regenerate(conversation, m))
+                        : undefined
+                    }
+                    onRegenerateWith={
+                      canAct && m.role === 'assistant' && isLast
+                        ? (modelId) => guard(() => regenerate(conversation, m, modelId))()
                         : undefined
                     }
                     onContinue={
