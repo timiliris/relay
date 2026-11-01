@@ -18,7 +18,7 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 
 - Historique SQLite groupé par date, **dossiers**, épinglage, **archivage**, renommage, titre automatique.
 - **Recherche globale** (Ctrl+K) dans les titres et le contenu des messages, avec mise en évidence du message trouvé.
-- **Personas** : instruction système + modèle + paramètres appliqués en un clic (par conversation ou par défaut) ; huit personas fournis au premier lancement, restaurables.
+- **Personas** : instructions, modèle et paramètres appliqués en un clic (par conversation ou par défaut), plus une personnalité réglée par six curseurs (chaleur, humour, registre, longueur, créativité, initiative), un mode **jeu de rôle** (fiche de personnage, scénario, rôle du joueur, première réplique, narration, format) et un mode **18+** derrière une confirmation d'âge. Le tout est compilé en une instruction système lisible, visible en aperçu avant d'enregistrer ; neuf personas fournis au premier lancement (dont un maître du jeu), restaurables.
 - **Comparaison** : même question envoyée à deux ou trois modèles côte à côte.
 - Page **Usage** : dépenses et tokens par jour et par modèle.
 - **Import** d'exports ChatGPT, Claude ou Relay ; export Markdown par conversation, export JSON complet.
@@ -89,7 +89,7 @@ src-tauri/src/
 ├── openrouter/sse.rs          # Analyseur SSE incrémental (testé)
 ├── secrets.rs                 # Clé API dans le trousseau système
 ├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement)
-├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas)
+├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas, v3 personnalité)
 └── menu.rs, tray.rs, shortcut.rs, i18n.rs
 ```
 

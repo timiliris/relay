@@ -89,6 +89,16 @@ Dépendances mises à jour le même jour (8 PR Dependabot fusionnées, CI verte)
 | Lancement du build | Échec du lancement automatique : le job release-please n'a pas de checkout, `gh workflow run` exigeait un dépôt. Corrigé (`--repo "$GITHUB_REPOSITORY"`) ; build 0.3.0 lancé à la main entre-temps |
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.3.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.3.0 avec 11 cibles                                                                     |
 
+## Personas : personnalité, jeu de rôle et mode 18+ (1er novembre 2026)
+
+| Vérification                 | Méthode                                                                   | Résultat                                                                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Composition de l'instruction | `src/lib/persona.test.ts` (6 tests)                                       | Persona neutre → aucune instruction ; paliers des curseurs (≤ 15, ≤ 35, 36–64, ≥ 65, ≥ 85) ; ordre instructions libres → fiche de rôle → personnalité → bloc 18+ ; relecture JSON tolérante                 |
+| Application d'un persona     | `src/lib/apply-preset.test.ts` (4 tests, dépôt SQLite simulé)             | Jeu de rôle sans conversation → conversation dédiée + première réplique enregistrée comme réponse sans coût ; conversation déjà remplie → mise à jour sans réplique ; assistant classique → défauts globaux |
+| Schéma                       | `cargo check`, migration v3 `ALTER TABLE presets ADD COLUMN persona TEXT` | Compile ; les anciennes lignes sans colonne sont relues comme personas neutres (`parsePersona(null)`)                                                                                                       |
+| Éditeur                      | navigateur (données de démo), persona « Maître du jeu »                   | Onglets Identité / Personnalité / Jeu de rôle / Avancé, curseurs avec palier en clair (« Plutôt détaillé », « Très imaginatif »), dialogue intégré de confirmation d'âge, aperçu de l'instruction composée  |
+| Non vérifié hors Tauri       | —                                                                         | Enregistrement en base et insertion réelle de la première réplique (couverts par les tests simulés uniquement)                                                                                              |
+
 ## Optimisations mesurées (0.1.1)
 
 | Mesure                                   | Avant                       | Après                                                     |

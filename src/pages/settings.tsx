@@ -18,6 +18,8 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from '@/components/language-toggle';
 import { ModelPicker } from '@/components/model-picker';
+import { PersonaEditor } from '@/components/persona-editor';
+import { PresetAvatar, PresetBadges } from '@/components/preset-avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +35,7 @@ import { formatCost } from '@/lib/format';
 import { importConversations, parseImport } from '@/lib/import';
 import { openExternal } from '@/lib/open-external';
 import { type Credits, openrouter, type ProviderSort } from '@/lib/openrouter';
+import { defaultPersona } from '@/lib/persona';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { checkForUpdates, type UpdateStatus } from '@/lib/updater';
 import { cn } from '@/lib/utils';
@@ -387,10 +390,16 @@ export function SettingsPage() {
             <ul className="flex flex-col divide-y">
               {conversations.presets.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 py-2">
+                  <PresetAvatar preset={p} className="size-8 text-xs" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{p.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium">{p.name}</p>
+                      <PresetBadges preset={p} />
+                    </div>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[p.model, p.systemPrompt].filter(Boolean).join(' · ') || '—'}
+                      {[p.model, p.systemPrompt, p.persona.roleplay.character]
+                        .filter(Boolean)
+                        .join(' · ') || '—'}
                     </p>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setEditingPreset(p)}>
@@ -409,7 +418,7 @@ export function SettingsPage() {
               ))}
             </ul>
             {editingPreset ? (
-              <PresetEditor
+              <PersonaEditor
                 preset={editingPreset}
                 onChange={setEditingPreset}
                 onSave={() => void savePreset(editingPreset)}
@@ -719,6 +728,7 @@ function blankPreset(): Preset {
     topP: null,
     maxTokens: null,
     reasoning: null,
+    persona: defaultPersona(),
     position: Date.now(),
     createdAt: new Date().toISOString(),
   };
@@ -739,94 +749,6 @@ function accentSwatch(accent: Accent): string {
     default:
       return 'oklch(0.5 0 0)';
   }
-}
-
-function PresetEditor({
-  preset,
-  onChange,
-  onSave,
-  onCancel,
-}: {
-  preset: Preset;
-  onChange: (p: Preset) => void;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <form
-      className="flex flex-col gap-3 rounded-lg border p-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (preset.name.trim()) onSave();
-      }}
-    >
-      <Field label={t('presets.name')}>
-        <Input
-          autoFocus
-          value={preset.name}
-          onChange={(e) => onChange({ ...preset, name: e.target.value })}
-          placeholder={t('presets.namePlaceholder')}
-          className="h-8"
-        />
-      </Field>
-      <Field label={t('presets.model')}>
-        <div className="flex items-center gap-2">
-          <ModelPicker
-            value={preset.model ?? ''}
-            onChange={(id) => onChange({ ...preset, model: id })}
-          />
-          {preset.model && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onChange({ ...preset, model: null })}
-            >
-              {t('common.none')}
-            </Button>
-          )}
-        </div>
-      </Field>
-      <Field label={t('params.systemPrompt')}>
-        <Textarea
-          value={preset.systemPrompt ?? ''}
-          onChange={(e) => onChange({ ...preset, systemPrompt: e.target.value || null })}
-          placeholder={t('params.systemPromptPlaceholder')}
-          className="min-h-20 font-sans"
-        />
-      </Field>
-      <Field
-        label={t('params.temperature')}
-        value={
-          preset.temperature === null ? t('params.maxTokensAuto') : preset.temperature.toFixed(2)
-        }
-      >
-        <Slider
-          min={0}
-          max={2}
-          step={0.05}
-          value={preset.temperature ?? 0.7}
-          onValueChange={(v) => onChange({ ...preset, temperature: v })}
-        />
-      </Field>
-      <Row label={t('params.reasoning')}>
-        <Switch
-          checked={preset.reasoning ?? true}
-          onCheckedChange={(v) => onChange({ ...preset, reasoning: v })}
-          aria-label={t('params.reasoning')}
-        />
-      </Row>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          {t('common.cancel')}
-        </Button>
-        <Button type="submit" size="sm" disabled={!preset.name.trim()}>
-          {t('common.save')}
-        </Button>
-      </div>
-    </form>
-  );
 }
 
 function Shortcut({ keys, label }: { keys: string; label: string }) {

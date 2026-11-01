@@ -1,12 +1,13 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { Check, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { hueStyle } from '@/lib/color';
+import { applyPreset } from '@/lib/chat-service';
 import type { Conversation, Preset } from '@/lib/db';
+import { errorMessage } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { useConversations } from '@/stores/conversations';
-import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
+import { PresetAvatar, PresetBadges } from './preset-avatar';
 import { Button } from './ui/button';
 import { Dropdown, DropdownItem } from './ui/dropdown';
 
@@ -14,43 +15,35 @@ interface PresetPickerProps {
   conversation: Conversation | null;
 }
 
-/** Applique un persona (instruction système, modèle, paramètres) à la conversation ou aux défauts. */
+/**
+ * Applique un persona (instruction composée, modèle, paramètres) à la conversation ou aux
+ * défauts ; un persona en jeu de rôle ouvre une conversation avec sa première réplique.
+ */
 export function PresetPicker({ conversation }: PresetPickerProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const presets = useConversations((s) => s.presets);
-  const update = useConversations((s) => s.update);
-  const settings = useSettings();
   const current = presets.find((p) => p.id === conversation?.presetId);
 
   const apply = async (preset: Preset) => {
-    if (conversation) {
-      await update(conversation.id, {
-        presetId: preset.id,
-        systemPrompt: preset.systemPrompt,
-        temperature: preset.temperature,
-        topP: preset.topP,
-        maxTokens: preset.maxTokens,
-        reasoning: preset.reasoning,
-        ...(preset.model ? { model: preset.model } : {}),
-      });
-    } else {
-      settings.patch({
-        systemPrompt: preset.systemPrompt ?? '',
-        ...(preset.temperature !== null ? { temperature: preset.temperature } : {}),
-        ...(preset.topP !== null ? { topP: preset.topP } : {}),
-        ...(preset.maxTokens !== null ? { maxTokens: preset.maxTokens } : {}),
-        ...(preset.reasoning !== null ? { reasoning: preset.reasoning } : {}),
-        ...(preset.model ? { defaultModel: preset.model } : {}),
-      });
+    try {
+      const created = await applyPreset(conversation, preset);
+      if (created) {
+        toast.success(t('presets.started', { name: preset.name }));
+        await navigate({ to: '/chat/$conversationId', params: { conversationId: created.id } });
+      } else {
+        toast.success(t('presets.applied', { name: preset.name }));
+      }
+    } catch (error) {
+      toast.error(errorMessage(error));
     }
-    toast.success(t('presets.applied', { name: preset.name }));
   };
 
   return (
     <Dropdown
       align="start"
       side="top"
-      className="w-64 p-1"
+      className="w-72 p-1"
       trigger={({ toggle }) => (
         <Button
           variant="ghost"
@@ -96,27 +89,12 @@ export function PresetPicker({ conversation }: PresetPickerProps) {
             >
               <PresetAvatar preset={p} className="size-5 text-[10px]" />
               <span className="flex-1 truncate">{p.name}</span>
+              <PresetBadges preset={p} />
               {current?.id === p.id && <Check className="text-primary" />}
             </DropdownItem>
           ))}
         </>
       )}
     </Dropdown>
-  );
-}
-
-/** Pastille colorée stable par persona (initiale sur teinte dérivée de l'identifiant). */
-export function PresetAvatar({ preset, className }: { preset: Preset; className?: string }) {
-  return (
-    <span
-      className={cn(
-        'hue-solid inline-flex shrink-0 items-center justify-center rounded-full font-semibold leading-none',
-        className,
-      )}
-      style={hueStyle(preset.id)}
-      aria-hidden="true"
-    >
-      {preset.name.trim().charAt(0).toUpperCase() || '?'}
-    </span>
   );
 }

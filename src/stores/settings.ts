@@ -59,6 +59,8 @@ export interface SettingsData extends GenerationParams {
   messagesPageSize: number;
   onboarded: boolean;
   presetsSeeded: boolean;
+  /** L'utilisateur a confirmé être majeur (mode 18+ des personas). */
+  adultConfirmed: boolean;
   /** Installer les mises à jour sans confirmation. */
   autoUpdate: boolean;
   /** Conversation rouverte au lancement. */
@@ -93,6 +95,7 @@ const defaults: SettingsData = {
   messagesPageSize: 60,
   onboarded: false,
   presetsSeeded: false,
+  adultConfirmed: false,
   autoUpdate: false,
   lastConversationId: null,
   ...defaultGeneration,

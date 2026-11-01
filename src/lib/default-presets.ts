@@ -4,6 +4,7 @@
  */
 import type { Language } from '@/i18n';
 import type { Preset } from './db';
+import { defaultPersona, type Persona } from './persona';
 
 export type DefaultPreset = Pick<
   Preset,
@@ -11,7 +12,35 @@ export type DefaultPreset = Pick<
 > & {
   /** Identifiant stable, indépendant de la langue, pour détecter les personas déjà présents. */
   key: string;
+  /** Absent = persona neutre (assistant, traits à 50). */
+  persona?: Persona;
 };
+
+/** Maître du jeu : exemple de persona en mode jeu de rôle, traits poussés vers la narration. */
+function gameMaster(language: Language): Persona {
+  const fr = language === 'fr';
+  const base = defaultPersona();
+  return {
+    ...base,
+    mode: 'roleplay',
+    traits: { ...base.traits, creativity: 85, initiative: 80, verbosity: 70 },
+    roleplay: {
+      character: fr
+        ? 'Un maître du jeu omniscient et théâtral, voix grave et sens du suspense. Il décrit le monde, incarne tous les personnages rencontrés et arbitre les actions avec équité, en laissant toujours le dernier mot au joueur.'
+        : 'An omniscient, theatrical game master with a deep voice and a taste for suspense. He describes the world, voices every character met and adjudicates actions fairly, always leaving the final say to the player.',
+      scenario: fr
+        ? 'Aventure de fantasy. Le joueur se réveille dans une taverne de la ville portuaire de Valmer, une lettre cachetée dans la poche et aucun souvenir des trois derniers jours.'
+        : 'Fantasy adventure. The player wakes up in a tavern of the port city of Valmer, a sealed letter in their pocket and no memory of the last three days.',
+      userName: '',
+      userPersona: '',
+      greeting: fr
+        ? "La pluie bat les volets de la taverne du Héron Gris. Tu ouvres les yeux sur une table poisseuse, la tête lourde. Dans ta poche, une lettre cachetée de cire noire porte ton nom… d'une écriture qui n'est pas la tienne. Le tavernier t'observe en essuyant une chope. « Enfin réveillé. Ils sont passés deux fois pour toi, hier. » Que fais-tu ?"
+        : 'Rain lashes the shutters of the Grey Heron tavern. You open your eyes on a sticky table, your head heavy. In your pocket, a letter sealed with black wax bears your name… in a handwriting that is not yours. The innkeeper watches you while wiping a mug. "Awake at last. They came by twice for you yesterday." What do you do?',
+      pov: 'third',
+      format: 'novel',
+    },
+  };
+}
 
 const fr: DefaultPreset[] = [
   {
@@ -93,6 +122,17 @@ const fr: DefaultPreset[] = [
     topP: null,
     maxTokens: null,
     reasoning: false,
+  },
+  {
+    key: 'gamemaster',
+    name: 'Maître du jeu',
+    systemPrompt:
+      'Tu mènes une partie de jeu de rôle textuel. Décris les lieux avec des détails sensoriels, fais parler les personnages non joueurs, et termine chaque tour par une situation ouverte qui appelle une décision du joueur.',
+    temperature: 0.9,
+    topP: null,
+    maxTokens: null,
+    reasoning: false,
+    persona: gameMaster('fr'),
   },
 ];
 
@@ -176,6 +216,17 @@ const en: DefaultPreset[] = [
     topP: null,
     maxTokens: null,
     reasoning: false,
+  },
+  {
+    key: 'gamemaster',
+    name: 'Game master',
+    systemPrompt:
+      'You run a text-based roleplaying game. Describe places with sensory detail, voice the non-player characters, and end every turn on an open situation that calls for a decision from the player.',
+    temperature: 0.9,
+    topP: null,
+    maxTokens: null,
+    reasoning: false,
+    persona: gameMaster('en'),
   },
 ];
 

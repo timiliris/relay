@@ -4,6 +4,7 @@
  */
 import Database from '@tauri-apps/plugin-sql';
 import type { Role } from './openrouter';
+import { type Persona, parsePersona, serializePersona } from './persona';
 
 /** Pièce jointe d'un message, stockée en JSON dans la colonne `attachments`. */
 export interface Attachment {
@@ -77,6 +78,8 @@ export interface Preset {
   topP: number | null;
   maxTokens: number | null;
   reasoning: boolean | null;
+  /** Mode, traits, fiche de rôle et mode 18+ (colonne JSON `persona`). */
+  persona: Persona;
   position: number;
   createdAt: string;
 }
@@ -153,6 +156,7 @@ interface PresetRow {
   top_p: number | null;
   max_tokens: number | null;
   reasoning: number | null;
+  persona: string | null;
   position: number;
   created_at: string;
 }
@@ -232,6 +236,7 @@ const toPreset = (r: PresetRow): Preset => ({
   topP: r.top_p,
   maxTokens: r.max_tokens,
   reasoning: bool(r.reasoning),
+  persona: parsePersona(r.persona),
   position: r.position,
   createdAt: r.created_at,
 });
@@ -550,11 +555,12 @@ export const presets = {
       createdAt: existing[0]?.created_at ?? now(),
     };
     await c.execute(
-      `INSERT INTO presets (id, name, system_prompt, model, temperature, top_p, max_tokens, reasoning, position, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO presets (id, name, system_prompt, model, temperature, top_p, max_tokens, reasoning, persona, position, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, system_prompt = excluded.system_prompt,
          model = excluded.model, temperature = excluded.temperature, top_p = excluded.top_p,
-         max_tokens = excluded.max_tokens, reasoning = excluded.reasoning, position = excluded.position`,
+         max_tokens = excluded.max_tokens, reasoning = excluded.reasoning, persona = excluded.persona,
+         position = excluded.position`,
       [
         full.id,
         full.name,
@@ -564,6 +570,7 @@ export const presets = {
         full.topP,
         full.maxTokens,
         int(full.reasoning),
+        serializePersona(full.persona),
         full.position,
         full.createdAt,
       ],

@@ -190,7 +190,7 @@
   },
   "presets": {
     "title": "Personas",
-    "description": "A persona bundles a system prompt, a model and parameters, applied to a conversation in one click.",
+    "description": "A persona bundles instructions, an adjustable personality, a roleplay mode and parameters, applied to a conversation in one click.",
     "apply": "Persona",
     "applied": "Persona “{{name}}” applied.",
     "none": "No personas yet. Create one in Settings.",
@@ -203,7 +203,83 @@
     "saveFromCurrent": "Save current configuration as a persona",
     "saved": "Persona saved.",
     "restoreDefaults": "Restore default personas",
-    "restored": "{{count}} default persona(s) added."
+    "restored": "{{count}} default persona(s) added.",
+    "mode": "Mode",
+    "modeAssistant": "Assistant",
+    "modeRoleplay": "Roleplay",
+    "tabs": "Persona sections",
+    "tabIdentity": "Identity",
+    "tabPersonality": "Personality",
+    "tabRoleplay": "Roleplay",
+    "tabAdvanced": "Advanced",
+    "instructions": "Free instructions",
+    "instructionsHint": "Placed verbatim at the top of the system prompt; the other tabs are appended to it.",
+    "mature": "Mature content (18+)",
+    "matureHint": "Allows adult themes (violence, crude language, sexuality between adults). Still subject to the model's and OpenRouter's rules.",
+    "matureConfirmTitle": "Confirm your age",
+    "matureConfirmBody": "The 18+ mode allows explicit content intended for adults. Do you confirm you are 18 or older?",
+    "matureConfirmYes": "I am 18 or older",
+    "traitsHint": "50 = neutral, nothing added. Every deviation becomes a sentence in the system prompt.",
+    "traits": {
+      "warmth": {
+        "label": "Warmth",
+        "low": "cold",
+        "high": "warm"
+      },
+      "humor": {
+        "label": "Humor",
+        "low": "serious",
+        "high": "funny"
+      },
+      "formality": {
+        "label": "Register",
+        "low": "casual",
+        "high": "formal"
+      },
+      "verbosity": {
+        "label": "Length",
+        "low": "concise",
+        "high": "detailed"
+      },
+      "creativity": {
+        "label": "Creativity",
+        "low": "factual",
+        "high": "imaginative"
+      },
+      "initiative": {
+        "label": "Initiative",
+        "low": "reactive",
+        "high": "proactive"
+      }
+    },
+    "levelNeutral": "Neutral",
+    "levelRather": "Rather {{label}}",
+    "levelVery": "Very {{label}}",
+    "resetTraits": "Reset all to neutral",
+    "roleplayOnly": "These settings only apply in Roleplay mode.",
+    "switchToRoleplay": "Switch to roleplay",
+    "rpCharacter": "Character",
+    "rpCharacterPlaceholder": "Appearance, temperament, backstory, way of speaking…",
+    "rpScenario": "Scenario",
+    "rpScenarioPlaceholder": "Setting, era, opening situation…",
+    "rpUserName": "Player name",
+    "rpUserNamePlaceholder": "Empty = “the user”",
+    "rpUserPersona": "Player role",
+    "rpUserPersonaPlaceholder": "Who does the user play in the story?",
+    "rpGreeting": "Opening line",
+    "rpGreetingHint": "Inserted as the character's first message in every new conversation.",
+    "rpGreetingPlaceholder": "E.g.: The door creaks. “There you are at last…”",
+    "rpPov": "Narration",
+    "rpPovFirst": "First person",
+    "rpPovThird": "Third person",
+    "rpFormat": "Format",
+    "rpFormatNovel": "Novel",
+    "rpFormatChat": "Chat",
+    "preview": "Preview of the system prompt sent",
+    "previewEmpty": "No instruction: this persona is neutral.",
+    "badgeRoleplay": "RP",
+    "badgeMature": "18+",
+    "started": "Conversation started with “{{name}}”."
   },
   "compare": {
     "title": "Compare models",

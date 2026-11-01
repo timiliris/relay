@@ -6,7 +6,7 @@
  */
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification';
-import i18n from '@/i18n';
+import i18n, { resolveLanguage } from '@/i18n';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { useSettings } from '@/stores/settings';
@@ -19,9 +19,11 @@ import {
   type Message,
   messages as msgRepo,
   newId,
+  type Preset,
 } from './db';
 import { truncateTitle } from './format';
 import { type ChatMessageInput, type ChatRequest, openrouter } from './openrouter';
+import { buildSystemPrompt, greetingOf } from './persona';
 import { errorMessage } from './tauri';
 import { activePath, siblingsOf, tail } from './tree';
 
@@ -395,4 +397,73 @@ async function notifyIfHidden(title: string, body: string): Promise<void> {
   } catch {
     // notifications indisponibles : on ignore
   }
+}
+
+/**
+ * Applique un persona : à la conversation (instruction composée, paramètres, modèle) ou,
+ * sans conversation, aux valeurs par défaut. Un persona en jeu de rôle démarre toujours une
+ * conversation dédiée et y insère sa première réplique. Renvoie la conversation créée, à ouvrir.
+ */
+export async function applyPreset(
+  conversation: Conversation | null,
+  preset: Preset,
+): Promise<Conversation | null> {
+  const s = useSettings.getState();
+  const systemPrompt = buildSystemPrompt(preset, resolveLanguage(s.language));
+  const params = {
+    presetId: preset.id,
+    systemPrompt,
+    temperature: preset.temperature,
+    topP: preset.topP,
+    maxTokens: preset.maxTokens,
+    reasoning: preset.reasoning,
+  };
+  const greeting = greetingOf(preset.persona);
+
+  if (conversation) {
+    await useConversations
+      .getState()
+      .update(conversation.id, { ...params, ...(preset.model ? { model: preset.model } : {}) });
+    const chat = useChat.getState();
+    if (greeting && chat.conversationId === conversation.id && chat.all.length === 0) {
+      await addGreeting({ ...conversation, model: preset.model ?? conversation.model }, greeting);
+    }
+    return null;
+  }
+
+  if (preset.persona.mode === 'roleplay') {
+    const created = await useConversations.getState().create({
+      title: preset.name,
+      model: preset.model ?? s.defaultModel,
+      webSearch: s.webSearch,
+      ...params,
+    });
+    if (greeting) await addGreeting(created, greeting);
+    return created;
+  }
+
+  s.patch({
+    systemPrompt: systemPrompt ?? '',
+    ...(preset.temperature !== null ? { temperature: preset.temperature } : {}),
+    ...(preset.topP !== null ? { topP: preset.topP } : {}),
+    ...(preset.maxTokens !== null ? { maxTokens: preset.maxTokens } : {}),
+    ...(preset.reasoning !== null ? { reasoning: preset.reasoning } : {}),
+    ...(preset.model ? { defaultModel: preset.model } : {}),
+  });
+  return null;
+}
+
+/** Première réplique du personnage, enregistrée comme réponse de l'assistant (sans coût). */
+async function addGreeting(conversation: Conversation, greeting: string): Promise<void> {
+  const message = await msgRepo.add({
+    conversationId: conversation.id,
+    parentId: null,
+    role: 'assistant',
+    content: greeting,
+    model: conversation.model,
+    ...emptyAssistant,
+    finishReason: 'stop',
+  });
+  const chat = useChat.getState();
+  if (chat.conversationId === conversation.id) chat.upsert(message);
 }

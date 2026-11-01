@@ -17,10 +17,11 @@ import { useTranslation } from 'react-i18next';
 import { useThrottledValue } from '@/hooks/use-throttled-value';
 import { formatBytes } from '@/lib/attachments';
 import { hueStyle } from '@/lib/color';
-import type { Attachment, Message } from '@/lib/db';
+import type { Attachment, Message, Preset } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Markdown } from './markdown';
+import { PresetAvatar } from './preset-avatar';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { IconButton } from './ui/tooltip-button';
@@ -29,6 +30,8 @@ export interface MessageBubbleProps {
   message: Message;
   streaming?: boolean;
   showReasoning: boolean;
+  /** Persona de la conversation : son avatar remplace l'icône générique de l'assistant. */
+  persona?: Preset | undefined;
   /** Position parmi les versions (frères) ; masqué si total ≤ 1. */
   version?: { index: number; total: number } | undefined;
   onSwitchVersion?: ((direction: 1 | -1) => void) | undefined;
@@ -43,6 +46,7 @@ export function MessageBubble({
   message,
   streaming = false,
   showReasoning,
+  persona,
   version,
   onSwitchVersion,
   onCopy,
@@ -166,12 +170,16 @@ export function MessageBubble({
 
   return (
     <div className="group flex animate-slide-up gap-3">
-      <div
-        className="hue-soft mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border"
-        style={hueStyle(message.model ?? 'assistant')}
-      >
-        <Bot className="hue-text size-4" />
-      </div>
+      {persona ? (
+        <PresetAvatar preset={persona} className="mt-1 size-7 text-xs shadow-sm" />
+      ) : (
+        <div
+          className="hue-soft mt-1 flex size-7 shrink-0 items-center justify-center rounded-full border"
+          style={hueStyle(message.model ?? 'assistant')}
+        >
+          <Bot className="hue-text size-4" />
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         {showReasoning && message.reasoning && (
           <Reasoning text={message.reasoning} streaming={streaming && !message.content} />

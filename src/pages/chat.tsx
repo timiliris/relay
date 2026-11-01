@@ -8,6 +8,7 @@ import { Composer } from '@/components/composer';
 import { GenerationParams } from '@/components/generation-params';
 import { MessageBubble } from '@/components/message-bubble';
 import { ModelPicker } from '@/components/model-picker';
+import { PresetBadges } from '@/components/preset-avatar';
 import { PresetPicker } from '@/components/preset-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
@@ -54,6 +55,10 @@ export function ChatPage({ conversationId }: ChatPageProps) {
     (s) => s.items.find((c) => c.id === conversationId) ?? null,
   );
   const updateConversation = useConversations((s) => s.update);
+  const presetId = conversation?.presetId ?? null;
+  const preset = useConversations(
+    (s) => (presetId ? s.presets.find((p) => p.id === presetId) : undefined) ?? null,
+  );
   const { all, messages, stream, error, open, setError } = useChat();
   const settings = useSettings();
   const apiKeyHint = useApiKey((s) => s.hint);
@@ -190,6 +195,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         <p className="min-w-0 flex-1 truncate text-sm font-medium">
           {conversation?.title ?? (showEmpty ? t('chat.emptyTitle') : t('chat.untitled'))}
         </p>
+        {preset && <PresetBadges preset={preset} className="hidden sm:inline-flex" />}
         {totalCost > 0 && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
@@ -244,6 +250,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
                     message={m}
                     streaming={isStreamingThis}
                     showReasoning={showReasoning}
+                    persona={preset ?? undefined}
                     version={siblingIndex(all, m)}
                     onSwitchVersion={canAct ? (dir) => void switchVersion(m, dir) : undefined}
                     onCopy={() => void copy(m.content)}

@@ -92,6 +92,15 @@ fn migrations() -> Vec<Migration> {
         ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "preset_persona",
+            sql: "
+            -- Personnalité du persona (mode, traits, fiche de rôle, 18+) en JSON.
+            ALTER TABLE presets ADD COLUMN persona TEXT;
+        ",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

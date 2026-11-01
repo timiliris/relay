@@ -190,7 +190,7 @@
   },
   "presets": {
     "title": "Personas",
-    "description": "Un persona regroupe une instruction système, un modèle et des paramètres, applicables en un clic à une conversation.",
+    "description": "Un persona regroupe des instructions, une personnalité réglable, un mode jeu de rôle et des paramètres, applicables en un clic à une conversation.",
     "apply": "Persona",
     "applied": "Persona « {{name}} » appliqué.",
     "none": "Aucun persona. Créez-en un dans les paramètres.",
@@ -203,7 +203,83 @@
     "saveFromCurrent": "Enregistrer la configuration actuelle comme persona",
     "saved": "Persona enregistré.",
     "restoreDefaults": "Restaurer les personas par défaut",
-    "restored": "{{count}} persona(s) par défaut ajouté(s)."
+    "restored": "{{count}} persona(s) par défaut ajouté(s).",
+    "mode": "Mode",
+    "modeAssistant": "Assistant",
+    "modeRoleplay": "Jeu de rôle",
+    "tabs": "Sections du persona",
+    "tabIdentity": "Identité",
+    "tabPersonality": "Personnalité",
+    "tabRoleplay": "Jeu de rôle",
+    "tabAdvanced": "Avancé",
+    "instructions": "Instructions libres",
+    "instructionsHint": "Reprises telles quelles en tête de l'instruction système ; les autres onglets s'y ajoutent.",
+    "mature": "Contenu mature (18+)",
+    "matureHint": "Autorise les thèmes adultes (violence, langage cru, sexualité entre adultes). Reste soumis aux règles du modèle et d'OpenRouter.",
+    "matureConfirmTitle": "Confirmer votre âge",
+    "matureConfirmBody": "Le mode 18+ autorise des contenus explicites destinés aux adultes. Confirmez-vous avoir 18 ans ou plus ?",
+    "matureConfirmYes": "J'ai 18 ans ou plus",
+    "traitsHint": "50 = neutre, aucune consigne ajoutée. Chaque écart devient une phrase dans l'instruction système.",
+    "traits": {
+      "warmth": {
+        "label": "Chaleur",
+        "low": "froid",
+        "high": "chaleureux"
+      },
+      "humor": {
+        "label": "Humour",
+        "low": "sérieux",
+        "high": "drôle"
+      },
+      "formality": {
+        "label": "Registre",
+        "low": "familier",
+        "high": "soutenu"
+      },
+      "verbosity": {
+        "label": "Longueur",
+        "low": "concis",
+        "high": "détaillé"
+      },
+      "creativity": {
+        "label": "Créativité",
+        "low": "factuel",
+        "high": "imaginatif"
+      },
+      "initiative": {
+        "label": "Initiative",
+        "low": "réactif",
+        "high": "proactif"
+      }
+    },
+    "levelNeutral": "Neutre",
+    "levelRather": "Plutôt {{label}}",
+    "levelVery": "Très {{label}}",
+    "resetTraits": "Tout remettre au neutre",
+    "roleplayOnly": "Ces réglages ne s'appliquent qu'en mode Jeu de rôle.",
+    "switchToRoleplay": "Passer en jeu de rôle",
+    "rpCharacter": "Personnage",
+    "rpCharacterPlaceholder": "Apparence, caractère, histoire, manière de parler…",
+    "rpScenario": "Scénario",
+    "rpScenarioPlaceholder": "Décor, époque, situation de départ…",
+    "rpUserName": "Nom du joueur",
+    "rpUserNamePlaceholder": "Vide = « l'utilisateur »",
+    "rpUserPersona": "Rôle du joueur",
+    "rpUserPersonaPlaceholder": "Qui incarne l'utilisateur dans l'histoire ?",
+    "rpGreeting": "Première réplique",
+    "rpGreetingHint": "Insérée comme premier message du personnage dans chaque nouvelle conversation.",
+    "rpGreetingPlaceholder": "Ex. : La porte grince. « Vous voilà enfin… »",
+    "rpPov": "Narration",
+    "rpPovFirst": "Première personne",
+    "rpPovThird": "Troisième personne",
+    "rpFormat": "Format",
+    "rpFormatNovel": "Roman",
+    "rpFormatChat": "Messagerie",
+    "preview": "Aperçu de l'instruction système envoyée",
+    "previewEmpty": "Aucune instruction : ce persona est neutre.",
+    "badgeRoleplay": "RP",
+    "badgeMature": "18+",
+    "started": "Conversation démarrée avec « {{name}} »."
   },
   "compare": {
     "title": "Comparer des modèles",

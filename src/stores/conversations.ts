@@ -12,6 +12,7 @@ import {
 } from '@/lib/db';
 import { defaultPresetId, defaultPresets } from '@/lib/default-presets';
 import { devFixturesEnabled, sampleConversations, sampleFolders } from '@/lib/dev-fixtures';
+import { defaultPersona } from '@/lib/persona';
 import { isTauri } from '@/lib/tauri';
 import { useSettings } from './settings';
 
@@ -75,6 +76,7 @@ export const useConversations = create<ConversationsState>()((set, get) => {
                   topP: d.topP,
                   maxTokens: d.maxTokens,
                   reasoning: d.reasoning,
+                  persona: d.persona ?? defaultPersona(),
                   position: index,
                   createdAt: new Date().toISOString(),
                 })),
@@ -172,6 +174,7 @@ export const useConversations = create<ConversationsState>()((set, get) => {
           topP: preset.topP,
           maxTokens: preset.maxTokens,
           reasoning: preset.reasoning,
+          persona: preset.persona ?? defaultPersona(),
           position: index,
         });
         created++;
