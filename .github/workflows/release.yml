@@ -41,7 +41,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             args: ""
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Dépendances système Tauri (Linux)
         if: runner.os == 'Linux'
