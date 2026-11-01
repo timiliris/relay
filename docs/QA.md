@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.3.0
+# Fiche de vérification — Relay 0.4.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -98,6 +98,15 @@ Dépendances mises à jour le même jour (8 PR Dependabot fusionnées, CI verte)
 | Schéma                       | `cargo check`, migration v3 `ALTER TABLE presets ADD COLUMN persona TEXT` | Compile ; les anciennes lignes sans colonne sont relues comme personas neutres (`parsePersona(null)`)                                                                                                       |
 | Éditeur                      | navigateur (données de démo), persona « Maître du jeu »                   | Onglets Identité / Personnalité / Jeu de rôle / Avancé, curseurs avec palier en clair (« Plutôt détaillé », « Très imaginatif »), dialogue intégré de confirmation d'âge, aperçu de l'instruction composée  |
 | Non vérifié hors Tauri       | —                                                                         | Enregistrement en base et insertion réelle de la première réplique (couverts par les tests simulés uniquement)                                                                                              |
+
+## Release 0.4.0 (1er novembre 2026)
+
+| Étape              | Résultat                                                                                                                                                                     |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenu            | Personas : personnalité par curseurs, mode jeu de rôle, mode 18+ (migration SQLite v3)                                                                                       |
+| PR release-please  | `chore(main): release 0.4.0` ; `Cargo.lock` aligné directement sur la branche de la PR (plus de commit de rattrapage après fusion) ; CI verte avant fusion                   |
+| Lancement du build | **Automatique pour la première fois** : le job release-please a lancé `release.yml` (événement `workflow_dispatch`) grâce à `--repo "$GITHUB_REPOSITORY"`, sans intervention |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.4.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.4.0 avec 11 cibles                                               |
 
 ## Optimisations mesurées (0.1.1)
 
