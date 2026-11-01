@@ -67,6 +67,20 @@ pub struct Choice {
 pub struct Delta {
     pub content: Option<String>,
     pub reasoning: Option<String>,
+    /// Images produites par un modèle à sortie image (`modalities: ["image", "text"]`).
+    #[serde(default)]
+    pub images: Vec<ImagePart>,
+}
+
+/// Image générée : `{ "type": "image_url", "image_url": { "url": "data:image/png;base64,…" } }`.
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+pub struct ImagePart {
+    pub image_url: ImageUrl,
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+pub struct ImageUrl {
+    pub url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -106,6 +120,26 @@ mod tests {
         let chunk: Chunk = serde_json::from_str(json).unwrap();
         assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("Bon"));
         assert!(chunk.usage.is_none());
+    }
+
+    #[test]
+    fn parses_a_delta_chunk_with_generated_images() {
+        let json = r#"{"id":"gen-2","choices":[{"delta":{"role":"assistant","content":"Voici :","images":[{"type":"image_url","index":0,"image_url":{"url":"data:image/png;base64,iVBORw0KGgo="}}]},"finish_reason":null}]}"#;
+        let chunk: Chunk = serde_json::from_str(json).unwrap();
+        let delta = &chunk.choices[0].delta;
+        assert_eq!(delta.content.as_deref(), Some("Voici :"));
+        assert_eq!(delta.images.len(), 1);
+        assert_eq!(
+            delta.images[0].image_url.url,
+            "data:image/png;base64,iVBORw0KGgo="
+        );
+    }
+
+    #[test]
+    fn delta_without_images_defaults_to_empty() {
+        let json = r#"{"choices":[{"delta":{"content":"x"}}]}"#;
+        let chunk: Chunk = serde_json::from_str(json).unwrap();
+        assert!(chunk.choices[0].delta.images.is_empty());
     }
 
     #[test]

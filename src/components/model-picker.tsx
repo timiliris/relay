@@ -1,8 +1,8 @@
-import { Brain, Check, ChevronDown, Eye, RefreshCw, Star } from 'lucide-react';
+import { Brain, Check, ChevronDown, Eye, ImagePlus, RefreshCw, Star } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPrice, formatTokens } from '@/lib/format';
-import type { ModelInfo } from '@/lib/openrouter';
+import { type ModelInfo, supportsImageOutput } from '@/lib/openrouter';
 import { cn } from '@/lib/utils';
 import { useModels } from '@/stores/models';
 import { useSettings } from '@/stores/settings';
@@ -11,9 +11,17 @@ import { Dropdown } from './ui/dropdown';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
 
-type Filter = 'all' | 'favorites' | 'vision' | 'free' | 'reasoning';
+type Filter = 'all' | 'favorites' | 'vision' | 'images' | 'free' | 'reasoning';
 type Sort = 'name' | 'price' | 'context';
-const FILTERS: Filter[] = ['all', 'favorites', 'vision', 'free', 'reasoning'];
+const FILTERS: Filter[] = ['all', 'favorites', 'vision', 'images', 'free', 'reasoning'];
+const FILTER_LABELS = {
+  all: 'model.filterAll',
+  favorites: 'model.filterFavorites',
+  vision: 'model.filterVision',
+  images: 'chat.images.filter',
+  free: 'model.filterFree',
+  reasoning: 'model.filterReasoning',
+} as const satisfies Record<Filter, string>;
 
 interface ModelPickerProps {
   value: string;
@@ -55,6 +63,7 @@ export function ModelPicker({
       : models;
     if (filter === 'favorites') list = list.filter((m) => favorites.includes(m.id));
     if (filter === 'vision') list = list.filter((m) => m.inputModalities.includes('image'));
+    if (filter === 'images') list = list.filter((m) => supportsImageOutput(m));
     if (filter === 'free')
       list = list.filter((m) => m.promptPrice === 0 && m.completionPrice === 0);
     if (filter === 'reasoning') list = list.filter((m) => m.supportsReasoning);
@@ -149,7 +158,7 @@ export function ModelPicker({
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {t(`model.filter${f.charAt(0).toUpperCase()}${f.slice(1)}` as 'model.filterAll')}
+                {t(FILTER_LABELS[f])}
               </button>
             ))}
             <Select
@@ -214,6 +223,7 @@ function Row({
   const { t } = useTranslation();
   const free = model.promptPrice === 0 && model.completionPrice === 0;
   const vision = model.inputModalities.includes('image');
+  const imageOutput = supportsImageOutput(model);
   return (
     <div
       className={cn(
@@ -225,6 +235,12 @@ function Row({
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm">{model.name}</span>
           {vision && <Eye className="size-3 shrink-0 text-info" aria-label={t('model.vision')} />}
+          {imageOutput && (
+            <ImagePlus
+              className="size-3 shrink-0 text-chart-4"
+              aria-label={t('chat.images.modelBadge')}
+            />
+          )}
           {model.supportsReasoning && (
             <Brain
               className="size-3 shrink-0 text-chart-1"

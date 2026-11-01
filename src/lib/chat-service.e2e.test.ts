@@ -75,8 +75,27 @@ vi.mock('./openrouter', async (importOriginal) => {
       cancelStream: vi.fn(async (requestId: string) => {
         api.cancelled.push(requestId);
       }),
-      completeChat: vi.fn(async () => 'Titre généré'),
+      completeChat: vi.fn(async () => ({ content: 'Titre généré', images: [] })),
     },
+  };
+});
+
+// Catalogue de modèles en mémoire : le vrai store se persiste via le plugin Tauri `store`.
+vi.mock('@/stores/models', async () => {
+  const { create } = await import('zustand');
+  type ModelInfo = import('./openrouter').ModelInfo;
+  return {
+    useModels: create<{
+      models: ModelInfo[];
+      status: string;
+      load: () => Promise<void>;
+      byId: (id: string) => ModelInfo | undefined;
+    }>()((_set, get) => ({
+      models: [],
+      status: 'ready',
+      load: async () => {},
+      byId: (id) => get().models.find((m) => m.id === id),
+    })),
   };
 });
 
@@ -88,7 +107,9 @@ vi.mock('./tauri', async (importOriginal) => {
 const { continueMessage, editMessage, regenerate, sendMessage } = await import('./chat-service');
 const { useChat } = await import('@/stores/chat');
 const { useConversations } = await import('@/stores/conversations');
+const { useModels } = await import('@/stores/models');
 const { useSettings } = await import('@/stores/settings');
+const { normalizeModel } = await import('./openrouter');
 
 const conversation: Conversation = {
   id: 'c1',
@@ -122,6 +143,7 @@ beforeEach(() => {
   api.cancelled = [];
   useSettings.setState({ autoTitle: false, notifyOnComplete: false });
   useConversations.setState({ items: [conversation], loaded: true });
+  useModels.setState({ models: [], status: 'ready' });
   useChat.setState({ conversationId: 'c1', all: [], messages: [], stream: null, error: null });
 });
 
@@ -158,6 +180,55 @@ describe('parcours de chat', () => {
     expect(sent[0]).toEqual({ role: 'system', content: 'Sois bref.' });
     expect(sent[1]).toEqual({ role: 'user', content: 'Salut' });
     expect(store.touched).toEqual(['c1']);
+  });
+
+  it('ajoute les images générées aux pièces jointes de la réponse et les persiste', async () => {
+    api.scripts.push([
+      { type: 'delta', content: 'Voici votre chat.' },
+      { type: 'image', url: 'data:image/png;base64,QUJD' },
+      { type: 'image', url: 'data:image/webp;base64,QUJDRA==' },
+      { type: 'usage', promptTokens: 20, completionTokens: 1290, cost: 0.04 },
+      { type: 'done', finishReason: 'stop' },
+    ]);
+
+    await sendMessage(conversation, 'Dessine un chat');
+
+    const assistant = useChat.getState().messages[1] as Message;
+    expect(assistant.content).toBe('Voici votre chat.');
+    expect(assistant.attachments.map((a) => [a.kind, a.name, a.mime, a.size])).toEqual([
+      ['image', 'image-1.png', 'image/png', 3],
+      ['image', 'image-2.webp', 'image/webp', 4],
+    ]);
+    expect(assistant.attachments[0]?.data).toBe('data:image/png;base64,QUJD');
+    // Persistées en base avec le message.
+    const stored = store.messages.find((m) => m.id === assistant.id);
+    expect(stored?.attachments).toHaveLength(2);
+    expect(stored?.finishReason).toBe('stop');
+  });
+
+  it("conserve une réponse composée uniquement d'une image", async () => {
+    api.scripts.push([
+      { type: 'image', url: 'data:image/png;base64,QUJD' },
+      { type: 'done', finishReason: 'stop' },
+    ]);
+    await sendMessage(conversation, 'Juste une image');
+    const { messages, error } = useChat.getState();
+    expect(error).toBeNull();
+    expect(messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+    expect(messages[1]?.attachments).toHaveLength(1);
+  });
+
+  it("n'envoie modalities qu'aux modèles qui produisent des images", async () => {
+    await sendMessage(conversation, 'Salut');
+    expect(lastRequest()).not.toHaveProperty('modalities');
+
+    const imageModel = normalizeModel({
+      id: 'test/model',
+      architecture: { input_modalities: ['text'], output_modalities: ['image', 'text'] },
+    });
+    useModels.setState({ models: imageModel ? [imageModel] : [], status: 'ready' });
+    await sendMessage(conversation, 'Dessine');
+    expect(lastRequest()).toMatchObject({ modalities: ['image', 'text'] });
   });
 
   it("remonte une erreur d'API sans laisser de message vide", async () => {

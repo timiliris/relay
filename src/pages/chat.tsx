@@ -431,7 +431,11 @@ function toMarkdown(title: string, messages: Message[], youLabel: string): strin
   for (const m of messages) {
     const author = m.role === 'user' ? youLabel : (m.model ?? m.role);
     parts.push(`## ${author}`, '');
-    if (m.attachments.length) parts.push(...m.attachments.map((a) => `> 📎 ${a.name}`), '');
+    // Images générées : une ligne par fichier, sans embarquer la data URL.
+    const icon = (a: Attachment) => (m.role === 'assistant' && a.kind === 'image' ? '🖼' : '📎');
+    if (m.attachments.length) {
+      parts.push(...m.attachments.map((a) => `> ${icon(a)} ${a.name}`), '');
+    }
     parts.push(m.content, '');
   }
   return parts.join('\n');

@@ -1,3 +1,5 @@
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
 import {
   Bot,
   Brain,
@@ -6,22 +8,28 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Download,
   FileText,
   Pencil,
   Play,
   RefreshCw,
   Shuffle,
   Trash2,
+  X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useThrottledValue } from '@/hooks/use-throttled-value';
 import { formatBytes } from '@/lib/attachments';
 import { hueStyle } from '@/lib/color';
 import type { Attachment, Message, Preset } from '@/lib/db';
 import { formatCost } from '@/lib/format';
+import { dataUrlToBytes } from '@/lib/image-output';
+import { errorMessage, isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { useModels } from '@/stores/models';
+import { toast } from '@/stores/toast';
 import { Markdown } from './markdown';
 import { ModelPicker } from './model-picker';
 import { PresetAvatar } from './preset-avatar';
@@ -224,6 +232,7 @@ export function MessageBubble({
         {streaming && displayed && (
           <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-foreground align-text-bottom" />
         )}
+        {message.attachments.length > 0 && <GeneratedImages attachments={message.attachments} />}
         {!streaming && (
           <div className="mt-1 flex min-h-6 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {versionNav}
@@ -344,6 +353,131 @@ export function AttachmentList({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Images produites par l'assistant : grille cliquable, ouverture en grand et enregistrement. */
+export function GeneratedImages({ attachments }: { attachments: Attachment[] }) {
+  const { t } = useTranslation();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const images = attachments.filter((a) => a.kind === 'image' && a.data);
+  if (images.length === 0) return null;
+  const single = images.length === 1;
+  const opened = openIndex === null ? undefined : images[openIndex];
+  return (
+    <>
+      <ul
+        className={cn(
+          'mt-2 grid gap-2',
+          single ? 'max-w-md grid-cols-1' : 'max-w-2xl grid-cols-2 sm:grid-cols-3',
+        )}
+        aria-label={t('chat.images.filter')}
+      >
+        {images.map((a, i) => (
+          <li key={a.id}>
+            <button
+              type="button"
+              onClick={() => setOpenIndex(i)}
+              title={t('chat.images.open')}
+              className="group/img block w-full overflow-hidden rounded-lg border bg-card focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <img
+                src={a.data}
+                alt={t('chat.images.alt', { name: a.name })}
+                loading="lazy"
+                className={cn(
+                  'w-full object-cover transition-transform group-hover/img:scale-[1.02]',
+                  single ? 'max-h-80 object-contain' : 'aspect-square',
+                )}
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {opened && <ImageLightbox image={opened} onClose={() => setOpenIndex(null)} />}
+    </>
+  );
+}
+
+/** Enregistre une image générée via le sélecteur natif « Enregistrer sous ». */
+export async function saveGeneratedImage(image: Attachment): Promise<boolean> {
+  if (!image.data) return false;
+  const ext = image.name.slice(image.name.lastIndexOf('.') + 1) || 'png';
+  const path = await save({
+    defaultPath: image.name,
+    filters: [{ name: 'Image', extensions: [ext] }],
+  });
+  if (!path) return false;
+  await writeFile(path, dataUrlToBytes(image.data));
+  return true;
+}
+
+function ImageLightbox({ image, onClose }: { image: Attachment; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [saving, setSaving] = useState(false);
+  const inTauri = isTauri();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const download = async () => {
+    setSaving(true);
+    try {
+      if (await saveGeneratedImage(image)) toast.success(t('chat.images.saved'));
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Portail : les bulles sont animées par `transform`, ce qui confinerait un `fixed` à la bulle.
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={image.name}
+      className="fixed inset-0 z-[95] flex animate-fade-in flex-col items-center justify-center gap-3 bg-black/85 p-4"
+      onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <img
+        src={image.data}
+        alt={t('chat.images.alt', { name: image.name })}
+        className="max-h-[82vh] max-w-full animate-pop rounded-lg object-contain shadow-2xl"
+      />
+      <div className="flex items-center gap-3 text-xs text-white/80">
+        <span className="font-mono">{image.name}</span>
+        <span>{formatBytes(image.size)}</span>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="h-7"
+          onClick={() => void download()}
+          disabled={!inTauri || saving}
+          title={inTauri ? t('chat.images.download') : t('chat.images.onlyInApp')}
+        >
+          <Download className="size-3.5" />
+          {t('chat.images.download')}
+        </Button>
+        <IconButton
+          label={t('common.close')}
+          autoFocus
+          onClick={onClose}
+          className="text-white hover:bg-white/10 hover:text-white"
+        >
+          <X />
+        </IconButton>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

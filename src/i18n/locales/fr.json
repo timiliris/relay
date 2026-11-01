@@ -143,6 +143,15 @@
       "with": "Régénérer avec…",
       "unknownModel": "modèle inconnu",
       "versions": "Versions"
+    },
+    "images": {
+      "filter": "Images",
+      "modelBadge": "Génère des images",
+      "alt": "Image générée : {{name}}",
+      "open": "Voir en grand",
+      "download": "Enregistrer l'image",
+      "saved": "Image enregistrée.",
+      "onlyInApp": "L'enregistrement n'est possible que dans l'application de bureau."
     }
   },
   "search": {

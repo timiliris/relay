@@ -3,7 +3,9 @@
 use tauri::State;
 use tauri::ipc::Channel;
 
-use crate::openrouter::{self, ChatRequest, Credits, OpenRouterState, StreamEvent};
+use crate::openrouter::{
+    self, ChatRequest, CompletionOutput, Credits, OpenRouterState, StreamEvent,
+};
 use crate::{AppError, AppResult, secrets};
 
 fn api_key() -> AppResult<String> {
@@ -25,7 +27,7 @@ pub async fn fetch_credits(state: State<'_, OpenRouterState>) -> AppResult<Credi
 pub async fn complete_chat(
     state: State<'_, OpenRouterState>,
     request: ChatRequest,
-) -> AppResult<String> {
+) -> AppResult<CompletionOutput> {
     openrouter::complete(&state, &api_key()?, &request).await
 }
 

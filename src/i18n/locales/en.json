@@ -143,6 +143,15 @@
       "with": "Regenerate with…",
       "unknownModel": "unknown model",
       "versions": "Versions"
+    },
+    "images": {
+      "filter": "Images",
+      "modelBadge": "Generates images",
+      "alt": "Generated image: {{name}}",
+      "open": "View full size",
+      "download": "Save image",
+      "saved": "Image saved.",
+      "onlyInApp": "Saving is only available in the desktop app."
     }
   },
   "search": {

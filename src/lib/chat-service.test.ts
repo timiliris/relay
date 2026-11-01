@@ -89,6 +89,38 @@ describe('buildHistory', () => {
   });
 });
 
+describe('buildHistory : images générées', () => {
+  it("renvoie les images de l'assistant dans `images`, pas dans le contenu", () => {
+    const history = buildHistory(conv(), [
+      msg('u1', 'user', 'Dessine un chat'),
+      msg('a1', 'assistant', 'Voici.', {
+        attachments: [
+          {
+            id: 'g',
+            kind: 'image',
+            name: 'image-1.png',
+            mime: 'image/png',
+            size: 10,
+            data: 'data:image/png;base64,AAA',
+          },
+        ],
+      }),
+      msg('u2', 'user', 'Rends-le bleu'),
+    ]);
+    expect(history[1]).toEqual({
+      role: 'assistant',
+      content: 'Voici.',
+      images: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAA' } }],
+    });
+    expect(history[2]).toEqual({ role: 'user', content: 'Rends-le bleu' });
+  });
+
+  it("n'ajoute pas de champ images à un message assistant sans image", () => {
+    const history = buildHistory(conv(), [msg('a1', 'assistant', 'Texte seul')]);
+    expect(history[0]).toEqual({ role: 'assistant', content: 'Texte seul' });
+  });
+});
+
 describe('effectiveParams', () => {
   it('préfère les réglages de la conversation aux valeurs globales', () => {
     useSettings.setState({ temperature: 0.7, topP: null, maxTokens: null, reasoning: true });
