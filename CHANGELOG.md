@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.6.0](https://github.com/timiliris/relay/compare/v0.5.0...v0.6.0) (2026-11-01)
+
+
+### Nouveautés
+
+* **personas:** pack de six personas 18+ ajouté sur demande ([78e3e09](https://github.com/timiliris/relay/commit/78e3e09b5a0b972f50c29dfb4f632fbec33acbd7))
+
 ## [0.5.0](https://github.com/timiliris/relay/compare/v0.4.0...v0.5.0) (2026-11-01)
 
 
