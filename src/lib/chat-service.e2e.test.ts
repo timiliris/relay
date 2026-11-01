@@ -211,6 +211,38 @@ describe('parcours de chat', () => {
     expect(siblings).toHaveLength(2);
   });
 
+  it('régénère avec un autre modèle : version sœur étiquetée, conversation inchangée', async () => {
+    useSettings.setState({ recentModels: [] });
+    api.scripts.push([
+      { type: 'delta', content: 'R1' },
+      { type: 'done', finishReason: 'stop' },
+    ]);
+    await sendMessage(conversation, 'Q1');
+    const first = useChat.getState().messages[1] as Message;
+
+    api.scripts.push([
+      { type: 'delta', content: 'R1 par un autre modèle' },
+      { type: 'done', finishReason: 'stop' },
+    ]);
+    await regenerate(conversation, first, 'other/model');
+
+    const { all, messages } = useChat.getState();
+    const second = messages[1] as Message;
+    expect(second.content).toBe('R1 par un autre modèle');
+    expect(second.model).toBe('other/model');
+    expect(second.parentId).toBe(first.parentId);
+    // La requête part vers le modèle choisi ; la première version garde le sien.
+    expect((api.requests.at(-1) as { request: { model: string } }).request.model).toBe(
+      'other/model',
+    );
+    expect(all.find((m) => m.id === first.id)?.model).toBe('test/model');
+    expect(store.messages.find((m) => m.id === second.id)?.model).toBe('other/model');
+    // Le modèle de la conversation n'est pas touché, mais le choix rejoint les récents.
+    expect(conversation.model).toBe('test/model');
+    expect(useConversations.getState().items[0]?.model).toBe('test/model');
+    expect(useSettings.getState().recentModels[0]).toBe('other/model');
+  });
+
   it('continue une réponse coupée en prolongeant le même message', async () => {
     api.scripts.push([
       { type: 'delta', content: 'Début' },

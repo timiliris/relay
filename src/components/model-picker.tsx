@@ -1,5 +1,5 @@
 import { Brain, Check, ChevronDown, Eye, RefreshCw, Star } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPrice, formatTokens } from '@/lib/format';
 import type { ModelInfo } from '@/lib/openrouter';
@@ -21,6 +21,8 @@ interface ModelPickerProps {
   className?: string;
   align?: 'start' | 'end';
   side?: 'top' | 'bottom';
+  /** Déclencheur personnalisé (menu détaché) ; par défaut, un bouton affichant le modèle courant. */
+  trigger?: ((props: { open: boolean; toggle: () => void }) => ReactNode) | undefined;
 }
 
 /** Sélecteur de modèle avec recherche, filtres, favoris, prix et taille de contexte. */
@@ -30,6 +32,7 @@ export function ModelPicker({
   className,
   align = 'start',
   side = 'bottom',
+  trigger,
 }: ModelPickerProps) {
   const { t } = useTranslation();
   const { models, status, load, byId } = useModels();
@@ -88,18 +91,21 @@ export function ModelPicker({
       align={align}
       side={side}
       className="w-[26rem] max-w-[90vw] p-0"
-      trigger={({ toggle }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={toggle}
-          className={cn('max-w-72 justify-between gap-2 font-normal', className)}
-          title={current?.id ?? value}
-        >
-          <span className="truncate">{current?.name ?? value}</span>
-          <ChevronDown className="size-3.5 shrink-0 opacity-60" />
-        </Button>
-      )}
+      trigger={
+        trigger ??
+        (({ toggle }) => (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggle}
+            className={cn('max-w-72 justify-between gap-2 font-normal', className)}
+            title={current?.id ?? value}
+          >
+            <span className="truncate">{current?.name ?? value}</span>
+            <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+          </Button>
+        ))
+      }
     >
       {(close) => (
         <div className="flex max-h-[min(28rem,70vh)] flex-col">

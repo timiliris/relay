@@ -111,9 +111,17 @@ export async function editMessage(
   await runAssistant(conversation, edited.id);
 }
 
-/** Nouvelle réponse alternative pour le même message utilisateur. */
-export async function regenerate(conversation: Conversation, assistant: Message): Promise<void> {
-  await runAssistant(conversation, assistant.parentId);
+/**
+ * Nouvelle réponse alternative pour le même message utilisateur. `modelOverride`
+ * cible un autre modèle pour cette génération seulement (le modèle de la
+ * conversation reste inchangé) : les versions sœurs gardent chacune leur modèle.
+ */
+export async function regenerate(
+  conversation: Conversation,
+  assistant: Message,
+  modelOverride?: string,
+): Promise<void> {
+  await runAssistant(conversation, assistant.parentId, undefined, modelOverride);
 }
 
 /** Poursuit une réponse coupée (limite de tokens, arrêt, fermeture de l'app). */
@@ -215,11 +223,15 @@ export function buildHistory(conversation: Conversation, path: Message[]): ChatM
   return input;
 }
 
-function buildRequest(conversation: Conversation, messages: ChatMessageInput[]): ChatRequest {
+function buildRequest(
+  conversation: Conversation,
+  messages: ChatMessageInput[],
+  model: string = conversation.model,
+): ChatRequest {
   const s = useSettings.getState();
   const p = effectiveParams(conversation);
   return {
-    model: conversation.model,
+    model,
     messages,
     temperature: p.temperature,
     reasoning: p.reasoning,
@@ -236,14 +248,18 @@ function buildRequest(conversation: Conversation, messages: ChatMessageInput[]):
  * Génère (ou poursuit) une réponse de l'assistant sous `parentId`.
  * Le message est créé immédiatement en base puis mis à jour pendant le flux,
  * pour qu'une fermeture de l'app ne perde pas le texte déjà reçu.
+ * `modelOverride` remplace le modèle de la conversation pour cet appel seulement ;
+ * une continuation reprend le modèle du message poursuivi.
  */
 async function runAssistant(
   conversation: Conversation,
   parentId: string | null,
   resume?: Message,
+  modelOverride?: string,
 ): Promise<void> {
   const chat = useChat.getState();
   const requestId = newId();
+  const model = modelOverride ?? resume?.model ?? conversation.model;
 
   const assistant: Message =
     resume ??
@@ -252,7 +268,7 @@ async function runAssistant(
       parentId,
       role: 'assistant',
       content: '',
-      model: conversation.model,
+      model,
       ...emptyAssistant,
       finishReason: 'streaming',
     }));
@@ -300,7 +316,7 @@ async function runAssistant(
 
   chat.beginStream(conversation.id, requestId, assistant.id);
   try {
-    await openrouter.streamChat(requestId, buildRequest(conversation, history), (event) => {
+    await openrouter.streamChat(requestId, buildRequest(conversation, history, model), (event) => {
       switch (event.type) {
         case 'delta':
           acc.content += event.content;
@@ -363,7 +379,7 @@ async function runAssistant(
 
   const at = await convRepo.touch(conversation.id);
   useConversations.getState().touched(conversation.id, at);
-  useSettings.getState().rememberModel(conversation.model);
+  useSettings.getState().rememberModel(model);
 
   if (!acc.error && useSettings.getState().notifyOnComplete) {
     void notifyIfHidden(conversation.title, acc.content);
