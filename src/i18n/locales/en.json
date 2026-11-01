@@ -171,6 +171,39 @@
       "diceRoll": "Roll",
       "diceInvalid": "Invalid notation: use NdM, NdM+K or NdM-K (up to 100 dice with 1000 sides).",
       "diceResult": "🎲 {{notation}} → [{{rolls}}]{{modifier}} = {{total}}"
+    },
+    "snippets": {
+      "menuTitle": "Prompt shortcuts",
+      "menuHint": "↑↓ to choose, Enter to insert, Esc to close",
+      "noMatch": "No shortcut matches “/{{query}}”.",
+      "title": "Prompt shortcuts",
+      "description": "Type “/” at the start of a message to insert a shortcut. {{selection}} is replaced by the text typed after the trigger, {{clipboard}} by the clipboard.",
+      "none": "No shortcut yet.",
+      "trigger": "Trigger",
+      "triggerPlaceholder": "summarize",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Summarize",
+      "body": "Body",
+      "bodyPlaceholder": "Summarize the following text in five bullet points:\n\n{{selection}}",
+      "add": "Add a shortcut",
+      "edit": "Edit shortcut",
+      "delete": "Delete shortcut",
+      "deleteConfirm": "Delete the shortcut “/{{trigger}}”?",
+      "restoreDefaults": "Restore defaults",
+      "restored": "Default shortcuts restored ({{count}}).",
+      "duplicate": "The trigger “/{{trigger}}” already exists.",
+      "saved": "Shortcut saved."
+    },
+    "pins": {
+      "pin": "Pin message",
+      "unpin": "Unpin message",
+      "pinned": "Pinned",
+      "title": "Pinned messages",
+      "count_one": "{{count}} pinned message",
+      "count_other": "{{count}} pinned messages",
+      "empty": "No pinned message in this conversation.",
+      "goTo": "Go to message",
+      "you": "You"
     }
   },
   "search": {

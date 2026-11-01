@@ -12,11 +12,14 @@ import { AttachmentError, attachmentFromFile, pickAttachments } from '@/lib/atta
 import type { ContextEstimate } from '@/lib/context';
 import type { Attachment, Preset } from '@/lib/db';
 import { formatTokens } from '@/lib/format';
+import { expandLeadingSnippet } from '@/lib/snippets';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { AttachmentList } from './message-bubble';
 import { RoleplayTools } from './roleplay-tools';
+import { useSnippetMenu } from './snippet-menu';
 import { Button } from './ui/button';
 import { IconButton } from './ui/tooltip-button';
 
@@ -69,6 +72,8 @@ export function Composer({
   useEffect(() => {
     if (!roleplay) setOoc(false);
   }, [roleplay]);
+  const snippets = useSettings((s) => s.snippets);
+  const snippetMenu = useSnippetMenu(value, setValue);
 
   useEffect(() => {
     if (draft !== undefined) {
@@ -155,9 +160,11 @@ export function Composer({
     void addFiles(Array.from(e.dataTransfer.files));
   };
 
-  const submit = () => {
-    const body = value.trim();
-    if ((!body && attachments.length === 0) || disabled || streaming) return;
+  const submit = async () => {
+    const raw = value.trim();
+    if ((!raw && attachments.length === 0) || disabled || streaming) return;
+    // Un raccourci laissé en tête (`/résume …`) est développé à l'envoi.
+    const body = await expandLeadingSnippet(raw, snippets);
     // Le préfixe hors rôle est ajouté à l'envoi seulement, jamais dans la saisie.
     const text = roleplay && ooc ? `${t('chat.rp.oocPrefix')} ${body}`.trim() : body;
     onSend(text, attachments);
@@ -178,12 +185,13 @@ export function Composer({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (snippetMenu.onKeyDown(e)) return;
     if (roleplay && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') {
       e.preventDefault();
       setOoc((v) => !v);
     } else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      submit();
+      void submit();
     } else if (e.key === 'ArrowUp' && value === '' && onRecallLast) {
       const last = onRecallLast();
       if (last) {
@@ -225,6 +233,7 @@ export function Composer({
             {t('chat.dropHere')}
           </div>
         )}
+        {snippetMenu.element}
         {attachments.length > 0 && (
           <div className="px-3 pt-3">
             <AttachmentList
@@ -282,7 +291,7 @@ export function Composer({
             <Button
               size="icon"
               className="size-8 shrink-0 rounded-full"
-              onClick={submit}
+              onClick={() => void submit()}
               disabled={disabled || (!value.trim() && attachments.length === 0)}
               aria-label={t('chat.send')}
               title={t('chat.send')}

@@ -90,6 +90,7 @@ const msgBase = {
   cost: null,
   finishReason: null,
   durationMs: null,
+  pinned: false,
 };
 
 export const sampleMessages: Record<string, Message[]> = {
@@ -124,6 +125,7 @@ export const sampleMessages: Record<string, Message[]> = {
       id: 'm2',
       parentId: 'm1',
       active: true,
+      pinned: true,
       role: 'assistant',
       model: 'anthropic/claude-sonnet-4.5',
       reasoning:
@@ -263,6 +265,7 @@ flowchart LR
       id: 'n2',
       parentId: 'n1',
       active: true,
+      pinned: true,
       role: 'assistant',
       model: 'openai/gpt-4.1-mini',
       content:

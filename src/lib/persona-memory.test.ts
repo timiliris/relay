@@ -37,6 +37,7 @@ const msg = (id: string, role: Message['role'], content: string): Message => ({
   conversationId: 'c',
   parentId: null,
   active: true,
+  pinned: false,
   role,
   content,
   reasoning: null,

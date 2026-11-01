@@ -171,6 +171,39 @@
       "diceRoll": "Lancer",
       "diceInvalid": "Notation invalide : utilisez NdM, NdM+K ou NdM-K (jusqu’à 100 dés de 1000 faces).",
       "diceResult": "🎲 {{notation}} → [{{rolls}}]{{modifier}} = {{total}}"
+    },
+    "snippets": {
+      "menuTitle": "Raccourcis de prompt",
+      "menuHint": "↑↓ pour choisir, Entrée pour insérer, Échap pour fermer",
+      "noMatch": "Aucun raccourci ne correspond à « /{{query}} ».",
+      "title": "Raccourcis de prompt",
+      "description": "Tapez « / » en début de message pour insérer un raccourci. {{selection}} est remplacé par le texte saisi après le déclencheur, {{clipboard}} par le presse-papiers.",
+      "none": "Aucun raccourci pour le moment.",
+      "trigger": "Déclencheur",
+      "triggerPlaceholder": "résume",
+      "titleLabel": "Titre",
+      "titlePlaceholder": "Résumer",
+      "body": "Corps",
+      "bodyPlaceholder": "Résume le texte suivant en cinq points :\n\n{{selection}}",
+      "add": "Ajouter un raccourci",
+      "edit": "Modifier le raccourci",
+      "delete": "Supprimer le raccourci",
+      "deleteConfirm": "Supprimer le raccourci « /{{trigger}} » ?",
+      "restoreDefaults": "Restaurer les défauts",
+      "restored": "Raccourcis par défaut restaurés ({{count}}).",
+      "duplicate": "Le déclencheur « /{{trigger}} » existe déjà.",
+      "saved": "Raccourci enregistré."
+    },
+    "pins": {
+      "pin": "Épingler le message",
+      "unpin": "Désépingler le message",
+      "pinned": "Épinglé",
+      "title": "Messages épinglés",
+      "count_one": "{{count}} message épinglé",
+      "count_other": "{{count}} messages épinglés",
+      "empty": "Aucun message épinglé dans cette conversation.",
+      "goTo": "Aller au message",
+      "you": "Vous"
     }
   },
   "search": {

@@ -12,6 +12,8 @@ import {
   FileText,
   NotebookPen,
   Pencil,
+  Pin,
+  PinOff,
   Play,
   RefreshCw,
   Shuffle,
@@ -56,6 +58,8 @@ export interface MessageBubbleProps {
   onRegenerateWith?: ((modelId: string) => void) | undefined;
   onContinue?: (() => void) | undefined;
   onEdit?: ((text: string) => void) | undefined;
+  /** Épingle ou désépingle le message (bouton Épingler/Désépingler). */
+  onTogglePin?: (() => void) | undefined;
 }
 
 export function MessageBubble({
@@ -72,6 +76,7 @@ export function MessageBubble({
   onRegenerateWith,
   onContinue,
   onEdit,
+  onTogglePin,
 }: MessageBubbleProps) {
   const { t } = useTranslation();
   const modelById = useModels((s) => s.byId);
@@ -101,6 +106,18 @@ export function MessageBubble({
           : []),
       ].join('\n')
     : '';
+
+  const pinButton = onTogglePin && (
+    <IconButton
+      label={message.pinned ? t('chat.pins.unpin') : t('chat.pins.pin')}
+      aria-pressed={message.pinned}
+      className={cn(message.pinned && 'text-warning')}
+      onClick={onTogglePin}
+    >
+      {message.pinned ? <PinOff /> : <Pin />}
+    </IconButton>
+  );
+
   const versionNav = version && version.total > 1 && onSwitchVersion && (
     <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
       <button
@@ -167,13 +184,19 @@ export function MessageBubble({
       );
     }
     return (
-      <div className="group flex animate-slide-up flex-col items-end gap-1">
+      <div
+        className={cn(
+          'group flex animate-slide-up flex-col items-end gap-1',
+          message.pinned && 'border-l-2 border-warning pl-3',
+        )}
+      >
         {message.attachments.length > 0 && <AttachmentList attachments={message.attachments} />}
         <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
           {message.content}
         </div>
         <div className="flex h-6 items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [&_button]:size-6 [&_svg]:size-3.5">
           {versionNav}
+          {pinButton}
           {onEdit && (
             <IconButton
               label={t('chat.edit')}
@@ -209,7 +232,12 @@ export function MessageBubble({
   const truncated = !streaming && message.finishReason === 'length';
 
   return (
-    <div className="group flex animate-slide-up gap-3">
+    <div
+      className={cn(
+        'group flex animate-slide-up gap-3',
+        message.pinned && 'border-l-2 border-warning pl-3',
+      )}
+    >
       {persona ? (
         <PresetAvatar preset={persona} className="mt-1 size-7 text-xs shadow-sm" />
       ) : (
@@ -277,6 +305,7 @@ export function MessageBubble({
               </Button>
             )}
             <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [&_button]:size-6 [&_svg]:size-3.5">
+              {pinButton}
               {onCopy && (
                 <IconButton label={t('chat.copyMessage')} onClick={onCopy}>
                   <Copy />

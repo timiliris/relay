@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Preset } from '@/lib/db';
 import { defaultPersona } from '@/lib/persona';
@@ -41,7 +41,7 @@ describe('Composer en jeu de rôle', () => {
     expect(screen.queryByRole('group', { name: 'Outils de jeu de rôle' })).not.toBeInTheDocument();
   });
 
-  it('préfixe le message par (HRP) à l’envoi puis désactive la bascule', () => {
+  it('préfixe le message par (HRP) à l’envoi puis désactive la bascule', async () => {
     const { onSend, textarea } = renderComposer('roleplay');
     const ooc = screen.getByRole('button', { pressed: false, name: 'HRP' });
     fireEvent.click(ooc);
@@ -51,7 +51,8 @@ describe('Composer en jeu de rôle', () => {
     expect(textarea).toHaveValue('On fait une pause ?');
     fireEvent.keyDown(textarea, { key: 'Enter' });
 
-    expect(onSend).toHaveBeenCalledWith('(HRP) On fait une pause ?', []);
+    // L'envoi développe d'abord les raccourcis éventuels : il est asynchrone.
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('(HRP) On fait une pause ?', []));
     expect(ooc).toHaveAttribute('aria-pressed', 'false');
     expect(textarea).toHaveValue('');
   });

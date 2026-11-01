@@ -145,6 +145,7 @@ describe('applyPreset', () => {
           cost: null,
           finishReason: null,
           durationMs: null,
+          pinned: false,
           createdAt: '',
         },
       ],

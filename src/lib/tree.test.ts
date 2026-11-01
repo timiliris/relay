@@ -21,6 +21,7 @@ const msg = (
   completionTokens: null,
   cost: null,
   finishReason: null,
+  pinned: false,
   durationMs: null,
   createdAt: '2026-10-30T10:00:00Z',
 });

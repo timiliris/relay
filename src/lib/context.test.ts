@@ -16,6 +16,7 @@ const msg = (content: string): Message => ({
   completionTokens: null,
   cost: null,
   finishReason: null,
+  pinned: false,
   durationMs: null,
   createdAt: '',
 });

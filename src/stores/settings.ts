@@ -6,8 +6,9 @@
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
-import type { LanguageSetting } from '@/i18n';
+import { type LanguageSetting, resolveLanguage } from '@/i18n';
 import type { ProviderSort } from '@/lib/openrouter';
+import { defaultSnippets, type Snippet } from '@/lib/snippets';
 import { isTauri } from '@/lib/tauri';
 
 export type Theme = 'light' | 'dark' | 'system';
@@ -65,6 +66,9 @@ export interface SettingsData extends GenerationParams {
   autoUpdate: boolean;
   /** Conversation rouverte au lancement. */
   lastConversationId: string | null;
+  /** Raccourcis de prompt (`/résume`…), créés à la première ouverture dans la langue de l'UI. */
+  snippets: Snippet[];
+  snippetsSeeded: boolean;
 }
 
 export interface SettingsState extends SettingsData {
@@ -98,8 +102,14 @@ const defaults: SettingsData = {
   adultConfirmed: false,
   autoUpdate: false,
   lastConversationId: null,
+  snippets: [],
+  snippetsSeeded: false,
   ...defaultGeneration,
 };
+
+/** Raccourcis par défaut dans la langue de l'UI (premier lancement, restauration). */
+export const seedSnippets = (language: LanguageSetting): Snippet[] =>
+  defaultSnippets(resolveLanguage(language), () => crypto.randomUUID());
 
 function tauriStorage(): StateStorage {
   const store = new LazyStore('settings.json');
@@ -148,6 +158,11 @@ export const useSettings = create<SettingsState>()(
         state,
       // Les nouvelles clés prennent leur valeur par défaut pour les anciens fichiers.
       merge: (persisted, current) => ({ ...current, ...(persisted as Partial<SettingsData>) }),
+      // Première ouverture (ou ancien profil) : raccourcis de prompt fournis par défaut.
+      onRehydrateStorage: () => (state) => {
+        if (state && !state.snippetsSeeded)
+          state.patch({ snippets: seedSnippets(state.language), snippetsSeeded: true });
+      },
     },
   ),
 );

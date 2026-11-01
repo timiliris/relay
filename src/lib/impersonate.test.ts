@@ -16,7 +16,7 @@ vi.mock('./openrouter', async (importOriginal) => {
       ...actual.openrouter,
       async completeChat(request: ChatRequest) {
         requests.push(request);
-        return '  « Je prends la lettre et je la décachette. »\n';
+        return { content: '  « Je prends la lettre et je la décachette. »\n', images: [] };
       },
     },
   };
@@ -47,6 +47,7 @@ const message = (id: string, role: Message['role'], content: string): Message =>
   conversationId: 'c',
   parentId: null,
   active: true,
+  pinned: false,
   role,
   content,
   reasoning: null,

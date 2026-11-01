@@ -23,6 +23,7 @@ import { LanguageToggle } from '@/components/language-toggle';
 import { ModelPicker } from '@/components/model-picker';
 import { PersonaEditor } from '@/components/persona-editor';
 import { PresetAvatar, PresetBadges } from '@/components/preset-avatar';
+import { SnippetSettings } from '@/components/snippet-settings';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -549,6 +550,9 @@ export function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Raccourcis de prompt */}
+        <SnippetSettings />
 
         {/* Routage OpenRouter */}
         <Card>
