@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Copy,
   FileText,
+  NotebookPen,
   Pencil,
   Play,
   RefreshCw,
@@ -36,6 +37,8 @@ export interface MessageBubbleProps {
   version?: { index: number; total: number } | undefined;
   onSwitchVersion?: ((direction: 1 | -1) => void) | undefined;
   onCopy?: (() => void) | undefined;
+  /** Ajoute un souvenir au persona de la conversation à partir de ce message. */
+  onMemorize?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
   onRegenerate?: (() => void) | undefined;
   onContinue?: (() => void) | undefined;
@@ -50,6 +53,7 @@ export function MessageBubble({
   version,
   onSwitchVersion,
   onCopy,
+  onMemorize,
   onDelete,
   onRegenerate,
   onContinue,
@@ -155,6 +159,11 @@ export function MessageBubble({
               <Copy />
             </IconButton>
           )}
+          {onMemorize && (
+            <IconButton label={t('presets.memory.memorize')} onClick={onMemorize}>
+              <NotebookPen />
+            </IconButton>
+          )}
           {onDelete && (
             <IconButton label={t('chat.deleteMessage')} onClick={onDelete}>
               <Trash2 />
@@ -235,6 +244,11 @@ export function MessageBubble({
               {onCopy && (
                 <IconButton label={t('chat.copyMessage')} onClick={onCopy}>
                   <Copy />
+                </IconButton>
+              )}
+              {onMemorize && (
+                <IconButton label={t('presets.memory.memorize')} onClick={onMemorize}>
+                  <NotebookPen />
                 </IconButton>
               )}
               {onRegenerate && (

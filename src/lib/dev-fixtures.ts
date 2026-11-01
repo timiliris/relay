@@ -3,7 +3,8 @@
  * (hors Tauri, mode `development`) pour travailler l'interface sans base SQLite.
  * Jamais chargées dans l'application ni dans les tests.
  */
-import type { Conversation, Message } from './db';
+import type { Conversation, Message, PersonaMemory } from './db';
+import { defaultPresetId } from './default-presets';
 import { isTauri } from './tauri';
 
 export const devFixturesEnabled = (): boolean =>
@@ -53,6 +54,16 @@ export const sampleConversations: Conversation[] = [
     folderId: 'folder-1',
     createdAt: at(4 * day),
     updatedAt: at(3 * day),
+  },
+  {
+    ...base,
+    id: 'demo-5',
+    title: 'La crypte de Varnhold',
+    model: 'anthropic/claude-sonnet-4.5',
+    presetId: defaultPresetId('gamemaster'),
+    reasoning: false,
+    createdAt: at(2 * day),
+    updatedAt: at(2 * day - 3_600_000),
   },
   {
     ...base,
@@ -232,4 +243,68 @@ flowchart LR
   ],
   'demo-3': [],
   'demo-4': [],
+  'demo-5': [
+    {
+      ...msgBase,
+      conversationId: 'demo-5',
+      id: 'r1',
+      parentId: null,
+      active: true,
+      role: 'assistant',
+      model: 'anthropic/claude-sonnet-4.5',
+      content:
+        "La torche crépite. Devant vous, la porte de la crypte de Varnhold est entrouverte ; une odeur de terre humide s'en échappe. Que faites-vous, Tom ?",
+      finishReason: 'stop',
+      createdAt: at(2 * day),
+    },
+    {
+      ...msgBase,
+      conversationId: 'demo-5',
+      id: 'r2',
+      parentId: 'r1',
+      active: true,
+      role: 'user',
+      content: "Je pousse la porte avec mon bouclier et j'avance, dague en main.",
+      createdAt: at(2 * day - 60_000),
+    },
+    {
+      ...msgBase,
+      conversationId: 'demo-5',
+      id: 'r3',
+      parentId: 'r2',
+      active: true,
+      role: 'assistant',
+      model: 'anthropic/claude-sonnet-4.5',
+      content:
+        "La porte grince et cède. Dans la pénombre, un médaillon d'argent brille sur un autel renversé : celui que Lyra cherchait depuis le chapitre 2. Un souffle froid éteint presque votre torche.",
+      promptTokens: 210,
+      completionTokens: 54,
+      cost: 0.0012,
+      finishReason: 'stop',
+      durationMs: 2300,
+      createdAt: at(2 * day - 3_600_000),
+    },
+  ],
+};
+
+/** Souvenirs de démonstration, par persona. */
+export const sampleMemories: Record<string, PersonaMemory[]> = {
+  [defaultPresetId('gamemaster')]: [
+    {
+      id: 'mem-1',
+      presetId: defaultPresetId('gamemaster'),
+      content: "Le joueur s'appelle Tom et incarne un éclaireur nain.",
+      sourceConversationId: 'demo-5',
+      pinned: true,
+      createdAt: at(3 * day),
+    },
+    {
+      id: 'mem-2',
+      presetId: defaultPresetId('gamemaster'),
+      content: 'Lyra a perdu son médaillon au chapitre 2.',
+      sourceConversationId: 'demo-5',
+      pinned: false,
+      createdAt: at(2 * day),
+    },
+  ],
 };

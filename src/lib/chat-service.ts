@@ -9,6 +9,7 @@ import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notifi
 import i18n, { resolveLanguage } from '@/i18n';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
+import { memoriesOf, usePersonaMemory } from '@/stores/persona-memory';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { toContentParts } from './attachments';
@@ -24,6 +25,7 @@ import {
 import { truncateTitle } from './format';
 import { type ChatMessageInput, type ChatRequest, openrouter } from './openrouter';
 import { buildSystemPrompt, greetingOf } from './persona';
+import { formatMemoryBlock } from './persona-memory';
 import { errorMessage } from './tauri';
 import { activePath, siblingsOf, tail } from './tree';
 
@@ -194,11 +196,21 @@ export async function summarizeOlder(conversation: Conversation): Promise<boolea
   return true;
 }
 
-/** Historique envoyé à l'API : instruction système (+ résumé), puis messages du chemin actif. */
+/**
+ * Historique envoyé à l'API : instruction système, mémoire du persona (souvenirs déjà
+ * chargés dans `usePersonaMemory`), résumé, puis messages du chemin actif.
+ */
 export function buildHistory(conversation: Conversation, path: Message[]): ChatMessageInput[] {
   const input: ChatMessageInput[] = [];
+  const memory = conversation.presetId
+    ? formatMemoryBlock(
+        memoriesOf(conversation.presetId),
+        resolveLanguage(useSettings.getState().language),
+      )
+    : null;
   const system = [
     conversation.systemPrompt,
+    memory,
     conversation.summary && `${i18n.t('chat.summaryLabel')}\n${conversation.summary}`,
   ]
     .filter(Boolean)
@@ -258,6 +270,9 @@ async function runAssistant(
     }));
   if (resume) await msgRepo.update(assistant.id, { finishReason: 'streaming' });
   chat.upsert({ ...assistant, finishReason: 'streaming' });
+
+  // Souvenirs du persona prêts avant de composer l'instruction système.
+  await usePersonaMemory.getState().ensure(conversation.presetId);
 
   // Historique = chemin actif jusqu'au message assistant inclus (préfixe pour une continuation).
   const path = activePath(useChat.getState().all);
