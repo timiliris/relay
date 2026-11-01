@@ -578,6 +578,7 @@ export function SettingsPage() {
               <Shortcut keys={`${MOD}+N`} label={t('settings.shortcutNewChat')} />
               <Shortcut keys={`${MOD}+K`} label={t('settings.shortcutSearch')} />
               <Shortcut keys={`${MOD}+,`} label={t('settings.shortcutSettings')} />
+              <Shortcut keys={`${MOD}+B`} label={t('settings.shortcutSidebar')} />
               <Shortcut keys="Échap" label={t('settings.shortcutStop')} />
               <Shortcut keys="↑" label={t('settings.shortcutLastMessage')} />
               <Shortcut
@@ -667,6 +668,13 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-2 text-sm">
+            <Row label={t('settings.autoUpdate')} hint={t('settings.autoUpdateHint')}>
+              <Switch
+                checked={settings.autoUpdate}
+                onCheckedChange={(v) => settings.patch({ autoUpdate: v })}
+                aria-label={t('settings.autoUpdate')}
+              />
+            </Row>
             <Button
               variant="outline"
               size="sm"

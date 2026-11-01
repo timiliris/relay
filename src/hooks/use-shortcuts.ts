@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { stopStreaming } from '@/lib/chat-service';
 import { useChat } from '@/stores/chat';
+import { useSettings } from '@/stores/settings';
 
 interface ShortcutHandlers {
   openSearch: () => void;
@@ -9,7 +10,8 @@ interface ShortcutHandlers {
 
 /**
  * Raccourcis globaux de l'application :
- * Ctrl/⌘+N nouvelle conversation, Ctrl/⌘+K recherche, Ctrl/⌘+, paramètres, Échap arrêt du flux.
+ * Ctrl/⌘+N nouvelle conversation, Ctrl/⌘+K recherche, Ctrl/⌘+B historique, Ctrl/⌘+, paramètres,
+ * Échap arrêt du flux.
  */
 export function useShortcuts({ openSearch }: ShortcutHandlers) {
   const navigate = useNavigate();
@@ -23,6 +25,10 @@ export function useShortcuts({ openSearch }: ShortcutHandlers) {
       } else if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         openSearch();
+      } else if (mod && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        const { sidebarCollapsed, patch } = useSettings.getState();
+        patch({ sidebarCollapsed: !sidebarCollapsed });
       } else if (mod && e.key === ',') {
         e.preventDefault();
         void navigate({ to: '/settings' });

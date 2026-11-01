@@ -22,10 +22,16 @@ export type UpdateStatus =
 export interface CheckOptions {
   /** Sans dialogue quand il n'y a rien à faire (vérification au démarrage). */
   silent?: boolean;
+  /** Télécharge et installe sans demander confirmation. */
+  autoInstall?: boolean;
   onStatus?: (status: UpdateStatus, detail?: string) => void;
 }
 
-export async function checkForUpdates({ silent = false, onStatus }: CheckOptions = {}) {
+export async function checkForUpdates({
+  silent = false,
+  autoInstall = false,
+  onStatus,
+}: CheckOptions = {}) {
   const report = onStatus ?? (() => {});
   const t = i18n.t;
   report('checking');
@@ -47,13 +53,15 @@ export async function checkForUpdates({ silent = false, onStatus }: CheckOptions
     info(`Mise à jour disponible : ${update.version}`);
     report('available', update.version);
 
-    const accepted = await dialog.confirm({
-      title: t('updates.dialog.titleAvailable'),
-      message:
-        `${t('updates.dialog.available', { version: update.version })}\n\n${update.body ?? ''}`.trim(),
-      confirmLabel: t('updates.dialog.install'),
-      cancelLabel: t('updates.dialog.later'),
-    });
+    const accepted =
+      autoInstall ||
+      (await dialog.confirm({
+        title: t('updates.dialog.titleAvailable'),
+        message:
+          `${t('updates.dialog.available', { version: update.version })}\n\n${update.body ?? ''}`.trim(),
+        confirmLabel: t('updates.dialog.install'),
+        cancelLabel: t('updates.dialog.later'),
+      }));
     if (!accepted) {
       report('idle');
       return;
@@ -62,6 +70,7 @@ export async function checkForUpdates({ silent = false, onStatus }: CheckOptions
     let total = 0;
     let downloaded = 0;
     report('downloading', '0');
+    info(`Téléchargement de la mise à jour ${update.version}`);
 
     await update.downloadAndInstall((event) => {
       switch (event.event) {
@@ -74,6 +83,7 @@ export async function checkForUpdates({ silent = false, onStatus }: CheckOptions
           break;
         case 'Finished':
           report('installed');
+          info(`Mise à jour ${update.version} installée, redémarrage`);
           break;
       }
     });

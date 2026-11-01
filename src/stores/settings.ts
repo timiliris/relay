@@ -59,6 +59,10 @@ export interface SettingsData extends GenerationParams {
   messagesPageSize: number;
   onboarded: boolean;
   presetsSeeded: boolean;
+  /** Installer les mises à jour sans confirmation. */
+  autoUpdate: boolean;
+  /** Conversation rouverte au lancement. */
+  lastConversationId: string | null;
 }
 
 export interface SettingsState extends SettingsData {
@@ -89,6 +93,8 @@ const defaults: SettingsData = {
   messagesPageSize: 60,
   onboarded: false,
   presetsSeeded: false,
+  autoUpdate: false,
+  lastConversationId: null,
   ...defaultGeneration,
 };
 
