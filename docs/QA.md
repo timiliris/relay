@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.1.1
+# Fiche de vérification — Relay 0.2.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -67,6 +67,18 @@ charge de l'éditeur : les certificats de signature de production (différés).
 | Vérification              | `C:\Program Files\Relay\relay.exe` en version produit 0.1.1 ; registre Windows `DisplayName: Relay`, `DisplayVersion: 0.1.1` ; signature minisign de `latest.json` acceptée                        |
 
 Le build témoin et ses dossiers de données (`%LOCALAPPDATA%\io.github.timiliris.relay.e2e`, `%APPDATA%\io.github.timiliris.relay.e2e`) ont été supprimés après le test.
+
+## Release 0.2.0 via release-please (1er novembre 2026)
+
+| Étape         | Résultat                                                                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PR de release | `chore(main): release 0.2.0` ouverte automatiquement par release-please (changelog : Nouveautés, Corrections, Performances ; versions alignées dans `package.json`, `Cargo.toml`, `tauri.conf.json`)                                 |
+| Fusion        | tag `v0.2.0` et release GitHub créés par release-please ; `release.yml` lancé par `workflow_dispatch` (un tag créé avec `GITHUB_TOKEN` ne déclenche aucun workflow, le lancement est désormais automatisé dans `release-please.yml`) |
+| Builds        | Windows x64, Linux x64, macOS Intel et Apple Silicon : succès (tauri-action 1)                                                                                                                                                       |
+| Artefacts     | https://github.com/timiliris/relay/releases/tag/v0.2.0 — 17 fichiers : MSI, NSIS, deb, rpm, AppImage, 2 dmg, 2 `.app.tar.gz` (nommés avec la version depuis tauri-action 1), 8 `.sig`, `latest.json`                                 |
+| `latest.json` | version 0.2.0, 11 cibles, servi par `releases/latest/download/latest.json` : les installations 0.1.1 se mettront à jour au prochain lancement                                                                                        |
+
+Dépendances mises à jour le même jour (8 PR Dependabot fusionnées, CI verte) : actions checkout 7, setup-node 7, pnpm/action-setup 6, release-please-action 5, tauri-action 1 ; Vitest 5, `@types/node` 26, jest-dom 7. Un lockfile rendu incohérent par deux fusions successives a été régénéré (`fix(deps)`).
 
 ## Optimisations mesurées (0.1.1)
 

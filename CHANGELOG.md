@@ -4,20 +4,19 @@ Généré par [release-please](https://github.com/googleapis/release-please) à 
 
 ## [0.2.0](https://github.com/timiliris/relay/compare/v0.1.1...v0.2.0) (2026-11-01)
 
-
 ### Nouveautés
 
-* **ux:** reprise de la dernière conversation au lancement, bouton Réessayer sur ([5d202f6](https://github.com/timiliris/relay/commit/5d202f60257df51e9707268db1586c60101c806c))
+- **ux:** reprise de la dernière conversation au lancement, bouton Réessayer sur ([5d202f6](https://github.com/timiliris/relay/commit/5d202f60257df51e9707268db1586c60101c806c))
 
 
 ### Corrections
 
-* **deps:** lockfile cohérent après les fusions Dependabot ([e1e3f8e](https://github.com/timiliris/relay/commit/e1e3f8eeaa5da4ac5de8453ed8c2018c8db60ce9))
+- **deps:** lockfile cohérent après les fusions Dependabot ([e1e3f8e](https://github.com/timiliris/relay/commit/e1e3f8eeaa5da4ac5de8453ed8c2018c8db60ce9))
 
 
 ### Performances
 
-* **ui:** streaming regroupé par frame, Markdown throttlé, KaTeX différé, gzip HTTP ([5d202f6](https://github.com/timiliris/relay/commit/5d202f60257df51e9707268db1586c60101c806c))
+- **ui:** streaming regroupé par frame, Markdown throttlé, KaTeX différé, gzip HTTP ([5d202f6](https://github.com/timiliris/relay/commit/5d202f60257df51e9707268db1586c60101c806c))
 
 ## 0.1.1 (2026-10-31)
 

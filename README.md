@@ -149,8 +149,9 @@ Le dépôt `timiliris/relay` est public et autorise les workflows à ouvrir des 
 (qui lit `latest.json` sur la dernière release GitHub) fonctionnent sans réglage supplémentaire. La mise à jour
 automatique 0.1.0 → 0.1.1 a été vérifiée de bout en bout sur Windows (voir `docs/QA.md`).
 
-Reconstruire une release existante depuis `main` (après un correctif du workflow, par exemple) :
-`gh workflow run release.yml -f tag=v0.1.1`.
+Cycle de publication : fusionner la PR « chore(main): release X.Y.Z » ouverte par release-please crée le tag et la
+release GitHub, puis lance `release.yml` (via `workflow_dispatch`, car un tag créé avec `GITHUB_TOKEN` ne déclenche
+aucun workflow). Reconstruire une release existante depuis `main` : `gh workflow run release.yml -f tag=vX.Y.Z`.
 
 ## Dépannage
 
