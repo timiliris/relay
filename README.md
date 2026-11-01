@@ -145,6 +145,13 @@ La fiche complète des vérifications (automatisées et réelles, avec résultat
 
 Hérité du template : CI sur PR (lint, types, tests, Clippy, cargo-deny, pnpm audit), **release-please** pour le changelog et le bump de version, **release multi-OS** sur tag, updater signé (secrets `TAURI_SIGNING_PRIVATE_KEY*`), signature macOS (secrets `APPLE_*`). Voir les commentaires dans `.github/workflows/*.yml`.
 
+Le dépôt `timiliris/relay` est public et autorise les workflows à ouvrir des PR : release-please et l'updater
+(qui lit `latest.json` sur la dernière release GitHub) fonctionnent sans réglage supplémentaire. La mise à jour
+automatique 0.1.0 → 0.1.1 a été vérifiée de bout en bout sur Windows (voir `docs/QA.md`).
+
+Reconstruire une release existante depuis `main` (après un correctif du workflow, par exemple) :
+`gh workflow run release.yml -f tag=v0.1.1`.
+
 ## Dépannage
 
 - **Clé refusée (401)** : vérifiez la clé dans Paramètres ; les clés OpenRouter commencent par `sk-or-`.

@@ -8,11 +8,9 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Options } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { cn } from '@/lib/utils';
 
@@ -21,16 +19,62 @@ interface MarkdownProps {
   className?: string;
 }
 
+type Plugins = {
+  remark: NonNullable<Options['remarkPlugins']>;
+  rehype: NonNullable<Options['rehypePlugins']>;
+};
+
+/** Détecte une formule `$…$`, `$$…$$`, `\(…\)` ou `\[…\]`. */
+const MATH_PATTERN = /\$[^$\n]+\$|\$\$[\s\S]+?\$\$|\\\(|\\\[/;
+
+let mathPlugins: Plugins | null = null;
+let mathLoading: Promise<Plugins> | null = null;
+
+/** KaTeX (≈ 300 Ko avec sa feuille de style) n'est chargé qu'à la première formule rencontrée. */
+function loadMath(): Promise<Plugins> {
+  mathLoading ??= Promise.all([
+    import('remark-math'),
+    import('rehype-katex'),
+    import('katex/dist/katex.min.css'),
+  ]).then(([remarkMath, rehypeKatex]) => {
+    mathPlugins = { remark: [remarkMath.default], rehype: [rehypeKatex.default] };
+    return mathPlugins;
+  });
+  return mathLoading;
+}
+
 /**
- * Rendu Markdown (GFM) avec formules LaTeX (KaTeX), coloration syntaxique,
+ * Rendu Markdown (GFM) avec coloration syntaxique, formules LaTeX (KaTeX, chargé à la demande),
  * diagrammes Mermaid (chargés à la demande) et bouton « copier » sur les blocs de code.
  */
 export function Markdown({ children, className }: MarkdownProps) {
+  const needsMath = MATH_PATTERN.test(children);
+  const [math, setMath] = useState<Plugins | null>(mathPlugins);
+
+  useEffect(() => {
+    if (!needsMath || math) return;
+    let cancelled = false;
+    loadMath().then((plugins) => {
+      if (!cancelled) setMath(plugins);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsMath, math]);
+
+  const withMath = needsMath && math !== null;
+  const remarkPlugins: Options['remarkPlugins'] = withMath
+    ? [remarkGfm, ...math.remark]
+    : [remarkGfm];
+  const rehypePlugins: Options['rehypePlugins'] = withMath
+    ? [rehypeHighlight, ...math.rehype]
+    : [rehypeHighlight];
+
   return (
     <div className={cn('markdown', className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeHighlight, rehypeKatex]}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
         components={{ pre: CodeBlock, a: ExternalLink }}
       >
         {children}

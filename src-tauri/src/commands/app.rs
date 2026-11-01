@@ -28,6 +28,12 @@ pub fn should_start_hidden(state: State<'_, AppState>) -> bool {
     state.start_hidden
 }
 
+/// `true` si l'app a été lancée avec `--auto-update`.
+#[tauri::command]
+pub fn should_auto_update(state: State<'_, AppState>) -> bool {
+    state.auto_update
+}
+
 /// Affiche le menu de l'application en popup (bouton ≡ de la barre de titre, Windows / Linux).
 #[tauri::command]
 pub fn show_app_menu(app: AppHandle, x: f64, y: f64) -> AppResult<()> {

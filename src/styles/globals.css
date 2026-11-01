@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "katex/dist/katex.min.css";
 
 /* Mode sombre piloté par la classe `.dark` sur <html> (voir hooks/use-theme.ts). */
 @custom-variant dark (&:where(.dark, .dark *));

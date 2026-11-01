@@ -136,7 +136,9 @@
     "showEarlier": "Afficher les {{count}} messages précédents",
     "scrollToBottom": "Aller à la fin",
     "imageAlt": "Image jointe : {{name}}",
-    "mermaidError": "Diagramme Mermaid invalide."
+    "mermaidError": "Diagramme Mermaid invalide.",
+    "responding": "Réponse en cours…",
+    "responseDone": "Réponse terminée."
   },
   "search": {
     "title": "Rechercher",
@@ -166,7 +168,11 @@
     "filterVision": "Vision",
     "filterFree": "Gratuits",
     "filterReasoning": "Raisonnement",
-    "vision": "Accepte les images"
+    "vision": "Accepte les images",
+    "sort": "Trier",
+    "sortName": "Nom",
+    "sortPrice": "Prix",
+    "sortContext": "Contexte"
   },
   "params": {
     "title": "Paramètres de génération",
@@ -207,7 +213,8 @@
     "addModel": "Ajouter un modèle",
     "removeModel": "Retirer ce modèle",
     "empty": "Choisissez jusqu'à trois modèles, puis posez votre question.",
-    "waiting": "En attente…"
+    "waiting": "En attente…",
+    "continueChat": "Continuer dans une conversation"
   },
   "usage": {
     "title": "Usage",
@@ -295,7 +302,10 @@
     "about": "À propos",
     "version": "Version {{version}}",
     "checkUpdates": "Rechercher des mises à jour",
-    "docs": "Documentation OpenRouter"
+    "docs": "Documentation OpenRouter",
+    "autoUpdate": "Installer les mises à jour automatiquement",
+    "autoUpdateHint": "Téléchargées et installées sans confirmation au démarrage ; sinon une proposition s'affiche.",
+    "shortcutSidebar": "Afficher / masquer l'historique"
   },
   "onboarding": {
     "welcome": "Bienvenue dans Relay",

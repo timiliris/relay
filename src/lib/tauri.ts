@@ -63,6 +63,8 @@ export const commands = {
   setLanguage: (lang: string) => invoke<string>('set_language', { lang }),
   /** `true` si l'app a été lancée avec `--minimized` (démarrage automatique). */
   shouldStartHidden: () => invoke<boolean>('should_start_hidden'),
+  /** `true` si l'app a été lancée avec `--auto-update`. */
+  shouldAutoUpdate: () => invoke<boolean>('should_auto_update'),
   /** Affiche le menu natif en popup (bouton ≡ de la barre de titre, Windows / Linux). */
   showAppMenu: (x: number, y: number) => invoke<void>('show_app_menu', { x, y }),
 } as const;
