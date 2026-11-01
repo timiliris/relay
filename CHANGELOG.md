@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.3.0](https://github.com/timiliris/relay/compare/v0.2.0...v0.3.0) (2026-11-01)
+
+
+### Nouveautés
+
+* **ui:** plus de couleur — jauges, barres d'usage, personas, avatars et accent violet par défaut ([42b21e8](https://github.com/timiliris/relay/commit/42b21e8d758a1c223a6bd707a5b8e0653913b4ca))
+
 ## [0.2.0](https://github.com/timiliris/relay/compare/v0.1.1...v0.2.0) (2026-11-01)
 
 ### Nouveautés
