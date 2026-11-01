@@ -84,6 +84,18 @@ export interface Preset {
   createdAt: string;
 }
 
+/** Fait mémorisé d'un persona (carnet injecté dans l'instruction système). */
+export interface PersonaMemory {
+  id: string;
+  presetId: string;
+  content: string;
+  /** Conversation d'origine du souvenir, si connue. */
+  sourceConversationId: string | null;
+  /** Épinglé : toujours listé en tête du bloc mémoire. */
+  pinned: boolean;
+  createdAt: string;
+}
+
 export interface UsageRow {
   day: string;
   model: string;
@@ -158,6 +170,15 @@ interface PresetRow {
   reasoning: number | null;
   persona: string | null;
   position: number;
+  created_at: string;
+}
+
+interface PersonaMemoryRow {
+  id: string;
+  preset_id: string;
+  content: string;
+  source_conversation_id: string | null;
+  pinned: number;
   created_at: string;
 }
 
@@ -238,6 +259,15 @@ const toPreset = (r: PresetRow): Preset => ({
   reasoning: bool(r.reasoning),
   persona: parsePersona(r.persona),
   position: r.position,
+  createdAt: r.created_at,
+});
+
+const toPersonaMemory = (r: PersonaMemoryRow): PersonaMemory => ({
+  id: r.id,
+  presetId: r.preset_id,
+  content: r.content,
+  sourceConversationId: r.source_conversation_id,
+  pinned: r.pinned === 1,
   createdAt: r.created_at,
 });
 
@@ -580,7 +610,83 @@ export const presets = {
   async remove(id: string): Promise<void> {
     const c = await connection();
     await c.execute('UPDATE conversations SET preset_id = NULL WHERE preset_id = $1', [id]);
+    await c.execute('DELETE FROM persona_memories WHERE preset_id = $1', [id]);
     await c.execute('DELETE FROM presets WHERE id = $1', [id]);
+  },
+};
+
+export type PersonaMemoryPatch = Partial<Pick<PersonaMemory, 'content' | 'pinned'>>;
+
+/** Carnet de faits par persona ; épinglés en tête, puis par ordre d'ajout. */
+export const personaMemories = {
+  async list(presetId: string): Promise<PersonaMemory[]> {
+    const rows = await (await connection()).select<PersonaMemoryRow[]>(
+      'SELECT * FROM persona_memories WHERE preset_id = $1 ORDER BY pinned DESC, created_at ASC, rowid ASC',
+      [presetId],
+    );
+    return rows.map(toPersonaMemory);
+  },
+
+  /** Nombre de souvenirs par persona (liste des paramètres). */
+  async counts(): Promise<Record<string, number>> {
+    const rows = await (await connection()).select<Array<{ preset_id: string; n: number }>>(
+      'SELECT preset_id, COUNT(*) AS n FROM persona_memories GROUP BY preset_id',
+    );
+    return Object.fromEntries(rows.map((r) => [r.preset_id, r.n]));
+  },
+
+  async add(input: {
+    presetId: string;
+    content: string;
+    sourceConversationId?: string | null;
+    pinned?: boolean;
+    id?: string;
+    createdAt?: string;
+  }): Promise<PersonaMemory> {
+    const memory: PersonaMemory = {
+      id: input.id ?? newId(),
+      presetId: input.presetId,
+      content: input.content,
+      sourceConversationId: input.sourceConversationId ?? null,
+      pinned: input.pinned ?? false,
+      createdAt: input.createdAt ?? now(),
+    };
+    await (await connection()).execute(
+      `INSERT INTO persona_memories (id, preset_id, content, source_conversation_id, pinned, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        memory.id,
+        memory.presetId,
+        memory.content,
+        memory.sourceConversationId,
+        memory.pinned ? 1 : 0,
+        memory.createdAt,
+      ],
+    );
+    return memory;
+  },
+
+  async update(id: string, patch: PersonaMemoryPatch): Promise<void> {
+    const { sql, values } = buildSet({
+      content: patch.content,
+      pinned: patch.pinned === undefined ? undefined : patch.pinned ? 1 : 0,
+    });
+    if (!sql) return;
+    values.push(id);
+    await (await connection()).execute(
+      `UPDATE persona_memories SET ${sql} WHERE id = $${values.length}`,
+      values,
+    );
+  },
+
+  async remove(id: string): Promise<void> {
+    await (await connection()).execute('DELETE FROM persona_memories WHERE id = $1', [id]);
+  },
+
+  async removeAll(presetId: string): Promise<void> {
+    await (await connection()).execute('DELETE FROM persona_memories WHERE preset_id = $1', [
+      presetId,
+    ]);
   },
 };
 

@@ -1,4 +1,4 @@
-//! Base SQLite locale (tauri-plugin-sql) : conversations et messages.
+//! Base SQLite locale (tauri-plugin-sql) : conversations, messages, personas et leur mémoire.
 //!
 //! Schéma versionné par migrations ; elles s'appliquent au premier `load`
 //! côté frontend (`src/lib/db.ts`, même `DB_URL`).
@@ -98,6 +98,24 @@ fn migrations() -> Vec<Migration> {
             sql: "
             -- Personnalité du persona (mode, traits, fiche de rôle, 18+) en JSON.
             ALTER TABLE presets ADD COLUMN persona TEXT;
+        ",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "persona_memory",
+            sql: "
+            -- Carnet de faits d'un persona, injecté dans l'instruction système de ses conversations.
+            CREATE TABLE IF NOT EXISTS persona_memories (
+                id                     TEXT PRIMARY KEY,
+                preset_id              TEXT NOT NULL,
+                content                TEXT NOT NULL,
+                source_conversation_id TEXT,
+                pinned                 INTEGER NOT NULL DEFAULT 0,
+                created_at             TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_persona_memories_preset
+                ON persona_memories(preset_id, pinned DESC, created_at ASC);
         ",
             kind: MigrationKind::Up,
         },
