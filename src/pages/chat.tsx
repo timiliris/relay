@@ -21,6 +21,7 @@ import {
   editMessage,
   effectiveParams,
   ensureConversation,
+  impersonate,
   regenerate,
   retryLast,
   sendMessage,
@@ -391,6 +392,10 @@ export function ChatPage({ conversationId }: ChatPageProps) {
               context={context}
               onContextChange={(text, attachments) => setComposerState({ text, attachments })}
               acceptsImages={supportsImages(modelInfo)}
+              preset={preset}
+              onImpersonate={
+                conversation && preset ? () => impersonate(conversation, preset) : undefined
+              }
             >
               <ModelPicker
                 value={model}

@@ -447,6 +447,26 @@ async function generateTitle(conversation: Conversation, firstMessage: string): 
   }
 }
 
+/**
+ * Jeu de rôle : demande au modèle la prochaine réplique du joueur (le personnage de
+ * l'utilisateur) à partir de l'historique. Le texte est renvoyé pour relecture dans le
+ * composeur, jamais envoyé automatiquement.
+ */
+export async function impersonate(conversation: Conversation, preset: Preset): Promise<string> {
+  const fr = resolveLanguage(useSettings.getState().language) === 'fr';
+  const user = preset.persona.roleplay.userName.trim() || (fr ? 'l’utilisateur' : 'the user');
+  const char = preset.name.trim() || (fr ? 'le personnage' : 'the character');
+  const instruction = i18n.t('chat.rp.impersonatePrompt', { user, char });
+  const history = buildHistory(conversation, useChat.getState().messages);
+  const raw = await openrouter.completeChat({
+    model: conversation.model,
+    messages: [...history, { role: 'user', content: instruction }],
+    temperature: 0.9,
+    maxTokens: 300,
+  });
+  return raw.content.trim();
+}
+
 async function notifyIfHidden(title: string, body: string): Promise<void> {
   try {
     const win = getCurrentWindow();

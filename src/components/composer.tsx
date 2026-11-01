@@ -10,12 +10,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { AttachmentError, attachmentFromFile, pickAttachments } from '@/lib/attachments';
 import type { ContextEstimate } from '@/lib/context';
-import type { Attachment } from '@/lib/db';
+import type { Attachment, Preset } from '@/lib/db';
 import { formatTokens } from '@/lib/format';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { toast } from '@/stores/toast';
 import { AttachmentList } from './message-bubble';
+import { RoleplayTools } from './roleplay-tools';
 import { Button } from './ui/button';
 import { IconButton } from './ui/tooltip-button';
 
@@ -32,6 +33,10 @@ interface ComposerProps {
   context?: ContextEstimate | undefined;
   onContextChange?: ((draft: string, attachments: Attachment[]) => void) | undefined;
   acceptsImages?: boolean;
+  /** Persona de la conversation ; en mode jeu de rôle, affiche les outils dédiés. */
+  preset?: Preset | null | undefined;
+  /** Jeu de rôle : demande au modèle la réplique du joueur, placée dans la saisie pour relecture. */
+  onImpersonate?: (() => Promise<string>) | undefined;
   children?: React.ReactNode;
 }
 
@@ -48,13 +53,22 @@ export function Composer({
   context,
   onContextChange,
   acceptsImages = true,
+  preset,
+  onImpersonate,
   children,
 }: ComposerProps) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [ooc, setOoc] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const roleplay = preset?.persona.mode === 'roleplay';
+
+  // La bascule hors rôle n'a de sens qu'en jeu de rôle.
+  useEffect(() => {
+    if (!roleplay) setOoc(false);
+  }, [roleplay]);
 
   useEffect(() => {
     if (draft !== undefined) {
@@ -142,15 +156,32 @@ export function Composer({
   };
 
   const submit = () => {
-    const text = value.trim();
-    if ((!text && attachments.length === 0) || disabled || streaming) return;
+    const body = value.trim();
+    if ((!body && attachments.length === 0) || disabled || streaming) return;
+    // Le préfixe hors rôle est ajouté à l'envoi seulement, jamais dans la saisie.
+    const text = roleplay && ooc ? `${t('chat.rp.oocPrefix')} ${body}`.trim() : body;
     onSend(text, attachments);
     setValue('');
     setAttachments([]);
+    setOoc(false);
+  };
+
+  /** Ajoute un texte (jet de dés) à la fin de la saisie, sur sa propre ligne. */
+  const insert = (text: string) => {
+    setValue((prev) => (prev.trim() ? `${prev.trimEnd()}\n${text}` : text));
+    ref.current?.focus();
+  };
+
+  const replaceDraft = (text: string) => {
+    setValue(text);
+    ref.current?.focus();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (roleplay && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') {
+      e.preventDefault();
+      setOoc((v) => !v);
+    } else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       submit();
     } else if (e.key === 'ArrowUp' && value === '' && onRecallLast) {
@@ -184,6 +215,7 @@ export function Composer({
         onDrop={onDrop}
         className={cn(
           'relative flex flex-col rounded-2xl border bg-card shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30',
+          roleplay && ooc && 'border-info/60 focus-within:border-info focus-within:ring-info/30',
           disabled && 'opacity-60',
           dragging && 'border-primary ring-2 ring-primary/30',
         )}
@@ -207,7 +239,7 @@ export function Composer({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
-          placeholder={t('chat.placeholder')}
+          placeholder={roleplay && ooc ? t('chat.rp.oocPlaceholder') : t('chat.placeholder')}
           aria-label={t('chat.send')}
           disabled={disabled}
           rows={1}
@@ -222,6 +254,17 @@ export function Composer({
           >
             <Paperclip className="size-4" />
           </IconButton>
+          {roleplay && preset && (
+            <RoleplayTools
+              preset={preset}
+              disabled={disabled || streaming}
+              ooc={ooc}
+              onToggleOoc={() => setOoc((v) => !v)}
+              onImpersonate={onImpersonate}
+              onReplaceDraft={replaceDraft}
+              onInsert={insert}
+            />
+          )}
           <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">{children}</div>
           {context && <ContextGauge estimate={context} />}
           {streaming ? (

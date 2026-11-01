@@ -152,6 +152,25 @@
       "download": "Save image",
       "saved": "Image saved.",
       "onlyInApp": "Saving is only available in the desktop app."
+    },
+    "rp": {
+      "tools": "Roleplay tools",
+      "ooc": "OOC",
+      "oocTitle": "Out of character: the next message is sent with the “(OOC)” prefix (Ctrl+Shift+O)",
+      "oocPrefix": "(OOC)",
+      "oocPlaceholder": "Out-of-character message… it is sent with the (OOC) prefix",
+      "impersonate": "Play my turn",
+      "yourCharacter": "your character",
+      "impersonateTitle": "Ask the model to write {{user}}’s next line, to review before sending",
+      "impersonating": "Writing your line…",
+      "impersonatePrompt": "(OOC) Write the next line of {{user}}, the player’s character, in the first person and in the conversation’s language. One single line, short (a few sentences at most), consistent with what came before. Do not narrate {{char}} and do not voice the other characters. Reply with the line only, without quotes or commentary.",
+      "impersonateEmpty": "The model did not suggest anything.",
+      "dice": "Dice rolls",
+      "diceStandard": "d{{sides}}",
+      "diceCustom": "Custom notation (e.g. 2d6+3)",
+      "diceRoll": "Roll",
+      "diceInvalid": "Invalid notation: use NdM, NdM+K or NdM-K (up to 100 dice with 1000 sides).",
+      "diceResult": "🎲 {{notation}} → [{{rolls}}]{{modifier}} = {{total}}"
     }
   },
   "search": {

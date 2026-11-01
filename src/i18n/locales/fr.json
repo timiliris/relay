@@ -152,6 +152,25 @@
       "download": "Enregistrer l'image",
       "saved": "Image enregistrée.",
       "onlyInApp": "L'enregistrement n'est possible que dans l'application de bureau."
+    },
+    "rp": {
+      "tools": "Outils de jeu de rôle",
+      "ooc": "HRP",
+      "oocTitle": "Hors rôle : le prochain message sera envoyé avec le préfixe « (HRP) » (Ctrl+Maj+O)",
+      "oocPrefix": "(HRP)",
+      "oocPlaceholder": "Message hors rôle… il sera envoyé avec le préfixe (HRP)",
+      "impersonate": "Jouer mon tour",
+      "yourCharacter": "votre personnage",
+      "impersonateTitle": "Demander au modèle d’écrire la prochaine réplique de {{user}}, à relire avant envoi",
+      "impersonating": "Rédaction de votre réplique…",
+      "impersonatePrompt": "(HRP) Écris la prochaine réplique de {{user}}, le personnage du joueur, à la première personne et dans la langue de la conversation. Une seule réplique, courte (quelques phrases au plus), cohérente avec ce qui précède. Ne narre pas {{char}} et ne fais pas parler les autres personnages. Réponds uniquement par la réplique, sans guillemets ni commentaire.",
+      "impersonateEmpty": "Le modèle n’a rien proposé.",
+      "dice": "Jets de dés",
+      "diceStandard": "d{{sides}}",
+      "diceCustom": "Notation libre (ex. 2d6+3)",
+      "diceRoll": "Lancer",
+      "diceInvalid": "Notation invalide : utilisez NdM, NdM+K ou NdM-K (jusqu’à 100 dés de 1000 faces).",
+      "diceResult": "🎲 {{notation}} → [{{rolls}}]{{modifier}} = {{total}}"
     }
   },
   "search": {
