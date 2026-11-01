@@ -401,6 +401,7 @@ export type MessagePatch = Partial<
     | 'finishReason'
     | 'durationMs'
     | 'model'
+    | 'attachments'
   >
 >;
 
@@ -464,6 +465,12 @@ export const messages = {
       finish_reason: patch.finishReason,
       duration_ms: patch.durationMs,
       model: patch.model,
+      attachments:
+        patch.attachments === undefined
+          ? undefined
+          : patch.attachments.length
+            ? JSON.stringify(patch.attachments)
+            : null,
     });
     if (!sql) return;
     values.push(id);

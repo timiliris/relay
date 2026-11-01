@@ -15,7 +15,12 @@ export type ContentPart =
 export interface ChatMessageInput {
   role: Role;
   content: string | ContentPart[];
+  /** Images générées par l'assistant à un tour précédent (champ `images` de l'API). */
+  images?: Extract<ContentPart, { type: 'image_url' }>[];
 }
+
+/** Modalités de sortie demandées ; `['image', 'text']` active la génération d'images. */
+export type OutputModality = 'text' | 'image';
 
 export type ProviderSort = 'price' | 'throughput' | 'latency';
 
@@ -30,14 +35,23 @@ export interface ChatRequest {
   providerSort?: ProviderSort;
   ignoreProviders?: string[];
   dataCollectionDeny?: boolean;
+  modalities?: OutputModality[];
 }
 
 export type StreamEvent =
   | { type: 'delta'; content: string }
   | { type: 'reasoning'; content: string }
+  /** Image générée, sous forme de data URL (`data:image/png;base64,…`). */
+  | { type: 'image'; url: string }
   | { type: 'usage'; promptTokens: number; completionTokens: number; cost: number | null }
   | { type: 'done'; finishReason: string | null }
   | { type: 'error'; message: string };
+
+/** Résultat d'une complétion non streamée : texte et images générées (data URLs). */
+export interface CompletionOutput {
+  content: string;
+  images: string[];
+}
 
 export interface Credits {
   totalCredits: number;
@@ -54,6 +68,7 @@ export interface ModelInfo {
   promptPrice: number;
   completionPrice: number;
   inputModalities: string[];
+  outputModalities: string[];
   supportsReasoning: boolean;
   created: number;
 }
@@ -65,7 +80,7 @@ interface RawModel {
   context_length?: unknown;
   created?: unknown;
   pricing?: { prompt?: unknown; completion?: unknown };
-  architecture?: { input_modalities?: unknown };
+  architecture?: { input_modalities?: unknown; output_modalities?: unknown };
   supported_parameters?: unknown;
 }
 
@@ -89,6 +104,9 @@ export function normalizeModel(raw: unknown): ModelInfo | null {
     inputModalities: Array.isArray(m.architecture?.input_modalities)
       ? (m.architecture.input_modalities as string[])
       : ['text'],
+    outputModalities: Array.isArray(m.architecture?.output_modalities)
+      ? (m.architecture.output_modalities as string[])
+      : ['text'],
     supportsReasoning: params.includes('reasoning') || params.includes('include_reasoning'),
     created: typeof m.created === 'number' ? m.created : 0,
   };
@@ -100,13 +118,17 @@ export const supportsImages = (model: ModelInfo | undefined): boolean =>
 export const supportsFiles = (model: ModelInfo | undefined): boolean =>
   model?.inputModalities.includes('file') ?? false;
 
+/** Le modèle produit des images (`architecture.output_modalities` contient `image`). */
+export const supportsImageOutput = (model: ModelInfo | undefined): boolean =>
+  model?.outputModalities.includes('image') ?? false;
+
 export const openrouter = {
   async fetchModels(): Promise<ModelInfo[]> {
     const raw = await invoke<unknown[]>('fetch_models');
     return raw.map(normalizeModel).filter((m): m is ModelInfo => m !== null);
   },
   fetchCredits: () => invoke<Credits>('fetch_credits'),
-  completeChat: (request: ChatRequest) => invoke<string>('complete_chat', { request }),
+  completeChat: (request: ChatRequest) => invoke<CompletionOutput>('complete_chat', { request }),
   /** Démarre un streaming ; la promesse se résout quand le flux est terminé. */
   streamChat(requestId: string, request: ChatRequest, onEvent: (event: StreamEvent) => void) {
     const channel = new Channel<StreamEvent>();

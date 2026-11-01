@@ -138,7 +138,16 @@
     "imageAlt": "Attached image: {{name}}",
     "mermaidError": "Invalid Mermaid diagram.",
     "responding": "Responding…",
-    "responseDone": "Response complete."
+    "responseDone": "Response complete.",
+    "images": {
+      "filter": "Images",
+      "modelBadge": "Generates images",
+      "alt": "Generated image: {{name}}",
+      "open": "View full size",
+      "download": "Save image",
+      "saved": "Image saved.",
+      "onlyInApp": "Saving is only available in the desktop app."
+    }
   },
   "search": {
     "title": "Search",

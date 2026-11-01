@@ -9,6 +9,7 @@ import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notifi
 import i18n, { resolveLanguage } from '@/i18n';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
+import { useModels } from '@/stores/models';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { toContentParts } from './attachments';
@@ -22,7 +23,13 @@ import {
   type Preset,
 } from './db';
 import { truncateTitle } from './format';
-import { type ChatMessageInput, type ChatRequest, openrouter } from './openrouter';
+import { imageAttachmentFromUrl, toImageParts } from './image-output';
+import {
+  type ChatMessageInput,
+  type ChatRequest,
+  openrouter,
+  supportsImageOutput,
+} from './openrouter';
 import { buildSystemPrompt, greetingOf } from './persona';
 import { errorMessage } from './tauri';
 import { activePath, siblingsOf, tail } from './tree';
@@ -178,7 +185,7 @@ export async function summarizeOlder(conversation: Conversation): Promise<boolea
   const previous = conversation.summary
     ? `${i18n.t('chat.summaryPrevious')}\n${conversation.summary}\n\n`
     : '';
-  const summary = await openrouter.completeChat({
+  const { content: summary } = await openrouter.completeChat({
     model: conversation.model,
     messages: [
       { role: 'system', content: i18n.t('chat.summaryPrompt') },
@@ -210,6 +217,12 @@ export function buildHistory(conversation: Conversation, path: Message[]): ChatM
     : 0;
   for (const m of path.slice(Math.max(0, start))) {
     if (m.role === 'system') continue;
+    if (m.role === 'assistant') {
+      // Les images générées repartent dans `images`, pas dans `content` (édition multi-tours).
+      const images = toImageParts(m.attachments);
+      input.push({ role: m.role, content: m.content, ...(images.length ? { images } : {}) });
+      continue;
+    }
     input.push({ role: m.role, content: toContentParts(m.content, m.attachments) });
   }
   return input;
@@ -229,6 +242,10 @@ function buildRequest(conversation: Conversation, messages: ChatMessageInput[]):
     ...(p.topP !== null ? { topP: p.topP } : {}),
     ...(s.providerSort ? { providerSort: s.providerSort } : {}),
     ...(s.ignoreProviders.length ? { ignoreProviders: s.ignoreProviders } : {}),
+    // Seuls les modèles à sortie image acceptent `modalities` : ne l'envoyer qu'à eux.
+    ...(supportsImageOutput(useModels.getState().byId(conversation.model))
+      ? { modalities: ['image', 'text'] as const }
+      : {}),
   };
 }
 
@@ -270,6 +287,7 @@ async function runAssistant(
   const acc = {
     content: resume?.content ?? '',
     reasoning: resume?.reasoning ?? '',
+    attachments: [...(resume?.attachments ?? [])],
     usage: null as { promptTokens: number; completionTokens: number; cost: number | null } | null,
     finishReason: null as string | null,
     error: null as string | null,
@@ -313,6 +331,14 @@ async function runAssistant(
           pending.reasoning += event.content;
           schedule();
           break;
+        case 'image': {
+          // Persistée tout de suite : une image est rare, lourde et ne doit pas se perdre.
+          const image = imageAttachmentFromUrl(event.url, acc.attachments.length + 1);
+          acc.attachments.push(image);
+          useChat.getState().appendAttachment(assistant.id, image);
+          void msgRepo.update(assistant.id, { attachments: acc.attachments });
+          break;
+        }
         case 'usage':
           acc.usage = event;
           break;
@@ -335,6 +361,7 @@ async function runAssistant(
     ...assistant,
     content: acc.content,
     reasoning: acc.reasoning || null,
+    attachments: acc.attachments,
     promptTokens: acc.usage?.promptTokens ?? resume?.promptTokens ?? null,
     completionTokens: (acc.usage?.completionTokens ?? 0) + (resume?.completionTokens ?? 0) || null,
     cost: (acc.usage?.cost ?? 0) + (resume?.cost ?? 0) || null,
@@ -342,7 +369,7 @@ async function runAssistant(
     durationMs,
   };
 
-  if (!acc.content && !acc.reasoning) {
+  if (!acc.content && !acc.reasoning && acc.attachments.length === 0) {
     // Rien reçu (erreur immédiate ou arrêt avant le premier token) : pas de message vide.
     await msgRepo.removeSubtree(conversation.id, assistant.id);
     useChat.getState().removeMany([assistant.id]);
@@ -350,6 +377,7 @@ async function runAssistant(
     await msgRepo.update(assistant.id, {
       content: final.content,
       reasoning: final.reasoning,
+      attachments: final.attachments,
       promptTokens: final.promptTokens,
       completionTokens: final.completionTokens,
       cost: final.cost,
@@ -372,7 +400,7 @@ async function runAssistant(
 
 async function generateTitle(conversation: Conversation, firstMessage: string): Promise<void> {
   try {
-    const raw = await openrouter.completeChat({
+    const { content: raw } = await openrouter.completeChat({
       model: conversation.model,
       messages: [
         { role: 'system', content: i18n.t('chat.titlePrompt') },

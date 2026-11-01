@@ -3,7 +3,7 @@
  * actif affiché et le flux en cours. La logique d'envoi vit dans `src/lib/chat-service.ts`.
  */
 import { create } from 'zustand';
-import { type Message, messages as repo } from '@/lib/db';
+import { type Attachment, type Message, messages as repo } from '@/lib/db';
 import { devFixturesEnabled, sampleMessages } from '@/lib/dev-fixtures';
 import { isTauri } from '@/lib/tauri';
 import { activePath } from '@/lib/tree';
@@ -33,6 +33,8 @@ interface ChatState {
   beginStream: (conversationId: string, requestId: string, messageId: string) => void;
   appendDelta: (messageId: string, content: string) => void;
   appendReasoning: (messageId: string, content: string) => void;
+  /** Ajoute une image générée (ou autre pièce jointe) au message en cours d'écriture. */
+  appendAttachment: (messageId: string, attachment: Attachment) => void;
   endStream: (error: string | null) => void;
   setError: (error: string | null) => void;
 }
@@ -104,6 +106,15 @@ export const useChat = create<ChatState>()((set, get) => ({
       withPath(
         s.all.map((m) =>
           m.id === messageId ? { ...m, reasoning: (m.reasoning ?? '') + content } : m,
+        ),
+      ),
+    ),
+
+  appendAttachment: (messageId, attachment) =>
+    set((s) =>
+      withPath(
+        s.all.map((m) =>
+          m.id === messageId ? { ...m, attachments: [...m.attachments, attachment] } : m,
         ),
       ),
     ),

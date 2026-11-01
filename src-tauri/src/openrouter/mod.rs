@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
 use crate::{AppError, AppResult};
-use sse::{Chunk, SseData, SseParser};
+use sse::{Chunk, ImagePart, SseData, SseParser};
 
 pub const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
 /// Variable d'environnement permettant de viser un autre serveur (tests, proxy).
@@ -86,11 +86,14 @@ impl Default for OpenRouterState {
 }
 
 /// Message au format OpenAI. `content` est une chaîne ou un tableau de parties
-/// (texte, image, fichier) : il est relayé tel quel à l'API.
+/// (texte, image, fichier) : il est relayé tel quel à l'API. `images` porte les
+/// images générées par l'assistant lors d'un tour précédent (édition multi-tours).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
     pub content: serde_json::Value,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -119,6 +122,9 @@ pub struct ChatRequest {
     /// Refuse les fournisseurs qui conservent ou entraînent sur les données.
     #[serde(default)]
     pub data_collection_deny: bool,
+    /// Modalités de sortie demandées, ex. `["image", "text"]` pour la génération d'images.
+    #[serde(default)]
+    pub modalities: Option<Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -139,6 +145,8 @@ struct Body<'a> {
     plugins: Option<Vec<Plugin>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     provider: Option<ProviderPrefs>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    modalities: Option<&'a [String]>,
 }
 
 #[derive(Serialize)]
@@ -179,6 +187,7 @@ impl<'a> Body<'a> {
             reasoning: req.reasoning.then_some(ReasoningOption { enabled: true }),
             plugins: req.web_search.then(|| vec![Plugin { id: "web" }]),
             provider: provider_prefs(req),
+            modalities: req.modalities.as_deref(),
         }
     }
 }
@@ -203,6 +212,10 @@ pub enum StreamEvent {
     },
     Reasoning {
         content: String,
+    },
+    /// Image générée (data URL, volumineuse : ne jamais la journaliser).
+    Image {
+        url: String,
     },
     #[serde(rename_all = "camelCase")]
     Usage {
@@ -244,7 +257,39 @@ struct Completion {
 
 #[derive(Deserialize)]
 struct CompletionChoice {
-    message: ChatMessage,
+    message: CompletionMessage,
+}
+
+#[derive(Deserialize)]
+struct CompletionMessage {
+    #[serde(default)]
+    content: serde_json::Value,
+    #[serde(default)]
+    images: Vec<ImagePart>,
+}
+
+/// Résultat d'une complétion non streamée : texte et images générées (data URLs).
+#[derive(Debug, Clone, Serialize, PartialEq, Default)]
+pub struct CompletionOutput {
+    pub content: String,
+    pub images: Vec<String>,
+}
+
+impl From<CompletionMessage> for CompletionOutput {
+    fn from(message: CompletionMessage) -> Self {
+        Self {
+            content: match message.content {
+                serde_json::Value::String(text) => text,
+                serde_json::Value::Null => String::new(),
+                other => other.to_string(),
+            },
+            images: message
+                .images
+                .into_iter()
+                .map(|i| i.image_url.url)
+                .collect(),
+        }
+    }
 }
 
 fn authed(builder: reqwest::RequestBuilder, api_key: &str) -> reqwest::RequestBuilder {
@@ -286,12 +331,13 @@ pub async fn credits(state: &OpenRouterState, api_key: &str) -> AppResult<Credit
     Ok(envelope.data)
 }
 
-/// Complétion sans streaming (titres automatiques, résumés, etc.).
+/// Complétion sans streaming (titres automatiques, résumés, etc.). Les images
+/// éventuelles de la réponse sont renvoyées à part, sous forme de data URLs.
 pub async fn complete(
     state: &OpenRouterState,
     api_key: &str,
     request: &ChatRequest,
-) -> AppResult<String> {
+) -> AppResult<CompletionOutput> {
     let response = authed(state.client.post(state.url("/chat/completions")), api_key)
         .json(&Body::new(request, false))
         .send()
@@ -301,10 +347,7 @@ pub async fn complete(
         .choices
         .into_iter()
         .next()
-        .map(|c| match c.message.content {
-            serde_json::Value::String(text) => text,
-            other => other.to_string(),
-        })
+        .map(|c| c.message.into())
         .unwrap_or_default())
 }
 
@@ -358,6 +401,9 @@ pub async fn stream(
                                 if let Some(content) = choice.delta.reasoning.filter(|c| !c.is_empty()) {
                                     emit(StreamEvent::Reasoning { content });
                                 }
+                                for image in choice.delta.images {
+                                    emit(StreamEvent::Image { url: image.image_url.url });
+                                }
                                 if choice.finish_reason.is_some() {
                                     finish_reason = choice.finish_reason;
                                 }
@@ -395,6 +441,7 @@ mod tests {
             messages: vec![ChatMessage {
                 role: "user".into(),
                 content: serde_json::Value::String(prompt.into()),
+                images: vec![],
             }],
             temperature: Some(0.7),
             max_tokens: None,
@@ -404,6 +451,7 @@ mod tests {
             provider_sort: None,
             ignore_providers: vec![],
             data_collection_deny: false,
+            modalities: None,
         }
     }
 
@@ -481,6 +529,77 @@ mod tests {
                     finish_reason: Some("stop".into())
                 },
             ]
+        );
+    }
+
+    #[tokio::test]
+    async fn streams_generated_images_as_image_events() {
+        let base = sse_server(
+            vec![
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Voici\",\"images\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/png;base64,AAAA\"}}]}}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"images\":[{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:image/webp;base64,BBBB\"}}]},\"finish_reason\":\"stop\"}]}\n\n",
+                "data: [DONE]\n\n",
+            ],
+            Duration::from_millis(5),
+        );
+        let state = OpenRouterState::with_base_url(base);
+        let events = Mutex::new(Vec::new());
+        let req = ChatRequest {
+            modalities: Some(vec!["image".into(), "text".into()]),
+            ..request("test/image-model", "Dessine un chat")
+        };
+        stream(&state, "test-key", &req, CancellationToken::new(), |e| {
+            events.lock().unwrap().push(e)
+        })
+        .await
+        .expect("flux complet");
+
+        assert_eq!(
+            collect(&events),
+            vec![
+                StreamEvent::Delta {
+                    content: "Voici".into()
+                },
+                StreamEvent::Image {
+                    url: "data:image/png;base64,AAAA".into()
+                },
+                StreamEvent::Image {
+                    url: "data:image/webp;base64,BBBB".into()
+                },
+                StreamEvent::Done {
+                    finish_reason: Some("stop".into())
+                },
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn completion_returns_text_and_generated_images() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { continue };
+                let mut buf = [0u8; 8192];
+                let _ = stream.read(&mut buf);
+                let body = r#"{"choices":[{"message":{"role":"assistant","content":"Un chat.","images":[{"type":"image_url","image_url":{"url":"data:image/png;base64,CCCC"}}]},"finish_reason":"stop"}]}"#;
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        let state = OpenRouterState::with_base_url(format!("http://{addr}"));
+        let output = complete(&state, "test-key", &request("test/image-model", "Un chat"))
+            .await
+            .expect("complétion");
+        assert_eq!(
+            output,
+            CompletionOutput {
+                content: "Un chat.".into(),
+                images: vec!["data:image/png;base64,CCCC".into()],
+            }
         );
     }
 
@@ -652,6 +771,102 @@ mod tests {
         panic!("aucun modèle gratuit n'a répondu : {last_error:?}");
     }
 
+    /// Génération d'image réelle : clé du trousseau, modèles à sortie image les moins
+    /// chers du catalogue. Réseau + clé configurée requis (coût de quelques centimes) :
+    /// `cargo test -- --ignored generate_image_live`.
+    #[tokio::test]
+    #[ignore]
+    async fn generate_image_live() {
+        let api_key = crate::secrets::get_api_key()
+            .expect("trousseau")
+            .expect("aucune clé OpenRouter dans le trousseau");
+        let state = OpenRouterState::new();
+
+        let models = models(&state).await.expect("modèles");
+        let price = |m: &serde_json::Value| -> f64 {
+            ["prompt", "completion", "image"]
+                .iter()
+                .filter_map(|k| m["pricing"][k].as_str())
+                .filter_map(|v| v.parse::<f64>().ok())
+                .sum()
+        };
+        let has_modality = |m: &serde_json::Value, key: &str, wanted: &str| {
+            m["architecture"][key]
+                .as_array()
+                .is_some_and(|mods| mods.iter().any(|v| v == wanted))
+        };
+        let mut candidates: Vec<(f64, String)> = models
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| has_modality(m, "output_modalities", "image"))
+            .filter(|m| has_modality(m, "input_modalities", "text"))
+            .filter_map(|m| m["id"].as_str().map(|id| (price(m), id.to_string())))
+            // Les routeurs `openrouter/auto*` n'ont pas de prix propre : on vise un vrai modèle.
+            .filter(|(_, id)| !id.starts_with("openrouter/"))
+            .collect();
+        candidates.sort_by(|a, b| a.0.total_cmp(&b.0));
+        assert!(
+            !candidates.is_empty(),
+            "aucun modèle à sortie image dans le catalogue"
+        );
+
+        let prompt = "Génère une petite image d'un cercle bleu sur fond blanc.";
+        let mut last_error = None;
+        for (_, model) in candidates.iter().take(3) {
+            let req = ChatRequest {
+                modalities: Some(vec!["image".into(), "text".into()]),
+                ..request(model, prompt)
+            };
+            let events = Mutex::new(Vec::new());
+            let result = stream(&state, &api_key, &req, CancellationToken::new(), |e| {
+                events.lock().unwrap().push(e)
+            })
+            .await;
+            let events = collect(&events);
+            if let Err(err) = result {
+                println!("{model} : {err}");
+                last_error = Some(err.to_string());
+                continue;
+            }
+            if let Some(StreamEvent::Error { message }) = events
+                .iter()
+                .find(|e| matches!(e, StreamEvent::Error { .. }))
+            {
+                println!("{model} : {message}");
+                last_error = Some(message.clone());
+                continue;
+            }
+            let images: Vec<&String> = events
+                .iter()
+                .filter_map(|e| match e {
+                    StreamEvent::Image { url } => Some(url),
+                    _ => None,
+                })
+                .collect();
+            if images.is_empty() {
+                println!("{model} : aucune image reçue ({} événements)", events.len());
+                last_error = Some(format!("{model} : aucune image"));
+                continue;
+            }
+            assert!(
+                images.iter().all(|u| u.starts_with("data:image/")),
+                "les images doivent être des data URLs"
+            );
+            let cost = events.iter().find_map(|e| match e {
+                StreamEvent::Usage { cost, .. } => *cost,
+                _ => None,
+            });
+            println!(
+                "modèle {model} → {} image(s), {} octets, coût {cost:?}",
+                images.len(),
+                images.iter().map(|u| u.len()).sum::<usize>()
+            );
+            return;
+        }
+        panic!("aucun modèle image n'a répondu : {last_error:?}");
+    }
+
     #[test]
     fn body_omits_unset_parameters() {
         let json =
@@ -664,6 +879,33 @@ mod tests {
         assert!(json.get("reasoning").is_none());
         assert!(json.get("plugins").is_none());
         assert!(json.get("provider").is_none());
+        assert!(json.get("modalities").is_none());
+    }
+
+    #[test]
+    fn body_includes_modalities_and_assistant_images() {
+        let mut req = ChatRequest {
+            modalities: Some(vec!["image".into(), "text".into()]),
+            ..request("google/gemini-2.5-flash-image", "Rends-le bleu")
+        };
+        req.messages.insert(
+            0,
+            ChatMessage {
+                role: "assistant".into(),
+                content: serde_json::Value::String("Voici le chat.".into()),
+                images: vec![serde_json::json!({
+                    "type": "image_url",
+                    "image_url": { "url": "data:image/png;base64,AAAA" }
+                })],
+            },
+        );
+        let json = serde_json::to_value(Body::new(&req, true)).unwrap();
+        assert_eq!(json["modalities"], serde_json::json!(["image", "text"]));
+        assert_eq!(
+            json["messages"][0]["images"][0]["image_url"]["url"],
+            "data:image/png;base64,AAAA"
+        );
+        assert!(json["messages"][1].get("images").is_none());
     }
 
     #[test]
