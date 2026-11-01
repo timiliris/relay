@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.2.0
+# Fiche de vérification — Relay 0.3.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -79,6 +79,15 @@ Le build témoin et ses dossiers de données (`%LOCALAPPDATA%\io.github.timiliri
 | `latest.json` | version 0.2.0, 11 cibles, servi par `releases/latest/download/latest.json` : les installations 0.1.1 se mettront à jour au prochain lancement                                                                                        |
 
 Dépendances mises à jour le même jour (8 PR Dependabot fusionnées, CI verte) : actions checkout 7, setup-node 7, pnpm/action-setup 6, release-please-action 5, tauri-action 1 ; Vitest 5, `@types/node` 26, jest-dom 7. Un lockfile rendu incohérent par deux fusions successives a été régénéré (`fix(deps)`).
+
+## Release 0.3.0 (1er novembre 2026)
+
+| Étape              | Résultat                                                                                                                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenu            | Nouveautés UI : jauge de contexte en dégradé, barres et tuiles d'Usage colorées, pastilles de personas, avatars teintés par modèle, accent violet par défaut (migration v3 du store de réglages)   |
+| PR release-please  | `chore(main): release 0.3.0` : diff limité aux versions et au changelog (Biome formate désormais `tauri.conf.json` comme release-please, plus de lint rouge après fusion)                          |
+| Lancement du build | Échec du lancement automatique : le job release-please n'a pas de checkout, `gh workflow run` exigeait un dépôt. Corrigé (`--repo "$GITHUB_REPOSITORY"`) ; build 0.3.0 lancé à la main entre-temps |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.3.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.3.0 avec 11 cibles                                                                     |
 
 ## Optimisations mesurées (0.1.1)
 
