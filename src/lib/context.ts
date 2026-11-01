@@ -33,8 +33,11 @@ export function estimateContext(
   draftAttachments: Attachment[],
   systemPrompt: string | null,
   contextLength: number,
+  /** Tokens ajoutés hors messages (ex. : mémoire du persona). */
+  extraTokens = 0,
 ): ContextEstimate {
   const used =
+    extraTokens +
     estimateTokens(systemPrompt ?? '') +
     history.reduce((n, m) => n + estimateMessageTokens(m.content, m.attachments), 0) +
     estimateMessageTokens(draft, draftAttachments);

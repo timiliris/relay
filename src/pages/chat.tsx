@@ -1,18 +1,20 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { ArrowDown, Download, Globe, KeyRound, Scissors, Sparkles, X } from 'lucide-react';
+import { ArrowDown, Brain, Download, Globe, KeyRound, Scissors, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Composer } from '@/components/composer';
 import { GenerationParams } from '@/components/generation-params';
 import { MessageBubble } from '@/components/message-bubble';
 import { ModelPicker } from '@/components/model-picker';
+import { PersonaMemoryPanel } from '@/components/persona-memory-panel';
 import { PresetBadges } from '@/components/preset-avatar';
 import { PresetPicker } from '@/components/preset-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
 import { useWindowTitle } from '@/hooks/use-window-title';
+import { resolveLanguage } from '@/i18n';
 import {
   continueMessage,
   deleteMessage,
@@ -28,9 +30,10 @@ import {
 } from '@/lib/chat-service';
 import { chartBg } from '@/lib/color';
 import { estimateContext } from '@/lib/context';
-import type { Attachment, Message } from '@/lib/db';
+import type { Attachment, Message, PersonaMemory } from '@/lib/db';
 import { formatCost } from '@/lib/format';
 import { supportsImages } from '@/lib/openrouter';
+import { estimateMemoryTokens, summarizeForMemory } from '@/lib/persona-memory';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { siblingIndex, siblingsOf } from '@/lib/tree';
 import { cn } from '@/lib/utils';
@@ -39,8 +42,12 @@ import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { dialog } from '@/stores/dialog';
 import { useModels } from '@/stores/models';
+import { usePersonaMemory } from '@/stores/persona-memory';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
+
+/** Référence stable pour le sélecteur (évite un nouveau tableau à chaque rendu). */
+const NO_MEMORIES: PersonaMemory[] = [];
 
 interface ChatPageProps {
   /** `null` : écran « nouvelle conversation ». */
@@ -70,6 +77,15 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   });
   const [visibleCount, setVisibleCount] = useState(settings.messagesPageSize);
   const [atBottom, setAtBottom] = useState(true);
+  const [memoryOpen, setMemoryOpen] = useState(false);
+  const memories = usePersonaMemory((s) => (s.presetId === presetId ? s.items : NO_MEMORIES));
+  const loadMemories = usePersonaMemory((s) => s.load);
+  const addMemory = usePersonaMemory((s) => s.add);
+  const language = resolveLanguage(settings.language);
+  const memoryTokens = useMemo(
+    () => estimateMemoryTokens(memories, language),
+    [memories, language],
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inTauri = isTauri();
@@ -79,6 +95,11 @@ export function ChatPage({ conversationId }: ChatPageProps) {
     void open(conversationId);
     setVisibleCount(settings.messagesPageSize);
   }, [conversationId, open, settings.messagesPageSize]);
+
+  // Souvenirs du persona de la conversation (injectés dans l'instruction système).
+  useEffect(() => {
+    void loadMemories(presetId);
+  }, [presetId, loadMemories]);
 
   // Conversation rouverte au prochain lancement.
   const rememberConversation = settings.patch;
@@ -99,8 +120,9 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         composerState.attachments,
         systemPrompt,
         modelInfo?.contextLength ?? 0,
+        memoryTokens,
       ),
-    [messages, composerState, systemPrompt, modelInfo],
+    [messages, composerState, systemPrompt, modelInfo, memoryTokens],
   );
 
   // Défilement : seulement si l'utilisateur est déjà en bas (lecture non interrompue).
@@ -157,6 +179,23 @@ export function ChatPage({ conversationId }: ChatPageProps) {
       if (await confirm(t('chat.deleteMessageConfirm'))) await deleteMessage(m);
     })();
 
+  const onMemorize = (m: Message) =>
+    guard(async () => {
+      if (!conversation || !preset) return;
+      const value = await dialog.prompt({
+        title: t('presets.memory.memorizeTitle', { name: preset.name }),
+        message: t('presets.memory.memorizeHint'),
+        label: t('presets.memory.memorizeLabel'),
+        defaultValue: summarizeForMemory(m.content),
+        placeholder: t('presets.memory.addPlaceholder'),
+        confirmLabel: t('presets.memory.memorize'),
+      });
+      const content = value?.trim();
+      if (!content) return;
+      await addMemory({ presetId: preset.id, content, sourceConversationId: conversation.id });
+      toast.success(t('presets.memory.saved'));
+    })();
+
   const onSummarize = guard(async () => {
     if (!conversation) return;
     const done = await summarizeOlder(conversation);
@@ -201,6 +240,21 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
           </span>
         )}
+        {conversation && preset && (
+          <IconButton
+            label={t('presets.memory.title')}
+            aria-pressed={memoryOpen}
+            className={cn('relative', memoryOpen && 'bg-accent text-accent-foreground')}
+            onClick={() => setMemoryOpen((o) => !o)}
+          >
+            <Brain />
+            {memories.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-chart-1 px-1 font-mono text-[10px] leading-none text-white">
+                {memories.length}
+              </span>
+            )}
+          </IconButton>
+        )}
         {conversation && messages.length > 8 && (
           <IconButton label={t('chat.summarize')} onClick={onSummarize} disabled={streaming}>
             <Scissors />
@@ -225,155 +279,169 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         </div>
       )}
 
-      <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto">
-        {showEmpty ? (
-          <EmptyState suggestions={suggestions} onPick={setDraft} />
-        ) : (
-          <div className="message-list mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
-            {hidden > 0 && (
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div ref={scrollRef} onScroll={onScroll} className="relative flex-1 overflow-y-auto">
+            {showEmpty ? (
+              <EmptyState suggestions={suggestions} onPick={setDraft} />
+            ) : (
+              <div className="message-list mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
+                {hidden > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-center"
+                    onClick={() => setVisibleCount((n) => n + settings.messagesPageSize)}
+                  >
+                    {t('chat.showEarlier', { count: Math.min(hidden, settings.messagesPageSize) })}
+                  </Button>
+                )}
+                {visible.map((m, index) => {
+                  const isLast = hidden + index === messages.length - 1;
+                  const isStreamingThis = streaming && stream?.messageId === m.id;
+                  const canAct = conversation !== null && !streaming;
+                  return (
+                    <div key={m.id} id={`message-${m.id}`}>
+                      <MessageBubble
+                        message={m}
+                        streaming={isStreamingThis}
+                        showReasoning={showReasoning}
+                        persona={preset ?? undefined}
+                        version={{
+                          ...siblingIndex(all, m),
+                          models: siblingsOf(all, m).map((s) => s.model),
+                        }}
+                        onSwitchVersion={canAct ? (dir) => void switchVersion(m, dir) : undefined}
+                        onCopy={() => void copy(m.content)}
+                        onMemorize={preset && m.content.trim() ? () => onMemorize(m) : undefined}
+                        onDelete={canAct ? () => onDelete(m) : undefined}
+                        onEdit={
+                          canAct && m.role === 'user'
+                            ? (text) => guard(() => editMessage(conversation, m, text))()
+                            : undefined
+                        }
+                        onRegenerate={
+                          canAct && m.role === 'assistant' && isLast
+                            ? guard(() => regenerate(conversation, m))
+                            : undefined
+                        }
+                        onRegenerateWith={
+                          canAct && m.role === 'assistant' && isLast
+                            ? (modelId) => guard(() => regenerate(conversation, m, modelId))()
+                            : undefined
+                        }
+                        onContinue={
+                          canAct && m.role === 'assistant' && isLast
+                            ? guard(() => continueMessage(conversation, m))
+                            : undefined
+                        }
+                      />
+                    </div>
+                  );
+                })}
+                <div ref={bottomRef} />
+              </div>
+            )}
+            {!atBottom && !showEmpty && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAtBottom(true);
+                  bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                }}
+                aria-label={t('chat.scrollToBottom')}
+                title={t('chat.scrollToBottom')}
+                className="sticky bottom-3 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border bg-card shadow-md hover:bg-accent"
+              >
+                <ArrowDown className="size-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="shrink-0 px-4 pt-2 pb-4">
+            {error && (
+              <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <span className="flex-1">{error}</span>
+                {conversation && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={guard(() => retryLast(conversation))}
+                  >
+                    {t('common.retry')}
+                  </Button>
+                )}
+                <IconButton
+                  label={t('common.close')}
+                  className="size-6 text-destructive"
+                  onClick={() => setError(null)}
+                >
+                  <X />
+                </IconButton>
+              </div>
+            )}
+            <Composer
+              streaming={streaming}
+              disabled={!inTauri}
+              onSend={(text, attachments) => void onSend(text, attachments)}
+              onStop={stopStreaming}
+              draft={draft}
+              onRecallLast={lastUserMessage}
+              context={context}
+              onContextChange={(text, attachments) => setComposerState({ text, attachments })}
+              acceptsImages={supportsImages(modelInfo)}
+            >
+              <ModelPicker
+                value={model}
+                onChange={(id) =>
+                  conversation
+                    ? void updateConversation(conversation.id, { model: id })
+                    : settings.patch({ defaultModel: id })
+                }
+                side="top"
+              />
+              <GenerationParams conversation={conversation} />
+              <PresetPicker conversation={conversation} />
               <Button
                 variant="ghost"
                 size="sm"
-                className="self-center"
-                onClick={() => setVisibleCount((n) => n + settings.messagesPageSize)}
+                title={webSearch ? t('chat.webSearchOn') : t('chat.webSearch')}
+                className={cn('gap-1.5', webSearch ? 'text-primary' : 'text-muted-foreground')}
+                aria-pressed={webSearch}
+                onClick={() =>
+                  conversation
+                    ? void updateConversation(conversation.id, { webSearch: !webSearch })
+                    : settings.patch({ webSearch: !webSearch })
+                }
               >
-                {t('chat.showEarlier', { count: Math.min(hidden, settings.messagesPageSize) })}
+                <Globe className="size-4" />
+                <span className="hidden text-xs lg:inline">{t('chat.webSearch')}</span>
               </Button>
+              {systemPrompt.trim() && (
+                <span
+                  className="hidden truncate text-xs text-muted-foreground md:inline"
+                  title={systemPrompt}
+                >
+                  · {t('chat.systemPromptActive')}
+                </span>
+              )}
+            </Composer>
+            {!inTauri && (
+              <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
+                {t('common.onlyInApp')}
+              </p>
             )}
-            {visible.map((m, index) => {
-              const isLast = hidden + index === messages.length - 1;
-              const isStreamingThis = streaming && stream?.messageId === m.id;
-              const canAct = conversation !== null && !streaming;
-              return (
-                <div key={m.id} id={`message-${m.id}`}>
-                  <MessageBubble
-                    message={m}
-                    streaming={isStreamingThis}
-                    showReasoning={showReasoning}
-                    persona={preset ?? undefined}
-                    version={{
-                      ...siblingIndex(all, m),
-                      models: siblingsOf(all, m).map((s) => s.model),
-                    }}
-                    onSwitchVersion={canAct ? (dir) => void switchVersion(m, dir) : undefined}
-                    onCopy={() => void copy(m.content)}
-                    onDelete={canAct ? () => onDelete(m) : undefined}
-                    onEdit={
-                      canAct && m.role === 'user'
-                        ? (text) => guard(() => editMessage(conversation, m, text))()
-                        : undefined
-                    }
-                    onRegenerate={
-                      canAct && m.role === 'assistant' && isLast
-                        ? guard(() => regenerate(conversation, m))
-                        : undefined
-                    }
-                    onRegenerateWith={
-                      canAct && m.role === 'assistant' && isLast
-                        ? (modelId) => guard(() => regenerate(conversation, m, modelId))()
-                        : undefined
-                    }
-                    onContinue={
-                      canAct && m.role === 'assistant' && isLast
-                        ? guard(() => continueMessage(conversation, m))
-                        : undefined
-                    }
-                  />
-                </div>
-              );
-            })}
-            <div ref={bottomRef} />
           </div>
-        )}
-        {!atBottom && !showEmpty && (
-          <button
-            type="button"
-            onClick={() => {
-              setAtBottom(true);
-              bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-            }}
-            aria-label={t('chat.scrollToBottom')}
-            title={t('chat.scrollToBottom')}
-            className="sticky bottom-3 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border bg-card shadow-md hover:bg-accent"
-          >
-            <ArrowDown className="size-4" />
-          </button>
-        )}
-      </div>
-
-      <div className="shrink-0 px-4 pt-2 pb-4">
-        {error && (
-          <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <span className="flex-1">{error}</span>
-            {conversation && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7"
-                onClick={guard(() => retryLast(conversation))}
-              >
-                {t('common.retry')}
-              </Button>
-            )}
-            <IconButton
-              label={t('common.close')}
-              className="size-6 text-destructive"
-              onClick={() => setError(null)}
-            >
-              <X />
-            </IconButton>
-          </div>
-        )}
-        <Composer
-          streaming={streaming}
-          disabled={!inTauri}
-          onSend={(text, attachments) => void onSend(text, attachments)}
-          onStop={stopStreaming}
-          draft={draft}
-          onRecallLast={lastUserMessage}
-          context={context}
-          onContextChange={(text, attachments) => setComposerState({ text, attachments })}
-          acceptsImages={supportsImages(modelInfo)}
-        >
-          <ModelPicker
-            value={model}
-            onChange={(id) =>
-              conversation
-                ? void updateConversation(conversation.id, { model: id })
-                : settings.patch({ defaultModel: id })
-            }
-            side="top"
+        </div>
+        {memoryOpen && conversation && preset && (
+          <PersonaMemoryPanel
+            preset={preset}
+            conversation={conversation}
+            messages={messages}
+            streaming={streaming}
+            onClose={() => setMemoryOpen(false)}
           />
-          <GenerationParams conversation={conversation} />
-          <PresetPicker conversation={conversation} />
-          <Button
-            variant="ghost"
-            size="sm"
-            title={webSearch ? t('chat.webSearchOn') : t('chat.webSearch')}
-            className={cn('gap-1.5', webSearch ? 'text-primary' : 'text-muted-foreground')}
-            aria-pressed={webSearch}
-            onClick={() =>
-              conversation
-                ? void updateConversation(conversation.id, { webSearch: !webSearch })
-                : settings.patch({ webSearch: !webSearch })
-            }
-          >
-            <Globe className="size-4" />
-            <span className="hidden text-xs lg:inline">{t('chat.webSearch')}</span>
-          </Button>
-          {systemPrompt.trim() && (
-            <span
-              className="hidden truncate text-xs text-muted-foreground md:inline"
-              title={systemPrompt}
-            >
-              · {t('chat.systemPromptActive')}
-            </span>
-          )}
-        </Composer>
-        {!inTauri && (
-          <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-            {t('common.onlyInApp')}
-          </p>
         )}
       </div>
     </div>

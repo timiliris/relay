@@ -6,6 +6,7 @@ import { platform } from '@tauri-apps/plugin-os';
 import {
   ArrowLeft,
   BookOpen,
+  Brain,
   Download,
   FileDown,
   FileUp,
@@ -52,6 +53,7 @@ import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
 import { useConversations } from '@/stores/conversations';
 import { dialog } from '@/stores/dialog';
+import { usePersonaMemory } from '@/stores/persona-memory';
 import { type Accent, defaultGeneration, useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 
@@ -76,6 +78,12 @@ export function SettingsPage() {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
   const [updateDetail, setUpdateDetail] = useState('');
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
+  const memoryCounts = usePersonaMemory((s) => s.counts);
+  const loadMemoryCounts = usePersonaMemory((s) => s.loadCounts);
+
+  useEffect(() => {
+    void loadMemoryCounts();
+  }, [loadMemoryCounts]);
 
   useEffect(() => {
     if (inTauri) isEnabled().then(setAutostart).catch(console.error);
@@ -445,6 +453,15 @@ export function SettingsPage() {
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium">{p.name}</p>
                       <PresetBadges preset={p} />
+                      {(memoryCounts[p.id] ?? 0) > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-md border border-chart-1/40 bg-chart-1/10 px-1.5 py-0.5 font-mono text-xs text-chart-1"
+                          title={t('presets.memory.title')}
+                        >
+                          <Brain className="size-3" aria-hidden="true" />
+                          {t('presets.memory.count', { count: memoryCounts[p.id] ?? 0 })}
+                        </span>
+                      )}
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
                       {[p.model, p.systemPrompt, p.persona.roleplay.character]
