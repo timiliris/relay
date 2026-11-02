@@ -128,6 +128,52 @@ fn migrations() -> Vec<Migration> {
         ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "agent_tools",
+            sql: "
+            -- Mode agent : rôle `tool`, appels d'outils (JSON sur les lignes assistant) et résultats.
+            -- SQLite ne modifie pas une contrainte CHECK : la table est recréée puis renommée.
+            CREATE TABLE messages_v6 (
+                id                TEXT PRIMARY KEY,
+                conversation_id   TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                role              TEXT NOT NULL CHECK (role IN ('system', 'user', 'assistant', 'tool')),
+                content           TEXT NOT NULL,
+                reasoning         TEXT,
+                model             TEXT,
+                prompt_tokens     INTEGER,
+                completion_tokens INTEGER,
+                cost              REAL,
+                finish_reason     TEXT,
+                created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                parent_id         TEXT,
+                active            INTEGER NOT NULL DEFAULT 1,
+                attachments       TEXT,
+                duration_ms       INTEGER,
+                pinned            INTEGER NOT NULL DEFAULT 0,
+                tool_calls        TEXT,
+                tool_call_id      TEXT,
+                tool_name         TEXT,
+                tool_meta         TEXT
+            );
+            INSERT INTO messages_v6 (id, conversation_id, role, content, reasoning, model, prompt_tokens,
+                completion_tokens, cost, finish_reason, created_at, parent_id, active, attachments,
+                duration_ms, pinned)
+            SELECT id, conversation_id, role, content, reasoning, model, prompt_tokens,
+                completion_tokens, cost, finish_reason, created_at, parent_id, active, attachments,
+                duration_ms, pinned
+            FROM messages;
+            DROP TABLE messages;
+            ALTER TABLE messages_v6 RENAME TO messages;
+            CREATE INDEX IF NOT EXISTS idx_messages_conversation
+                ON messages(conversation_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_messages_parent ON messages(conversation_id, parent_id);
+            -- Dossier de travail et mode agent par conversation.
+            ALTER TABLE conversations ADD COLUMN workspace TEXT;
+            ALTER TABLE conversations ADD COLUMN agent INTEGER NOT NULL DEFAULT 0;
+        ",
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

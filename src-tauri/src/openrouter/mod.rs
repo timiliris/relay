@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
 use crate::{AppError, AppResult};
+use std::collections::BTreeMap;
+
 use sse::{Chunk, ImagePart, SseData, SseParser};
 
 pub const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
@@ -94,6 +96,12 @@ pub struct ChatMessage {
     pub content: serde_json::Value,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub images: Vec<serde_json::Value>,
+    /// Appels d'outils émis par l'assistant à un tour précédent (relayés tels quels).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<serde_json::Value>>,
+    /// Pour un message `role: "tool"` : identifiant de l'appel auquel il répond.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -125,6 +133,14 @@ pub struct ChatRequest {
     /// Modalités de sortie demandées, ex. `["image", "text"]` pour la génération d'images.
     #[serde(default)]
     pub modalities: Option<Vec<String>>,
+    /// Outils proposés au modèle (`[{ "type": "function", "function": { … } }]`), relayés tels quels.
+    #[serde(default)]
+    pub tools: Option<Vec<serde_json::Value>>,
+    /// `"auto"`, `"none"` ou `{ "type": "function", "function": { "name": … } }`.
+    #[serde(default)]
+    pub tool_choice: Option<serde_json::Value>,
+    #[serde(default)]
+    pub parallel_tool_calls: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -147,6 +163,12 @@ struct Body<'a> {
     provider: Option<ProviderPrefs>,
     #[serde(skip_serializing_if = "Option::is_none")]
     modalities: Option<&'a [String]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tools: Option<&'a [serde_json::Value]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_choice: Option<&'a serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parallel_tool_calls: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -188,6 +210,9 @@ impl<'a> Body<'a> {
             plugins: req.web_search.then(|| vec![Plugin { id: "web" }]),
             provider: provider_prefs(req),
             modalities: req.modalities.as_deref(),
+            tools: req.tools.as_deref(),
+            tool_choice: req.tool_choice.as_ref(),
+            parallel_tool_calls: req.parallel_tool_calls,
         }
     }
 }
@@ -217,6 +242,15 @@ pub enum StreamEvent {
     Image {
         url: String,
     },
+    /// Le modèle commence un appel d'outil (nom connu, arguments encore en cours).
+    ToolCallStart {
+        id: String,
+        name: String,
+    },
+    /// Appels d'outils complets, émis juste avant `Done` quand le modèle en a demandé.
+    ToolCalls {
+        calls: Vec<ToolCall>,
+    },
     #[serde(rename_all = "camelCase")]
     Usage {
         prompt_tokens: u32,
@@ -230,6 +264,61 @@ pub enum StreamEvent {
     Error {
         message: String,
     },
+}
+
+/// Appel d'outil demandé par le modèle ; `arguments` est la chaîne JSON telle que reçue.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    pub arguments: String,
+}
+
+/// Accumule les fragments `delta.tool_calls` d'un flux, par index.
+#[derive(Debug, Default)]
+struct ToolCallAccumulator {
+    calls: BTreeMap<u32, ToolCall>,
+}
+
+impl ToolCallAccumulator {
+    /// Intègre un fragment ; renvoie `Some((id, name))` quand un appel devient nommé.
+    fn push(&mut self, delta: sse::ToolCallDelta) -> Option<(String, String)> {
+        let entry = self.calls.entry(delta.index).or_default();
+        if let Some(id) = delta.id.filter(|id| !id.is_empty()) {
+            entry.id = id;
+        }
+        let mut started = None;
+        if let Some(function) = delta.function {
+            if let Some(name) = function.name.filter(|n| !n.is_empty()) {
+                if entry.name.is_empty() {
+                    started = Some(name.clone());
+                }
+                entry.name = name;
+            }
+            if let Some(arguments) = function.arguments {
+                entry.arguments.push_str(&arguments);
+            }
+        }
+        started.map(|name| (entry.id.clone(), name))
+    }
+
+    fn finish(self) -> Vec<ToolCall> {
+        self.calls
+            .into_values()
+            .enumerate()
+            .map(|(i, mut call)| {
+                // Certains fournisseurs omettent l'identifiant : on en forge un stable.
+                if call.id.is_empty() {
+                    call.id = format!("call_{i}");
+                }
+                if call.arguments.trim().is_empty() {
+                    call.arguments = "{}".into();
+                }
+                call
+            })
+            .filter(|call| !call.name.is_empty())
+            .collect()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -266,13 +355,26 @@ struct CompletionMessage {
     content: serde_json::Value,
     #[serde(default)]
     images: Vec<ImagePart>,
+    #[serde(default)]
+    tool_calls: Vec<CompletionToolCall>,
 }
 
-/// Résultat d'une complétion non streamée : texte et images générées (data URLs).
+#[derive(Deserialize)]
+struct CompletionToolCall {
+    #[serde(default)]
+    id: String,
+    #[serde(default)]
+    function: sse::FunctionDelta,
+}
+
+/// Résultat d'une complétion non streamée : texte, images générées (data URLs) et appels d'outils.
 #[derive(Debug, Clone, Serialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct CompletionOutput {
     pub content: String,
     pub images: Vec<String>,
+    #[serde(default)]
+    pub tool_calls: Vec<ToolCall>,
 }
 
 impl From<CompletionMessage> for CompletionOutput {
@@ -287,6 +389,18 @@ impl From<CompletionMessage> for CompletionOutput {
                 .images
                 .into_iter()
                 .map(|i| i.image_url.url)
+                .collect(),
+            tool_calls: message
+                .tool_calls
+                .into_iter()
+                .filter_map(|call| {
+                    let name = call.function.name.filter(|n| !n.is_empty())?;
+                    Some(ToolCall {
+                        id: call.id,
+                        name,
+                        arguments: call.function.arguments.unwrap_or_else(|| "{}".into()),
+                    })
+                })
                 .collect(),
         }
     }
@@ -367,6 +481,7 @@ pub async fn stream(
     let mut bytes = ensure_success(response).await?.bytes_stream();
     let mut parser = SseParser::new();
     let mut finish_reason: Option<String> = None;
+    let mut tool_calls = ToolCallAccumulator::default();
 
     loop {
         tokio::select! {
@@ -379,6 +494,7 @@ pub async fn stream(
                 for event in parser.push(&item?) {
                     match event {
                         SseData::Done => {
+                            emit_tool_calls(std::mem::take(&mut tool_calls), &emit);
                             emit(StreamEvent::Done { finish_reason });
                             return Ok(());
                         }
@@ -404,6 +520,11 @@ pub async fn stream(
                                 for image in choice.delta.images {
                                     emit(StreamEvent::Image { url: image.image_url.url });
                                 }
+                                for fragment in choice.delta.tool_calls {
+                                    if let Some((id, name)) = tool_calls.push(fragment) {
+                                        emit(StreamEvent::ToolCallStart { id, name });
+                                    }
+                                }
                                 if choice.finish_reason.is_some() {
                                     finish_reason = choice.finish_reason;
                                 }
@@ -422,8 +543,16 @@ pub async fn stream(
         }
     }
 
+    emit_tool_calls(tool_calls, &emit);
     emit(StreamEvent::Done { finish_reason });
     Ok(())
+}
+
+fn emit_tool_calls(accumulator: ToolCallAccumulator, emit: &impl Fn(StreamEvent)) {
+    let calls = accumulator.finish();
+    if !calls.is_empty() {
+        emit(StreamEvent::ToolCalls { calls });
+    }
 }
 
 #[cfg(test)]
@@ -442,6 +571,8 @@ mod tests {
                 role: "user".into(),
                 content: serde_json::Value::String(prompt.into()),
                 images: vec![],
+                tool_calls: None,
+                tool_call_id: None,
             }],
             temperature: Some(0.7),
             max_tokens: None,
@@ -452,6 +583,9 @@ mod tests {
             ignore_providers: vec![],
             data_collection_deny: false,
             modalities: None,
+            tools: None,
+            tool_choice: None,
+            parallel_tool_calls: None,
         }
     }
 
@@ -599,6 +733,7 @@ mod tests {
             CompletionOutput {
                 content: "Un chat.".into(),
                 images: vec!["data:image/png;base64,CCCC".into()],
+                tool_calls: vec![],
             }
         );
     }
@@ -897,6 +1032,8 @@ mod tests {
                     "type": "image_url",
                     "image_url": { "url": "data:image/png;base64,AAAA" }
                 })],
+                tool_calls: None,
+                tool_call_id: None,
             },
         );
         let json = serde_json::to_value(Body::new(&req, true)).unwrap();
@@ -906,6 +1043,133 @@ mod tests {
             "data:image/png;base64,AAAA"
         );
         assert!(json["messages"][1].get("images").is_none());
+    }
+
+    #[test]
+    fn body_includes_tools_and_tool_messages() {
+        let tool = serde_json::json!({
+            "type": "function",
+            "function": { "name": "read_file", "parameters": { "type": "object" } }
+        });
+        let mut req = ChatRequest {
+            tools: Some(vec![tool.clone()]),
+            tool_choice: Some(serde_json::json!("auto")),
+            parallel_tool_calls: Some(false),
+            ..request("openai/gpt-4.1", "Lis a.rs")
+        };
+        req.messages.push(ChatMessage {
+            role: "assistant".into(),
+            content: serde_json::Value::Null,
+            images: vec![],
+            tool_calls: Some(vec![serde_json::json!({
+                "id": "call_1", "type": "function",
+                "function": { "name": "read_file", "arguments": "{\"path\":\"a.rs\"}" }
+            })]),
+            tool_call_id: None,
+        });
+        req.messages.push(ChatMessage {
+            role: "tool".into(),
+            content: serde_json::Value::String("fn main() {}".into()),
+            images: vec![],
+            tool_calls: None,
+            tool_call_id: Some("call_1".into()),
+        });
+        let json = serde_json::to_value(Body::new(&req, true)).unwrap();
+        assert_eq!(json["tools"][0], tool);
+        assert_eq!(json["tool_choice"], "auto");
+        assert_eq!(json["parallel_tool_calls"], false);
+        assert_eq!(json["messages"][1]["tool_calls"][0]["id"], "call_1");
+        assert!(json["messages"][1].get("tool_call_id").is_none());
+        assert_eq!(json["messages"][2]["role"], "tool");
+        assert_eq!(json["messages"][2]["tool_call_id"], "call_1");
+        assert!(json["messages"][0].get("tool_calls").is_none());
+    }
+
+    #[test]
+    fn tool_call_accumulator_merges_fragments_per_index() {
+        let mut acc = ToolCallAccumulator::default();
+        let frag =
+            |index, id: Option<&str>, name: Option<&str>, args: Option<&str>| sse::ToolCallDelta {
+                index,
+                id: id.map(Into::into),
+                function: Some(sse::FunctionDelta {
+                    name: name.map(Into::into),
+                    arguments: args.map(Into::into),
+                }),
+            };
+        assert_eq!(
+            acc.push(frag(0, Some("call_a"), Some("read_file"), Some(""))),
+            Some(("call_a".into(), "read_file".into()))
+        );
+        assert_eq!(acc.push(frag(0, None, None, Some("{\"pa"))), None);
+        assert_eq!(
+            acc.push(frag(1, Some("call_b"), Some("list_files"), None)),
+            Some(("call_b".into(), "list_files".into()))
+        );
+        assert_eq!(acc.push(frag(0, None, None, Some("th\":1}"))), None);
+        let calls = acc.finish();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].name, "read_file");
+        assert_eq!(calls[0].arguments, "{\"path\":1}");
+        assert_eq!(calls[1].id, "call_b");
+        // Arguments absents → objet vide, pour que le frontend puisse toujours les analyser.
+        assert_eq!(calls[1].arguments, "{}");
+    }
+
+    #[tokio::test]
+    async fn streams_tool_calls_as_start_then_complete_events() {
+        let base = sse_server(
+            vec![
+                "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"type\":\"function\",\"function\":{\"name\":\"read_file\",\"arguments\":\"\"}}]},\"finish_reason\":null}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"path\\\":\"}}]},\"finish_reason\":null}]}\n\n",
+                "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"a.rs\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}\n\n",
+                "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":9,\"completion_tokens\":4,\"cost\":0.0001}}\n\n",
+                "data: [DONE]\n\n",
+            ],
+            Duration::from_millis(5),
+        );
+        let state = OpenRouterState::with_base_url(&base);
+        let events = Mutex::new(Vec::new());
+        let mut req = request("openai/gpt-4.1", "Lis a.rs");
+        req.tools = Some(vec![
+            serde_json::json!({ "type": "function", "function": { "name": "read_file" } }),
+        ]);
+        stream(&state, "sk-test", &req, CancellationToken::new(), |e| {
+            events.lock().unwrap().push(e)
+        })
+        .await
+        .unwrap();
+        let events = collect(&events);
+        assert_eq!(
+            events[0],
+            StreamEvent::ToolCallStart {
+                id: "call_1".into(),
+                name: "read_file".into()
+            }
+        );
+        assert!(matches!(
+            events[1],
+            StreamEvent::Usage {
+                prompt_tokens: 9,
+                ..
+            }
+        ));
+        assert_eq!(
+            events[2],
+            StreamEvent::ToolCalls {
+                calls: vec![ToolCall {
+                    id: "call_1".into(),
+                    name: "read_file".into(),
+                    arguments: "{\"path\":\"a.rs\"}".into(),
+                }]
+            }
+        );
+        assert_eq!(
+            events[3],
+            StreamEvent::Done {
+                finish_reason: Some("tool_calls".into())
+            }
+        );
     }
 
     #[test]

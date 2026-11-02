@@ -70,6 +70,26 @@ pub struct Delta {
     /// Images produites par un modèle à sortie image (`modalities: ["image", "text"]`).
     #[serde(default)]
     pub images: Vec<ImagePart>,
+    /// Fragments d'appels d'outils, à accumuler par `index` (le nom arrive avec le
+    /// premier fragment, les arguments JSON suivent morceau par morceau).
+    #[serde(default)]
+    pub tool_calls: Vec<ToolCallDelta>,
+}
+
+/// Fragment d'appel d'outil en streaming : `{ "index": 0, "id": "call_…", "type": "function",
+/// "function": { "name": "read_file", "arguments": "{\"pa" } }`.
+#[derive(Debug, Deserialize, Clone, PartialEq)]
+pub struct ToolCallDelta {
+    #[serde(default)]
+    pub index: u32,
+    pub id: Option<String>,
+    pub function: Option<FunctionDelta>,
+}
+
+#[derive(Debug, Deserialize, Clone, PartialEq, Default)]
+pub struct FunctionDelta {
+    pub name: Option<String>,
+    pub arguments: Option<String>,
 }
 
 /// Image générée : `{ "type": "image_url", "image_url": { "url": "data:image/png;base64,…" } }`.
@@ -140,6 +160,32 @@ mod tests {
         let json = r#"{"choices":[{"delta":{"content":"x"}}]}"#;
         let chunk: Chunk = serde_json::from_str(json).unwrap();
         assert!(chunk.choices[0].delta.images.is_empty());
+    }
+
+    #[test]
+    fn parses_tool_call_fragments() {
+        let first = r#"{"choices":[{"delta":{"role":"assistant","content":null,"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"read_file","arguments":""}}]},"finish_reason":null}]}"#;
+        let chunk: Chunk = serde_json::from_str(first).unwrap();
+        let call = &chunk.choices[0].delta.tool_calls[0];
+        assert_eq!(call.index, 0);
+        assert_eq!(call.id.as_deref(), Some("call_1"));
+        assert_eq!(
+            call.function.as_ref().and_then(|f| f.name.as_deref()),
+            Some("read_file")
+        );
+
+        let next = r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"path\":\"a.rs\"}"}}]},"finish_reason":"tool_calls"}]}"#;
+        let chunk: Chunk = serde_json::from_str(next).unwrap();
+        let call = &chunk.choices[0].delta.tool_calls[0];
+        assert!(call.id.is_none());
+        assert_eq!(
+            call.function.as_ref().and_then(|f| f.arguments.as_deref()),
+            Some(r#"{"path":"a.rs"}"#)
+        );
+        assert_eq!(
+            chunk.choices[0].finish_reason.as_deref(),
+            Some("tool_calls")
+        );
     }
 
     #[test]
