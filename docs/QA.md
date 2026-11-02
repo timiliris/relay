@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.6.1
+# Fiche de vérification — Relay 0.6.2
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -152,6 +152,16 @@ Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `c
 | Lancement du build | Automatique (quatrième fois)                                                                                                                                                                                                                                                                                                                                                                     |
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.6.1 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.6.1 avec 11 cibles                                                                                                                                                                                                                                                                   |
 | Installation       | MSI téléchargé, SHA-256 égal au `digest` GitHub, signature minisign valide. Première tentative annulée (code 1602) : la session Windows n'est pas administratrice, l'invite UAC demande des identifiants et expire sans réponse ; la mise à jour intégrée restait pour la même raison sur « Préparation de l'installation ». Seconde tentative avec l'invite répondue : code 0, binaire en 0.6.1 |
+
+## Release 0.6.2 (2 novembre 2026)
+
+| Étape              | Résultat                                                                                                                                                                                                 |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenu            | L'assistant de bienvenue ne revient plus à chaque lancement : redirection décidée après relecture des réglages (`useSettingsHydrated`), test ajouté                                                      |
+| PR release-please  | `chore(main): release 0.6.2` ; `Cargo.lock` aligné sur la branche de la PR ; CI verte avant fusion                                                                                                       |
+| Lancement du build | Automatique (cinquième fois)                                                                                                                                                                             |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.6.2 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.6.2 avec 11 cibles                                                                           |
+| Installation       | MSI vérifié (digest GitHub, signature minisign) ; installeur resté en attente des identifiants administrateur (session Windows standard), annulé à la demande de l'utilisateur ; poste toujours en 0.6.1 |
 
 ## Optimisations mesurées (0.1.1)
 
