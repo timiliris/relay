@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.8.0
+# Fiche de vérification — Relay 0.9.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -204,6 +204,16 @@ Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `c
 | Lancement du build | Automatique (septième fois)                                                                                                                                                                    |
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.8.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.8.0 avec 11 cibles                                                                 |
 | Installation       | Laissée à la mise à jour intégrée ; premier test réel du mode agent à faire après installation, sur un dossier versionné                                                                       |
+
+## Release 0.9.0 (2 novembre 2026)
+
+| Étape              | Résultat                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contenu            | Volet Fichiers du dossier de travail ; appels d'outils honorés quel que soit `finish_reason` ; erreur explicite sur arguments manquants                                  |
+| PR release-please  | `chore(main): release 0.9.0` ; `Cargo.lock` aligné sur la branche de la PR ; CI verte avant fusion                                                                       |
+| Lancement du build | Automatique (huitième fois)                                                                                                                                              |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.9.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.9.0 avec 11 cibles                                           |
+| Installation       | Laissée à la mise à jour intégrée ; vérifier ensuite dans l'app : volet Fichiers (lecture, enregistrement) et un appel `write_file` avec un modèle solide sur les outils |
 
 ## Optimisations mesurées (0.1.1)
 
