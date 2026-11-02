@@ -103,6 +103,21 @@ const msgBase = {
   pinned: false,
 };
 
+/** Contenu du nouveau fichier proposé dans la démo agent (assez long pour replier le diff). */
+const DEMO_NOTE = [
+  '# Dépannage du flux SSE',
+  '',
+  "Le parseur de fragments d'appels d'outils indexe les appels à partir de 0.",
+  '',
+  '## Symptômes',
+  '',
+  ...Array.from({ length: 40 }, (_, i) => `- Étape ${i + 1} : vérifier le fragment ${i}.`),
+  '',
+  '## Correction',
+  '',
+  "Aligner l'assertion du test sur l'index réel du premier fragment.",
+].join('\n');
+
 export const sampleMessages: Record<string, Message[]> = {
   'demo-1': [
     {
@@ -416,8 +431,51 @@ flowchart LR
         args: { command: 'cargo test parses_tool_call_fragments', timeout_secs: 300 },
         status: 'pending',
         risk: 'write',
+        cwd: 'C:\\Users\\Detou\\Documents\\Github\\relay',
       },
       createdAt: at(3_000_000),
+    },
+    {
+      ...msgBase,
+      conversationId: 'demo-agent',
+      id: 'ag8',
+      parentId: 'ag7',
+      active: true,
+      role: 'assistant',
+      model: 'anthropic/claude-sonnet-4.5',
+      content: 'Je consigne la correction et la marche à suivre dans une note de dépannage.',
+      finishReason: 'tool_calls',
+      toolCalls: [
+        {
+          id: 'call_4',
+          name: 'write_file',
+          arguments: JSON.stringify({ path: 'docs/depannage-sse.md', content: DEMO_NOTE }),
+        },
+      ],
+      createdAt: at(2_900_000),
+    },
+    {
+      ...msgBase,
+      conversationId: 'demo-agent',
+      id: 'ag9',
+      parentId: 'ag8',
+      active: true,
+      role: 'tool',
+      content: '',
+      toolCallId: 'call_4',
+      toolName: 'write_file',
+      toolMeta: {
+        args: { path: 'docs/depannage-sse.md', content: DEMO_NOTE },
+        status: 'pending',
+        risk: 'write',
+        created: true,
+        diff: `--- /dev/null\n+++ b/docs/depannage-sse.md\n@@ -0,0 +1,${DEMO_NOTE.split('\n').length} @@\n${DEMO_NOTE.split(
+          '\n',
+        )
+          .map((line) => `+${line}`)
+          .join('\n')}`,
+      },
+      createdAt: at(2_800_000),
     },
   ],
   'demo-5': [

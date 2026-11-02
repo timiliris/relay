@@ -255,6 +255,22 @@
       "riskWrite": "Changes files or runs a command",
       "riskRead": "Read only"
     },
+    "toolsPreview": {
+      "lines_one": "line",
+      "lines_other": "lines",
+      "newFile": "new file",
+      "showAll": "Show all (+{{count}} lines)",
+      "collapse": "Collapse",
+      "runIn": "Runs in {{cwd}}",
+      "reasonLabel": "Why?",
+      "reasonPlaceholder": "Optional: e.g. use edit_file on the existing file instead",
+      "confirmDeny": "Deny",
+      "deniedWithReason": "Tool call denied by the user: {{reason}}",
+      "step": "Step {{step}}/{{total}}",
+      "awaiting": "{{tool}} awaiting approval",
+      "toolRunning": "{{tool}} running",
+      "thinking": "model thinking…"
+    },
     "explorer": {
       "title": "Workspace files",
       "empty": "Empty folder.",
