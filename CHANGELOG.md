@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.9.0](https://github.com/timiliris/relay/compare/v0.8.0...v0.9.0) (2026-11-02)
+
+
+### Nouveautés
+
+* **agent:** volet Fichiers du dossier de travail et appels d'outils incomplets ([74130b8](https://github.com/timiliris/relay/commit/74130b8d23a3735872494689bb04ce197a78534b))
+
 ## [0.8.0](https://github.com/timiliris/relay/compare/v0.7.0...v0.8.0) (2026-11-02)
 
 
