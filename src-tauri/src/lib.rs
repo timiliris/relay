@@ -83,6 +83,7 @@ pub fn run() {
         .manage(state::AppState::new(start_hidden, auto_update))
         .manage(openrouter::OpenRouterState::new())
         .manage(agent::WorkspaceState::default())
+        .manage(agent::exec::ProcessRegistry::default())
         .invoke_handler(tauri::generate_handler![
             commands::app::set_language,
             commands::app::should_start_hidden,
@@ -104,6 +105,9 @@ pub fn run() {
             commands::agent::tool_search,
             commands::agent::tool_run_command,
             commands::agent::cancel_tool,
+            commands::agent::list_processes,
+            commands::agent::stop_process,
+            commands::agent::read_process_output,
             commands::agent::git_status,
             commands::agent::git_diff,
             commands::agent::git_stage,
@@ -141,8 +145,14 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("erreur au lancement de l'application Tauri");
+        .build(tauri::generate_context!())
+        .expect("erreur au lancement de l'application Tauri")
+        .run(|app, event| {
+            // Aucun processus lancé par l'agent ne survit à l'application.
+            if let tauri::RunEvent::Exit = event {
+                app.state::<agent::exec::ProcessRegistry>().kill_all();
+            }
+        });
 }
 
 /// Journalisation : terminal, fichier dans le dossier de logs de l'OS et console du webview.
