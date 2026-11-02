@@ -26,7 +26,11 @@ const { added, updated, commands } = vi.hoisted(() => ({
     })),
     listFiles: vi.fn(),
     search: vi.fn(),
-    previewChange: vi.fn(),
+    previewChange: vi.fn(async () => ({
+      diff: '--- a\n+++ b\n@@\n-x\n+y',
+      exists: true,
+      created: false,
+    })),
     cancelTool: vi.fn(),
   },
 }));
@@ -100,7 +104,14 @@ describe('runAgentTurn', () => {
     updated.length = 0;
     vi.clearAllMocks();
     useSettings.getState().patch({ agentApproval: 'autoRead' });
-    useAgent.setState({ pending: [], allowed: {}, steps: {}, aborted: false, workspaces: {} });
+    useAgent.setState({
+      pending: [],
+      allowed: {},
+      steps: {},
+      aborted: false,
+      workspaces: {},
+      running: null,
+    });
     useChat.setState({ conversationId: 'c1', all: [assistant], messages: [assistant] });
     useAgent.getState().startTurn('c1');
   });
@@ -164,7 +175,124 @@ describe('runAgentTurn', () => {
     expect(commands.applyChange).not.toHaveBeenCalled();
     const [, patch] = updated.at(-1) ?? [];
     expect(patch?.toolMeta).toMatchObject({ status: 'denied' });
+    expect(String(patch?.content)).not.toContain(':');
     expect(continueWith).toHaveBeenCalledTimes(1);
+  });
+
+  it('montre l’aperçu d’une écriture avant de demander l’autorisation', async () => {
+    commands.previewChange.mockResolvedValueOnce({
+      diff: '--- /dev/null\n+++ b/notes.md\n@@ -0,0 +1 @@\n+hello',
+      exists: false,
+      created: true,
+    });
+    const continueWith = vi.fn(async () => {});
+    const turn = runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_8', name: 'write_file', arguments: '{"path":"notes.md","content":"hello"}' }],
+      continueWith,
+    );
+    await vi.waitFor(() => expect(useAgent.getState().pending).toHaveLength(1));
+    // L'aperçu précède la décision et n'écrit rien.
+    expect(commands.previewChange).toHaveBeenCalledWith('C:\\work\\relay', 'notes.md', {
+      kind: 'write',
+      content: 'hello',
+    });
+    expect(commands.applyChange).not.toHaveBeenCalled();
+    const pendingId = useAgent.getState().pending[0]?.toolMessageId ?? '';
+    const shown = useChat.getState().messages.find((m) => m.id === pendingId);
+    expect(shown?.toolMeta).toMatchObject({ status: 'pending', created: true });
+    expect(shown?.toolMeta?.diff).toContain('+hello');
+    expect(updated.at(-1)?.[1].toolMeta).toMatchObject({ status: 'pending', created: true });
+    expect(useAgent.getState().running).toMatchObject({
+      conversationId: 'c1',
+      step: 1,
+      total: 25,
+      phase: 'pending',
+      toolMessageId: pendingId,
+      toolName: 'write_file',
+    });
+
+    useAgent.getState().decide(pendingId, 'allow');
+    await turn;
+    expect(commands.applyChange).toHaveBeenCalledTimes(1);
+    const [, patch] = updated.at(-1) ?? [];
+    expect(patch?.toolMeta).toMatchObject({ status: 'done', created: false });
+    expect(patch?.toolMeta).toHaveProperty('diff');
+    expect(continueWith).toHaveBeenCalledTimes(1);
+    expect(useAgent.getState().running).toBeNull();
+  });
+
+  it('renvoie une erreur d’aperçu au modèle sans demander l’autorisation', async () => {
+    commands.previewChange.mockRejectedValueOnce(new Error('`old` not found in a'));
+    const continueWith = vi.fn(async () => {});
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_9', name: 'edit_file', arguments: '{"path":"a","old":"zzz","new":"y"}' }],
+      continueWith,
+    );
+    expect(useAgent.getState().pending).toHaveLength(0);
+    expect(commands.applyChange).not.toHaveBeenCalled();
+    const [, patch] = updated.at(-1) ?? [];
+    expect(String(patch?.content)).toContain('Error: `old` not found in a');
+    expect(patch?.toolMeta).toMatchObject({ status: 'error', error: '`old` not found in a' });
+    expect(continueWith).toHaveBeenCalledTimes(1);
+  });
+
+  it('n’appelle pas l’aperçu quand la politique autorise sans question', async () => {
+    useSettings.getState().patch({ agentApproval: 'autoAll' });
+    const continueWith = vi.fn(async () => {});
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_10', name: 'edit_file', arguments: '{"path":"a","old":"x","new":"y"}' }],
+      continueWith,
+    );
+    expect(commands.previewChange).not.toHaveBeenCalled();
+    expect(commands.applyChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('transmet le motif du refus au modèle', async () => {
+    const continueWith = vi.fn(async () => {});
+    const turn = runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_11', name: 'run_command', arguments: '{"command":"rm -rf dist"}' }],
+      continueWith,
+    );
+    await vi.waitFor(() => expect(useAgent.getState().pending).toHaveLength(1));
+    const pendingId = useAgent.getState().pending[0]?.toolMessageId ?? '';
+    expect(added[0]?.toolMeta).toMatchObject({ cwd: 'C:\\work\\relay' });
+    useAgent.getState().decide(pendingId, 'deny', '  use pnpm clean instead  ');
+    await turn;
+    expect(commands.runCommand).not.toHaveBeenCalled();
+    const [, patch] = updated.at(-1) ?? [];
+    expect(patch?.toolMeta).toMatchObject({ status: 'denied' });
+    expect(String(patch?.content)).toMatch(/: use pnpm clean instead$/);
+    expect(continueWith).toHaveBeenCalledTimes(1);
+  });
+
+  it('suit la progression de la boucle pendant que le modèle reprend la main', async () => {
+    let resolveModel: () => void = () => {};
+    const continueWith = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveModel = resolve;
+        }),
+    );
+    const turn = runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_12', name: 'read_file', arguments: '{"path":"b"}' }],
+      continueWith,
+    );
+    await vi.waitFor(() => expect(continueWith).toHaveBeenCalledTimes(1));
+    expect(useAgent.getState().running).toMatchObject({ step: 2, phase: 'thinking' });
+    expect(useAgent.getState().running?.toolMessageId).toBeUndefined();
+    resolveModel();
+    await turn;
+    expect(useAgent.getState().running).toBeNull();
   });
 
   it('s’arrête sans relancer le modèle quand l’utilisateur interrompt', async () => {

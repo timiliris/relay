@@ -255,6 +255,22 @@
       "riskWrite": "Modifie des fichiers ou exécute une commande",
       "riskRead": "Lecture seule"
     },
+    "toolsPreview": {
+      "lines_one": "ligne",
+      "lines_other": "lignes",
+      "newFile": "nouveau fichier",
+      "showAll": "Tout afficher (+{{count}} lignes)",
+      "collapse": "Replier",
+      "runIn": "Exécution dans {{cwd}}",
+      "reasonLabel": "Pourquoi ?",
+      "reasonPlaceholder": "Facultatif : ex. utilise plutôt edit_file sur le fichier existant",
+      "confirmDeny": "Refuser",
+      "deniedWithReason": "Appel refusé par l'utilisateur : {{reason}}",
+      "step": "Étape {{step}}/{{total}}",
+      "awaiting": "{{tool}} en attente d'autorisation",
+      "toolRunning": "{{tool}} en cours",
+      "thinking": "le modèle réfléchit…"
+    },
     "explorer": {
       "title": "Fichiers du dossier de travail",
       "empty": "Dossier vide.",

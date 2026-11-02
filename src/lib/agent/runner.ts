@@ -14,7 +14,13 @@ import { type Conversation, type Message, messages as msgRepo, newId } from '../
 import { errorMessage, isTauri } from '../tauri';
 import { agentCommands, type Change } from './commands';
 import { approvalKey, missingArgs, parseToolArgs, toolRisk } from './tools';
-import { isToolName, type ToolCall, type ToolMeta, type ToolName } from './types';
+import {
+  type AgentProgress,
+  isToolName,
+  type ToolCall,
+  type ToolMeta,
+  type ToolName,
+} from './types';
 
 /** Appels d'outils par tour utilisateur avant arrêt de sécurité. */
 export const MAX_AGENT_STEPS = 25;
@@ -75,20 +81,15 @@ export async function executeTool(
       }
       case 'write_file':
       case 'edit_file': {
-        const change: Change =
-          name === 'write_file'
-            ? { kind: 'write', content: String(args.content ?? '') }
-            : {
-                kind: 'edit',
-                old: String(args.old ?? ''),
-                new: String(args.new ?? ''),
-                replaceAll: Boolean(args.replace_all),
-              };
-        const result = await agentCommands.applyChange(workspace, String(args.path ?? ''), change);
+        const result = await agentCommands.applyChange(
+          workspace,
+          String(args.path ?? ''),
+          changeOf(name, args),
+        );
         const verb = result.created ? 'Created' : 'Updated';
         return {
           content: `${verb} ${String(args.path)}.\n${result.diff}`,
-          meta: { diff: result.diff },
+          meta: { diff: result.diff, created: result.created },
         };
       }
       case 'search_files': {
@@ -144,6 +145,20 @@ export async function executeTool(
   }
 }
 
+/** Modification demandée par `write_file` (contenu complet) ou `edit_file` (remplacement exact). */
+export const changeOf = (
+  name: 'write_file' | 'edit_file',
+  args: Record<string, unknown>,
+): Change =>
+  name === 'write_file'
+    ? { kind: 'write', content: String(args.content ?? '') }
+    : {
+        kind: 'edit',
+        old: String(args.old ?? ''),
+        new: String(args.new ?? ''),
+        replaceAll: Boolean(args.replace_all),
+      };
+
 const clamp = (n: number, min: number, max: number): number =>
   Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : min;
 
@@ -174,13 +189,27 @@ export async function runAgentTurn(
   }
   const allowlist = useSettings.getState().agentAutoCommands;
   let parentId = assistant.id;
+  const step = (agent.steps[conversation.id] ?? 0) + 1;
+  const progress = (patch: Partial<AgentProgress>) =>
+    agent.setProgress({
+      conversationId: conversation.id,
+      step,
+      total: MAX_AGENT_STEPS,
+      phase: 'thinking',
+      ...patch,
+    });
+  /** Efface la progression si elle concerne encore cette conversation. */
+  const clearProgress = () => {
+    if (useAgent.getState().running?.conversationId === conversation.id) agent.setProgress(null);
+  };
 
   for (const call of calls) {
     const name = call.name;
     const args = parseToolArgs(call);
     const tool: ToolName | null = isToolName(name) ? name : null;
     const risk = tool ? toolRisk(tool, args, allowlist) : 'write';
-    const meta: ToolMeta = { args, status: 'pending', risk };
+    let meta: ToolMeta = { args, status: 'pending', risk };
+    if (tool === 'run_command') meta.cwd = workspace;
 
     const toolMessage = await msgRepo.add({
       conversationId: conversation.id,
@@ -203,16 +232,17 @@ export async function runAgentTurn(
     useChat.getState().upsert(toolMessage);
     parentId = toolMessage.id;
 
+    progress({
+      phase: 'pending',
+      toolMessageId: toolMessage.id,
+      ...(tool ? { toolName: tool } : {}),
+    });
+
+    /** Persiste contenu et métadonnées du message `tool` (aperçu, puis résultat). */
     const finish = async (content: string, patch: Partial<ToolMeta>) => {
-      const next: Message = {
-        ...toolMessage,
-        content: truncateForModel(content),
-        toolMeta: { ...meta, ...patch },
-      };
-      await msgRepo.update(toolMessage.id, {
-        content: next.content,
-        toolMeta: next.toolMeta ?? null,
-      });
+      meta = { ...meta, ...patch };
+      const next: Message = { ...toolMessage, content: truncateForModel(content), toolMeta: meta };
+      await msgRepo.update(toolMessage.id, { content: next.content, toolMeta: meta });
       useChat.getState().upsert(next);
     };
 
@@ -234,22 +264,47 @@ export async function runAgentTurn(
       continue;
     }
 
-    const decision = await agent.requestDecision({
+    const key = approvalKey(tool, args);
+    // Écriture soumise à approbation : la carte montre d'abord ce qui va changer. Un aperçu
+    // impossible (ancre absente ou ambiguë, chemin refusé) revient au modèle sans question.
+    if (
+      (tool === 'write_file' || tool === 'edit_file') &&
+      agent.willAsk({ conversationId: conversation.id, risk, key })
+    ) {
+      try {
+        const preview = await agentCommands.previewChange(
+          workspace,
+          String(args.path ?? ''),
+          changeOf(tool, args),
+        );
+        await finish('', { diff: preview.diff, created: preview.created });
+      } catch (err) {
+        const message = errorMessage(err);
+        await finish(`Error: ${message}`, { status: 'error', error: message });
+        continue;
+      }
+    }
+
+    const { decision, reason } = await agent.requestDecision({
       conversationId: conversation.id,
       toolMessageId: toolMessage.id,
       risk,
-      key: approvalKey(tool, args),
+      key,
     });
     if (decision === 'deny') {
+      const aborted = useAgent.getState().aborted;
       await finish(
-        useAgent.getState().aborted
+        aborted
           ? i18n.t('chat.tools.cancelledByUser')
-          : i18n.t('chat.tools.deniedByUser'),
-        { status: useAgent.getState().aborted ? 'cancelled' : 'denied' },
+          : reason
+            ? i18n.t('chat.toolsPreview.deniedWithReason', { reason })
+            : i18n.t('chat.tools.deniedByUser'),
+        { status: aborted ? 'cancelled' : 'denied' },
       );
       continue;
     }
 
+    progress({ phase: 'running', toolMessageId: toolMessage.id, toolName: tool });
     useChat.getState().upsert({ ...toolMessage, toolMeta: { ...meta, status: 'running' } });
     const startedAt = Date.now();
     const outcome = await executeTool(workspace, tool, args, toolMessage.id);
@@ -270,14 +325,22 @@ export async function runAgentTurn(
   }
 
   if (useAgent.getState().aborted) {
+    clearProgress();
     toast.info(i18n.t('chat.agent.stopped'));
     return;
   }
   if (agent.bumpSteps(conversation.id) >= MAX_AGENT_STEPS) {
+    clearProgress();
     toast.info(i18n.t('chat.agent.stepLimit', { count: MAX_AGENT_STEPS }));
     return;
   }
-  await continueWith(parentId);
+  // Le modèle reprend la main ; `continueWith` ne rend la main qu'une fois toute la suite terminée.
+  progress({ phase: 'thinking', step: step + 1 });
+  try {
+    await continueWith(parentId);
+  } finally {
+    clearProgress();
+  }
 }
 
 export const newToolId = (): string => newId();

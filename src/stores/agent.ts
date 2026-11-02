@@ -1,16 +1,24 @@
 /**
  * État du mode agent : approbations en attente (cartes « Autoriser / Refuser »), autorisations
- * mémorisées par conversation, compteur d'étapes et arrêt demandé par l'utilisateur.
+ * mémorisées par conversation, compteur d'étapes, progression de la boucle et arrêt demandé par
+ * l'utilisateur.
  */
 import { create } from 'zustand';
 import type { WorkspaceInfo } from '@/lib/agent/commands';
-import type { Decision, ToolRisk } from '@/lib/agent/types';
+import type { AgentProgress, Decision, DecisionResult, ToolRisk } from '@/lib/agent/types';
 import { useSettings } from './settings';
 
 export interface PendingApproval {
   toolMessageId: string;
   conversationId: string;
-  resolve: (decision: Decision) => void;
+  resolve: (result: DecisionResult) => void;
+}
+
+interface DecisionInput {
+  conversationId: string;
+  toolMessageId: string;
+  risk: ToolRisk;
+  key: string;
 }
 
 interface AgentState {
@@ -21,22 +29,23 @@ interface AgentState {
   steps: Record<string, number>;
   /** Identifiant de l'outil en cours d'exécution côté Rust (pour l'annuler). */
   runningToolId: string | null;
+  /** Boucle d'agent en cours (étape, phase, outil concerné), `null` au repos. */
+  running: AgentProgress | null;
   aborted: boolean;
   /** Dossiers enregistrés côté Rust pendant cette session, par conversation (nom, dépôt Git). */
   workspaces: Record<string, WorkspaceInfo>;
 
   rememberWorkspace: (conversationId: string, info: WorkspaceInfo) => void;
+  /** `true` si la politique et les autorisations mémorisées ne tranchent pas : la carte sera affichée. */
+  willAsk: (input: Omit<DecisionInput, 'toolMessageId'>) => boolean;
   /** Décide selon la politique et les autorisations mémorisées, sinon attend la carte. */
-  requestDecision: (input: {
-    conversationId: string;
-    toolMessageId: string;
-    risk: ToolRisk;
-    key: string;
-  }) => Promise<Decision>;
-  decide: (toolMessageId: string, decision: Decision) => void;
+  requestDecision: (input: DecisionInput) => Promise<DecisionResult>;
+  /** Réponse de l'utilisateur ; `reason` (refus) est transmis au modèle pour qu'il corrige le tir. */
+  decide: (toolMessageId: string, decision: Decision, reason?: string) => void;
   startTurn: (conversationId: string) => void;
   bumpSteps: (conversationId: string) => number;
   setRunning: (id: string | null) => void;
+  setProgress: (progress: AgentProgress | null) => void;
   /** Arrêt demandé : refuse les approbations en attente et marque le tour comme interrompu. */
   abort: () => void;
 }
@@ -46,26 +55,33 @@ export const useAgent = create<AgentState>()((set, get) => ({
   allowed: {},
   steps: {},
   runningToolId: null,
+  running: null,
   aborted: false,
   workspaces: {},
 
   rememberWorkspace: (conversationId, info) =>
     set((s) => ({ workspaces: { ...s.workspaces, [conversationId]: info } })),
 
-  requestDecision({ conversationId, toolMessageId, risk, key }) {
+  willAsk({ conversationId, risk, key }) {
     const policy = useSettings.getState().agentApproval;
-    if (policy === 'autoAll') return Promise.resolve('allow');
-    if (policy === 'autoRead' && risk === 'read') return Promise.resolve('allow');
-    if (get().allowed[conversationId]?.includes(key)) return Promise.resolve('allow');
-    return new Promise<Decision>((resolve) => {
+    if (policy === 'autoAll') return false;
+    if (policy === 'autoRead' && risk === 'read') return false;
+    return !get().allowed[conversationId]?.includes(key);
+  },
+
+  requestDecision({ conversationId, toolMessageId, risk, key }) {
+    if (!get().willAsk({ conversationId, risk, key })) {
+      return Promise.resolve({ decision: 'allow' });
+    }
+    return new Promise<DecisionResult>((resolve) => {
       set((s) => ({
         pending: [
           ...s.pending,
           {
             toolMessageId,
             conversationId,
-            resolve: (decision) => {
-              if (decision === 'allowAlways') {
+            resolve: (result) => {
+              if (result.decision === 'allowAlways') {
                 set((state) => ({
                   allowed: {
                     ...state.allowed,
@@ -73,7 +89,7 @@ export const useAgent = create<AgentState>()((set, get) => ({
                   },
                 }));
               }
-              resolve(decision);
+              resolve(result);
             },
           },
         ],
@@ -81,15 +97,16 @@ export const useAgent = create<AgentState>()((set, get) => ({
     });
   },
 
-  decide(toolMessageId, decision) {
+  decide(toolMessageId, decision, reason) {
     const entry = get().pending.find((p) => p.toolMessageId === toolMessageId);
     if (!entry) return;
     set((s) => ({ pending: s.pending.filter((p) => p.toolMessageId !== toolMessageId) }));
-    entry.resolve(decision);
+    const trimmed = reason?.trim();
+    entry.resolve(decision === 'deny' && trimmed ? { decision, reason: trimmed } : { decision });
   },
 
   startTurn: (conversationId) =>
-    set((s) => ({ steps: { ...s.steps, [conversationId]: 0 }, aborted: false })),
+    set((s) => ({ steps: { ...s.steps, [conversationId]: 0 }, aborted: false, running: null })),
 
   bumpSteps(conversationId) {
     const next = (get().steps[conversationId] ?? 0) + 1;
@@ -99,9 +116,11 @@ export const useAgent = create<AgentState>()((set, get) => ({
 
   setRunning: (id) => set({ runningToolId: id }),
 
+  setProgress: (progress) => set({ running: progress }),
+
   abort() {
     const { pending } = get();
-    set({ pending: [], aborted: true });
-    for (const p of pending) p.resolve('deny');
+    set({ pending: [], aborted: true, running: null });
+    for (const p of pending) p.resolve({ decision: 'deny' });
   },
 }));

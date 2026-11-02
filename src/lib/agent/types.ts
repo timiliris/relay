@@ -37,10 +37,35 @@ export interface ToolMeta {
   durationMs?: number;
   timedOut?: boolean;
   truncated?: boolean;
-  /** Diff unifié d'une écriture ou d'une édition. */
+  /** Diff unifié d'une écriture ou d'une édition (aperçu en attente, puis résultat). */
   diff?: string;
+  /** Écriture ou édition : `true` si le fichier n'existait pas encore. */
+  created?: boolean;
+  /** Commande : dossier d'exécution (racine du dossier de travail). */
+  cwd?: string;
   error?: string;
 }
 
 export type ApprovalPolicy = 'ask' | 'autoRead' | 'autoAll';
 export type Decision = 'allow' | 'allowAlways' | 'deny';
+
+/** Réponse à une demande d'approbation ; `reason` accompagne éventuellement un refus. */
+export interface DecisionResult {
+  decision: Decision;
+  reason?: string;
+}
+
+/** Phase de la boucle d'agent pour l'étape en cours. */
+export type AgentPhase = 'pending' | 'running' | 'thinking';
+
+/** Progression de la boucle d'agent (exposée par `useAgent.running`). */
+export interface AgentProgress {
+  conversationId: string;
+  /** Étape (relance du modèle) en cours, à partir de 1. */
+  step: number;
+  total?: number;
+  phase: AgentPhase;
+  /** Message `tool` concerné quand un outil attend ou s'exécute. */
+  toolMessageId?: string;
+  toolName?: ToolName;
+}
