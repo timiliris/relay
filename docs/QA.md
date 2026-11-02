@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.7.0
+# Fiche de vérification — Relay 0.8.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -192,6 +192,16 @@ Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `c
 | Historique envoyé                                | `chat-service.test.ts` : bloc agent dans l'instruction, `tool_calls` et messages `tool` au format OpenAI, rien sans dossier                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Verts                                                                                                                                                 |
 | Interface                                        | navigateur, conversation de démo `demo-agent`, clair et sombre : cartes d'outils (lecture terminée, édition avec diff coloré, commande en attente avec Autoriser / Toujours / Refuser), dossier « relay » dans l'en-tête, filtre et icône « Outils » du sélecteur, section Développement                                                                                                                                                                                                                                                                                    | Rendu conforme, aucune erreur console nouvelle                                                                                                        |
 | Exécuteurs Rust (`register_workspace`, `tool_*`) | `src-tauri/src/agent/` : `mod.rs` (racines enregistrées, résolution sûre), `fs.rs` (liste, lecture, écriture/édition avec diff `similar`), `search.rs` (regex + `ignore` + glob), `exec.rs` (PowerShell/sh, sortie plafonnée à 64 Ko, délai, annulation avec `taskkill /T`) ; 13 tests sur dossier temporaire : chemins qui s'échappent (`..`, absolu, hors racine), lecture avec offset/limite et refus des binaires, ancre unique/absente/multiple, création de dossiers, aperçu sans écriture, `.gitignore` et glob, `echo`, code de sortie 3, délai dépassé, annulation | 40 tests Rust verts, clippy propre, licences `cargo deny` ok ; **parcours complet dans l'app Tauri non vérifié** (à faire après la prochaine release) |
+
+## Release 0.8.0 (2 novembre 2026)
+
+| Étape              | Résultat                                                                                                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenu            | Mode développement : appels d'outils OpenRouter, migration SQLite v6, exécuteurs Rust confinés au dossier de travail, boucle d'agent avec approbations, cartes d'outils, section Développement |
+| PR release-please  | `chore(main): release 0.8.0` ; `Cargo.lock` aligné sur la branche de la PR ; CI verte avant fusion                                                                                             |
+| Lancement du build | Automatique (septième fois)                                                                                                                                                                    |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.8.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.8.0 avec 11 cibles                                                                 |
+| Installation       | Laissée à la mise à jour intégrée ; premier test réel du mode agent à faire après installation, sur un dossier versionné                                                                       |
 
 ## Optimisations mesurées (0.1.1)
 
