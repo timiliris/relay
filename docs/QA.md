@@ -238,6 +238,24 @@ Fusion une à une dans `main` : conflits sur `src/stores/agent.ts` (contexte × 
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.10.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.10.0 avec 11 cibles. Le build Apple Silicon a demandé cinq passages : envoi échoué (erreur GitHub), trois relances annulées faute de runner (« capacity constraints, macOS arm64 »), puis succès à la relance suivante |
 | Installation       | Laissée à la mise à jour intégrée ; à essayer ensuite : volet Git, éditeur et `@fichier` sur un vrai dossier, page web jointe au message                                                                                                                                                                                            |
 
+## Analyse d'une conversation réelle en mode agent (Kimi K3.1 Pro, 2 novembre 2026)
+
+Conversation « KIMI » (site de vente de chaussures écrit de zéro, 69 messages, 25 outils, 0,72 $), relue depuis `relay.db` avec les horodatages, `duration_ms` et `toolMeta.durationMs`.
+
+| Poste                            | Durée   | Part |
+| -------------------------------- | ------- | ---- |
+| Génération du modèle (25 étapes) | 1 159 s | 76 % |
+| Attente des approbations         | 239 s   | 16 % |
+| Exécution des outils (43 appels) | 119 s   | 8 %  |
+
+- Trois `write_file` monolithiques (index.html 8 720 tokens en 201 s, styles.css 13 866 en 249 s, script.js 10 730 en 236 s) font 45 % du total, à environ 50 tokens/s : c'est la vitesse du modèle, pas Relay.
+- Playwright : `pip install` 10 s + `playwright install chromium` 56 s, puis deux passes de tests (34 s et 7 s). Le modèle a d'abord sondé le poste (`node -e require.resolve`, `python --version`) faute de relevé d'environnement.
+- Approbations : 140 s avant l'écriture de `index.html`, 54 s sur deux commandes `node`, 34 s sur un `Get-ChildItem`.
+
+**Bug trouvé et corrigé** : la promesse de `openrouter.streamChat` se résolvait au retour de la commande Rust `stream_chat`, avant la livraison des derniers messages du canal. Pour un appel d'outil de plusieurs dizaines de Ko, `toolCalls` puis `done` arrivaient après : le message assistant était persisté avec `finish_reason: stop` (valeur par défaut) et des arguments vides. Dans six conversations sur six (tous modèles), chaque gros `write_file` a été enregistré ainsi ; dans trois cas (openrouter/free, openrouter/auto) l'exécuteur a reçu les arguments vides, a répondu « missing path, content » et le modèle a réécrit le fichier entier. C'était la cause réelle de l'incident attribué au modèle gratuit lors du premier essai (0.9.0). Correction : attente de l'événement terminal après le retour de la commande, garde de 10 s ; test `src/lib/openrouter.test.ts`.
+
+Trois corrections annexes : `edit_file` avec `new: ""` (suppression d'un bloc) et `write_file` avec `content: ""` ne sont plus refusés comme arguments manquants (un pas de 48 s perdu dans la conversation) ; le résultat d'un fichier créé renvoyé au modèle est « Created x (N lines). » sans le diff (le contenu restait deux fois dans le contexte, passé de 4,8 k à 51 k tokens ; le diff reste dans `toolMeta` pour la carte) ; une ligne de journal au niveau Info par appel d'outil et par tour du modèle (`[agent] …`, `[chat] …`) dans `app.log`, qui était vide pour cette session.
+
 ## Optimisations mesurées (0.1.1)
 
 | Mesure                                   | Avant                       | Après                                                     |

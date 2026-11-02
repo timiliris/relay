@@ -3,6 +3,7 @@
  * appel, approbation éventuelle, commande Rust), puis rend la main à `continueWith` pour que le
  * modèle poursuive avec les résultats.
  */
+import { info } from '@tauri-apps/plugin-log';
 import { platform } from '@tauri-apps/plugin-os';
 import i18n from '@/i18n';
 import { useAgent } from '@/stores/agent';
@@ -29,6 +30,18 @@ export const MAX_AGENT_STEPS = 25;
 const MAX_RESULT_CHARS = 30_000;
 
 export const osName = (): string => (isTauri() ? platform() : 'web');
+
+/** Une ligne par appel d'outil dans le journal de l'app, pour pouvoir analyser un tour après coup. */
+function logTool(name: string, meta: ToolMeta, resultChars: number): void {
+  if (!isTauri() || meta.status === 'pending' || meta.status === 'running') return;
+  const parts = [`[agent] ${name} ${meta.status}`];
+  if (meta.durationMs !== undefined) parts.push(`${meta.durationMs} ms`);
+  if (meta.exitCode !== undefined && meta.exitCode !== null) parts.push(`exit ${meta.exitCode}`);
+  if (meta.timedOut) parts.push('timed out');
+  if (meta.error) parts.push(`error: ${meta.error}`);
+  parts.push(`result ${resultChars} chars`);
+  void info(parts.join(' · ')).catch(() => {});
+}
 
 export const agentEnabled = (conversation: Conversation): boolean =>
   Boolean(conversation.agent && conversation.workspace);
@@ -89,11 +102,12 @@ export async function executeTool(
           String(args.path ?? ''),
           changeOf(name, args),
         );
-        const verb = result.created ? 'Created' : 'Updated';
-        return {
-          content: `${verb} ${String(args.path)}.\n${result.diff}`,
-          meta: { diff: result.diff, created: result.created },
-        };
+        // Un fichier créé : le modèle vient d'en dicter le contenu, le diff complet ne sert
+        // qu'à l'interface (il resterait sinon deux fois dans le contexte de chaque tour).
+        const content = result.created
+          ? `Created ${String(args.path)} (${String(args.content ?? '').split('\n').length} lines).`
+          : `Updated ${String(args.path)}.\n${result.diff}`;
+        return { content, meta: { diff: result.diff, created: result.created } };
       }
       case 'search_files': {
         const result = await agentCommands.search(
@@ -244,6 +258,7 @@ export async function runAgentTurn(
     /** Persiste contenu et métadonnées du message `tool` (aperçu, puis résultat). */
     const finish = async (content: string, patch: Partial<ToolMeta>) => {
       meta = { ...meta, ...patch };
+      logTool(name, meta, content.length);
       const next: Message = { ...toolMessage, content: truncateForModel(content), toolMeta: meta };
       await msgRepo.update(toolMessage.id, { content: next.content, toolMeta: meta });
       useChat.getState().upsert(next);

@@ -183,6 +183,12 @@ export function isReadOnlyCommand(command: string, allowlist: readonly string[])
   });
 }
 
+/** Arguments requis dont une chaîne vide est une valeur légitime (fichier vide, suppression d'un bloc). */
+const EMPTY_ALLOWED: Partial<Record<ToolName, readonly string[]>> = {
+  write_file: ['content'],
+  edit_file: ['new'],
+};
+
 /** Arguments requis absents ou vides, d'après le schéma de l'outil. */
 export function missingArgs(name: ToolName, args: Record<string, unknown>): string[] {
   const def = DEFINITIONS.find((d) => d.function.name === name);
@@ -190,7 +196,8 @@ export function missingArgs(name: ToolName, args: Record<string, unknown>): stri
     (def?.function.parameters as { required?: string[] } | undefined)?.required ?? [];
   return required.filter((key) => {
     const value = args[key];
-    return value === undefined || value === null || (typeof value === 'string' && value === '');
+    if (value === undefined || value === null) return true;
+    return typeof value === 'string' && value === '' && !EMPTY_ALLOWED[name]?.includes(key);
   });
 }
 
