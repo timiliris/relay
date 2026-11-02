@@ -6,7 +6,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useApiKey } from '@/stores/api-key';
 import { useConversations } from '@/stores/conversations';
 import { useModels } from '@/stores/models';
-import { useSettings } from '@/stores/settings';
+import { useSettings, useSettingsHydrated } from '@/stores/settings';
 import { ConversationSidebar } from './conversation-sidebar';
 import { DialogHost } from './dialog-host';
 import { ErrorBoundary } from './error-boundary';
@@ -22,6 +22,7 @@ export function AppShell() {
   const refreshKey = useApiKey((s) => s.refresh);
   const loadModels = useModels((s) => s.load);
   const { fontSize, accent, density, onboarded, lastConversationId } = useSettings();
+  const hydrated = useSettingsHydrated();
   const { items, loaded } = useConversations();
   const restored = useRef(false);
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export function AppShell() {
 
   // Reprise de la conversation ouverte lors de la dernière session (une seule fois, au lancement).
   useEffect(() => {
-    if (restored.current || !loaded || !onboarded || pathname !== '/') return;
+    if (!hydrated || restored.current || !loaded || !onboarded || pathname !== '/') return;
     restored.current = true;
     if (lastConversationId && items.some((c) => c.id === lastConversationId)) {
       void navigate({
@@ -45,12 +46,14 @@ export function AppShell() {
         params: { conversationId: lastConversationId },
       });
     }
-  }, [loaded, onboarded, pathname, lastConversationId, items, navigate]);
+  }, [hydrated, loaded, onboarded, pathname, lastConversationId, items, navigate]);
 
-  // Premier lancement : assistant de bienvenue.
+  // Premier lancement : assistant de bienvenue. Décidé seulement une fois les réglages relus,
+  // sinon la valeur par défaut `onboarded: false` renverrait à l'accueil à chaque démarrage.
   useEffect(() => {
+    if (!hydrated) return;
     if (!onboarded && pathname !== '/welcome') void navigate({ to: '/welcome' });
-  }, [onboarded, pathname, navigate]);
+  }, [hydrated, onboarded, pathname, navigate]);
 
   // Préférences d'apparence appliquées sur <html> (voir globals.css).
   useEffect(() => {

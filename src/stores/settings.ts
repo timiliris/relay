@@ -4,6 +4,7 @@
  * - dans un navigateur (dev UI pur, tests) : localStorage.
  */
 import { LazyStore } from '@tauri-apps/plugin-store';
+import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { type LanguageSetting, resolveLanguage } from '@/i18n';
@@ -166,3 +167,16 @@ export const useSettings = create<SettingsState>()(
     },
   ),
 );
+
+/**
+ * `true` une fois les réglages relus depuis le disque. Dans Tauri la lecture est asynchrone :
+ * au premier rendu le store porte encore les valeurs par défaut (`onboarded: false`, etc.),
+ * et toute décision prise à ce moment-là (redirection, reprise de conversation) serait fausse.
+ */
+export function useSettingsHydrated(): boolean {
+  return useSyncExternalStore(
+    (onChange) => useSettings.persist.onFinishHydration(onChange),
+    () => useSettings.persist.hasHydrated(),
+    () => true,
+  );
+}
