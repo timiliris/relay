@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.6.1](https://github.com/timiliris/relay/compare/v0.6.0...v0.6.1) (2026-11-02)
+
+
+### Corrections
+
+* **migration:** reprise des anciennes données ciblée et exécutée une seule fois ([c24e0ad](https://github.com/timiliris/relay/commit/c24e0ad65198638300431e8dca1bb98064a158ab))
+
 ## [0.6.0](https://github.com/timiliris/relay/compare/v0.5.0...v0.6.0) (2026-11-01)
 
 
