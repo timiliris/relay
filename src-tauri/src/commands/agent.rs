@@ -1,10 +1,15 @@
 //! Commandes du mode agent : dossier de travail et outils (fichiers, recherche, commandes).
 //! Chaque commande vérifie que `workspace` est une racine enregistrée et que les chemins y restent.
 
-use tauri::State;
+use std::sync::Arc;
+
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, State};
 
 use crate::AppResult;
-use crate::agent::exec::{self, CommandOutput};
+use crate::agent::exec::{
+    self, CommandOutput, ProcessEvent, ProcessInfo, ProcessOutput, ProcessRegistry, Stream,
+};
 use crate::agent::fs::{self, Change, ChangePreview, FileContent, ListResult};
 use crate::agent::git::{self, GitBranch, GitCommit, GitDiff, GitLogEntry, GitStatus};
 use crate::agent::search::{self, SearchResult};
@@ -93,18 +98,84 @@ pub async fn tool_search(
     .map_err(|e| std::io::Error::other(e.to_string()))?
 }
 
+/// Fragment de sortie d'un processus, événement `agent://command-output`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OutputChunk {
+    id: String,
+    stream: Stream,
+    chunk: String,
+}
+
+/// Événements émis au webview principal : sortie au fil de l'eau et fin de processus.
+pub const COMMAND_OUTPUT_EVENT: &str = "agent://command-output";
+pub const PROCESS_EXIT_EVENT: &str = "agent://process-exit";
+
+/// Relais des événements d'un processus vers le webview principal.
+fn process_sink(app: AppHandle) -> exec::Sink {
+    Arc::new(move |event| {
+        let result = match event {
+            ProcessEvent::Output { id, stream, chunk } => app.emit_to(
+                crate::browser::MAIN,
+                COMMAND_OUTPUT_EVENT,
+                OutputChunk { id, stream, chunk },
+            ),
+            ProcessEvent::Exit(info) => {
+                log::info!(
+                    "processus {} terminé : {:?}, code {:?}",
+                    info.id,
+                    info.status,
+                    info.exit_code
+                );
+                app.emit_to(crate::browser::MAIN, PROCESS_EXIT_EVENT, info)
+            }
+        };
+        if let Err(err) = result {
+            log::warn!("événement de processus : {err}");
+        }
+    })
+}
+
 /// Exécute une commande shell dans le dossier de travail ; annulable via `cancel_tool(id)`.
+/// La sortie est diffusée par `agent://command-output` pendant l'exécution. Avec
+/// `background`, rend la main après quelques secondes et laisse le processus tourner
+/// (`list_processes`, `read_process_output`, `stop_process`).
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn tool_run_command(
+    app: AppHandle,
     state: State<'_, WorkspaceState>,
+    registry: State<'_, ProcessRegistry>,
     id: String,
     workspace: String,
     command: String,
     timeout_secs: u64,
+    background: Option<bool>,
 ) -> AppResult<CommandOutput> {
     let root = state.root(&workspace)?;
+    let background = background.unwrap_or(false);
     let cancel = state.track(&id);
-    let result = exec::run_command(&root, &command, timeout_secs, cancel).await;
+    log::info!(
+        "commande {id} ({}) : {command}",
+        if background {
+            "arrière-plan"
+        } else {
+            "premier plan"
+        }
+    );
+    let result = exec::run_command(
+        &registry,
+        exec::Spawn {
+            id: &id,
+            cwd: &root,
+            command: &command,
+            timeout_secs,
+            background,
+            cancel,
+        },
+        process_sink(app),
+    )
+    .await;
     state.untrack(&id);
     result
 }
@@ -112,6 +183,31 @@ pub async fn tool_run_command(
 #[tauri::command]
 pub fn cancel_tool(state: State<'_, WorkspaceState>, id: String) {
     state.cancel(&id);
+}
+
+/// Processus lancés pendant la session (vivants et terminés), du plus ancien au plus récent.
+#[tauri::command]
+pub fn list_processes(registry: State<'_, ProcessRegistry>) -> Vec<ProcessInfo> {
+    registry.list()
+}
+
+/// Tue un processus (et ses enfants) et renvoie sa fiche une fois terminé.
+#[tauri::command]
+pub async fn stop_process(
+    registry: State<'_, ProcessRegistry>,
+    id: String,
+) -> AppResult<ProcessInfo> {
+    log::info!("arrêt demandé du processus {id}");
+    registry.stop(&id).await
+}
+
+/// Sortie accumulée d'un processus (derniers 64 Ko par flux) et son état.
+#[tauri::command]
+pub fn read_process_output(
+    registry: State<'_, ProcessRegistry>,
+    id: String,
+) -> AppResult<ProcessOutput> {
+    registry.output(&id)
 }
 
 // ---- Panneau Git du dossier de travail (manuel, indépendant de l'agent) ----

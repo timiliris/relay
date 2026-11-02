@@ -49,6 +49,9 @@ describe('agent tools', () => {
     expect(toolRisk('run_command', { command: 'git diff' }, DEFAULT_AUTO_COMMANDS)).toBe('read');
     expect(toolRisk('run_command', { command: 'pnpm test' }, DEFAULT_AUTO_COMMANDS)).toBe('write');
     expect(toolRisk('run_command', { command: 'pnpm test' }, ['pnpm test'])).toBe('read');
+    expect(toolRisk('list_processes', {}, DEFAULT_AUTO_COMMANDS)).toBe('read');
+    expect(toolRisk('read_process_output', { id: 'p' }, DEFAULT_AUTO_COMMANDS)).toBe('read');
+    expect(toolRisk('stop_process', { id: 'p' }, DEFAULT_AUTO_COMMANDS)).toBe('write');
   });
 
   it('dérive la clé « toujours autoriser » du programme pour les commandes', () => {
@@ -67,6 +70,8 @@ describe('agent tools', () => {
     expect(missingArgs('edit_file', { path: 'a', old: 'x', new: '' })).toEqual([]);
     expect(missingArgs('list_files', {})).toEqual([]);
     expect(missingArgs('run_command', { command: 'ls' })).toEqual([]);
+    expect(missingArgs('stop_process', {})).toEqual(['id']);
+    expect(missingArgs('read_process_output', { id: 'p1' })).toEqual([]);
   });
 
   it('tolère des arguments JSON invalides ou non-objets', () => {

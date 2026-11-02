@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAgent } from '@/stores/agent';
 import { useChat } from '@/stores/chat';
+import { useProcesses } from '@/stores/processes';
 import { useSettings } from '@/stores/settings';
 import type { Conversation, Message } from '../db';
+import type { CommandOutput } from './commands';
 import { runAgentTurn } from './runner';
 
 const { added, updated, commands } = vi.hoisted(() => ({
@@ -11,12 +13,48 @@ const { added, updated, commands } = vi.hoisted(() => ({
   commands: {
     registerWorkspace: vi.fn(async (path: string) => ({ root: path, name: 'relay', git: true })),
     readFile: vi.fn(async () => ({ content: 'fn main() {}\n', totalLines: 1, truncated: false })),
-    runCommand: vi.fn(async () => ({
-      exitCode: 0,
-      stdout: 'ok\n',
-      stderr: '',
-      durationMs: 42,
+    runCommand: vi.fn(
+      async (): Promise<CommandOutput> => ({
+        exitCode: 0,
+        stdout: 'ok\n',
+        stderr: '',
+        durationMs: 42,
+        timedOut: false,
+        truncated: false,
+        pid: 4242,
+        startedAt: 1_000,
+        background: false,
+        running: false,
+      }),
+    ),
+    listProcesses: vi.fn(async () => []),
+    stopProcess: vi.fn(async () => ({
+      id: 'bg1',
+      pid: 777,
+      command: 'python -m http.server 8123',
+      cwd: 'C:\\work\\relay',
+      startedAt: 1_000,
+      endedAt: 2_000,
+      status: 'killed',
+      exitCode: null,
+      background: true,
       timedOut: false,
+    })),
+    readProcessOutput: vi.fn(async () => ({
+      info: {
+        id: 'bg1',
+        pid: 777,
+        command: 'python -m http.server 8123',
+        cwd: 'C:\\work\\relay',
+        startedAt: 1_000,
+        endedAt: null,
+        status: 'running',
+        exitCode: null,
+        background: true,
+        timedOut: false,
+      },
+      stdout: '',
+      stderr: 'l1\nl2\nl3\n',
       truncated: false,
     })),
     applyChange: vi.fn(async () => ({
@@ -35,7 +73,11 @@ const { added, updated, commands } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('./commands', () => ({ agentCommands: commands }));
+vi.mock('./commands', () => ({
+  agentCommands: commands,
+  COMMAND_OUTPUT_EVENT: 'agent://command-output',
+  PROCESS_EXIT_EVENT: 'agent://process-exit',
+}));
 
 vi.mock('../db', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../db')>();
@@ -113,6 +155,7 @@ describe('runAgentTurn', () => {
       running: null,
     });
     useChat.setState({ conversationId: 'c1', all: [assistant], messages: [assistant] });
+    useProcesses.setState({ items: {} });
     useAgent.getState().startTurn('c1');
   });
 
@@ -153,12 +196,109 @@ describe('runAgentTurn', () => {
       'C:\\work\\relay',
       'pnpm test',
       120,
+      false,
     );
     expect(useAgent.getState().allowed.c1).toEqual(['cmd:pnpm']);
     const [, patch] = updated.at(-1) ?? [];
     expect(String(patch?.content)).toContain('exit code: 0');
-    expect(patch?.toolMeta).toMatchObject({ status: 'done', exitCode: 0 });
+    expect(patch?.toolMeta).toMatchObject({ status: 'done', exitCode: 0, pid: 4242 });
     expect(continueWith).toHaveBeenCalledTimes(1);
+    // Le volet Processus a suivi la commande de bout en bout.
+    expect(useProcesses.getState().items[pendingId]).toMatchObject({
+      conversationId: 'c1',
+      command: 'pnpm test',
+      status: 'done',
+      exitCode: 0,
+      pid: 4242,
+      output: 'ok\n',
+    });
+  });
+
+  it('lance un arrière-plan qui reste en cours, puis l’arrête sur demande du modèle', async () => {
+    useSettings.getState().patch({ agentApproval: 'autoAll' });
+    commands.runCommand.mockResolvedValueOnce({
+      exitCode: null,
+      stdout: 'Serving HTTP on :: port 8123\n',
+      stderr: '',
+      durationMs: 3_005,
+      timedOut: false,
+      truncated: false,
+      pid: 777,
+      startedAt: 1_000,
+      background: true,
+      running: true,
+    });
+    const continueWith = vi.fn(async () => {});
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [
+        {
+          id: 'call_bg',
+          name: 'run_command',
+          arguments: '{"command":"python -m http.server 8123","background":true}',
+        },
+      ],
+      continueWith,
+    );
+    const [toolId, patch] = updated.at(-1) ?? ['', {}];
+    expect(commands.runCommand).toHaveBeenCalledWith(
+      toolId,
+      'C:\\work\\relay',
+      'python -m http.server 8123',
+      120,
+      true,
+    );
+    expect(String(patch?.content)).toContain(
+      `Started in background: process id ${toolId}, pid 777`,
+    );
+    expect(String(patch?.content)).toContain('port 8123');
+    expect(patch?.toolMeta).toMatchObject({ status: 'done', pid: 777, background: true });
+    expect(useProcesses.getState().items[toolId]).toMatchObject({ status: 'running', pid: 777 });
+
+    // Lecture puis arrêt par le modèle.
+    updated.length = 0;
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [
+        { id: 'call_r', name: 'read_process_output', arguments: '{"id":"bg1","lines":2}' },
+        { id: 'call_s', name: 'stop_process', arguments: '{"id":"bg1"}' },
+      ],
+      continueWith,
+    );
+    expect(String(updated[0]?.[1].content)).toBe('status: running, pid 777\nstderr:\nl2\nl3');
+    expect(commands.stopProcess).toHaveBeenCalledWith('bg1');
+    expect(String(updated[1]?.[1].content)).toContain('(pid 777) killed');
+    expect(updated.map(([, p]) => (p.toolMeta as { risk: string }).risk)).toEqual([
+      'read',
+      'write',
+    ]);
+  });
+
+  it('marque « annulé » une commande tuée au premier plan', async () => {
+    useSettings.getState().patch({ agentApproval: 'autoAll' });
+    commands.runCommand.mockResolvedValueOnce({
+      exitCode: null,
+      stdout: 'partiel\n',
+      stderr: '',
+      durationMs: 1_200,
+      timedOut: false,
+      truncated: false,
+      pid: 1,
+      startedAt: 1_000,
+      background: false,
+      running: false,
+    });
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_k', name: 'run_command', arguments: '{"command":"ping -n 5 127.0.0.1"}' }],
+      vi.fn(async () => {}),
+    );
+    const [, patch] = updated.at(-1) ?? [];
+    expect(String(patch?.content)).toContain('exit code: none (killed)');
+    expect(patch?.toolMeta).toMatchObject({ status: 'cancelled', exitCode: null });
   });
 
   it('transmet un refus au modèle sans exécuter l’outil', async () => {

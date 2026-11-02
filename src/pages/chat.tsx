@@ -2,6 +2,7 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import {
+  Activity,
   ArrowDown,
   Brain,
   Download,
@@ -28,6 +29,7 @@ import { PersonaMemoryPanel } from '@/components/persona-memory-panel';
 import { PinnedPanel, pinnedMessages } from '@/components/pinned-panel';
 import { PresetBadges } from '@/components/preset-avatar';
 import { PresetPicker } from '@/components/preset-picker';
+import { ProcessPanel } from '@/components/process-panel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
 import { WorkspaceExplorer } from '@/components/workspace-explorer';
@@ -67,6 +69,7 @@ import { useExplorer } from '@/stores/explorer';
 import { useGit } from '@/stores/git';
 import { useModels } from '@/stores/models';
 import { usePersonaMemory } from '@/stores/persona-memory';
+import { selectRunningCount, useProcesses } from '@/stores/processes';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 
@@ -108,6 +111,9 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   const toggleGit = useGit((s) => s.toggle);
   const browserOpen = useBrowser((s) => s.open);
   const toggleBrowser = useBrowser((s) => s.toggle);
+  const processesOpen = useProcesses((s) => s.open);
+  const toggleProcesses = useProcesses((s) => s.toggle);
+  const runningProcesses = useProcesses(selectRunningCount(conversationId));
   /** Message à atteindre une fois rendu (volet des épinglés). */
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [memoryOpen, setMemoryOpen] = useState(false);
@@ -321,6 +327,24 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             onClick={toggleGit}
           >
             <GitBranch className={cn('size-4', gitOpen && 'text-chart-2')} />
+          </IconButton>
+        )}
+        {conversation?.workspace && (
+          <IconButton
+            label={t('chat.processes.title')}
+            aria-pressed={processesOpen}
+            className={cn('relative', processesOpen && 'bg-accent text-accent-foreground')}
+            onClick={toggleProcesses}
+          >
+            <Activity className={cn('size-4', processesOpen && 'text-info')} />
+            {runningProcesses > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-info px-1 font-mono text-[10px] leading-none text-white"
+                title={t('chat.processes.runningCount', { count: runningProcesses })}
+              >
+                {runningProcesses}
+              </span>
+            )}
           </IconButton>
         )}
         <IconButton
@@ -586,6 +610,12 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         )}
         {gitOpen && conversation?.workspace && (
           <GitPanel conversation={conversation} onClose={() => useGit.getState().setOpen(false)} />
+        )}
+        {processesOpen && conversation?.workspace && (
+          <ProcessPanel
+            conversationId={conversation.id}
+            onClose={() => useProcesses.getState().setOpen(false)}
+          />
         )}
         {browserOpen && (
           <BrowserPanel
