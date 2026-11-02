@@ -1,11 +1,20 @@
 /**
  * État du mode agent : approbations en attente (cartes « Autoriser / Refuser »), autorisations
- * mémorisées par conversation, compteur d'étapes et arrêt demandé par l'utilisateur.
+ * mémorisées par conversation, compteur d'étapes, arrêt demandé par l'utilisateur et cache du
+ * contexte de projet lu par `buildHistory` (`src/lib/chat-service.ts`) de façon synchrone.
  */
 import { create } from 'zustand';
 import type { WorkspaceInfo } from '@/lib/agent/commands';
+import { buildProjectContext, type ProjectContext } from '@/lib/agent/context';
 import type { Decision, ToolRisk } from '@/lib/agent/types';
 import { useSettings } from './settings';
+
+export interface ProjectContextEntry extends ProjectContext {
+  builtAt: number;
+}
+
+/** Durée de validité du contexte de projet avant reconstruction automatique. */
+export const PROJECT_CONTEXT_TTL_MS = 60 * 60 * 1000;
 
 export interface PendingApproval {
   toolMessageId: string;
@@ -24,8 +33,17 @@ interface AgentState {
   aborted: boolean;
   /** Dossiers enregistrés côté Rust pendant cette session, par conversation (nom, dépôt Git). */
   workspaces: Record<string, WorkspaceInfo>;
+  /** Contexte de projet par conversation ; invalide si le dossier a changé ou après une heure. */
+  projectContext: Record<string, ProjectContextEntry>;
 
   rememberWorkspace: (conversationId: string, info: WorkspaceInfo) => void;
+  /** Construit (ou reconstruit) le contexte si absent, périmé, d'un autre dossier ou si `force`. */
+  ensureProjectContext: (
+    conversationId: string,
+    workspace: string,
+    force?: boolean,
+  ) => Promise<void>;
+  invalidateProjectContext: (conversationId: string) => void;
   /** Décide selon la politique et les autorisations mémorisées, sinon attend la carte. */
   requestDecision: (input: {
     conversationId: string;
@@ -41,6 +59,24 @@ interface AgentState {
   abort: () => void;
 }
 
+/** Constructions en cours, pour ne pas lire deux fois le même dossier en parallèle. */
+const building = new Map<string, Promise<void>>();
+
+const emptyContext = (workspace: string): ProjectContext => ({
+  workspace,
+  text: '',
+  instructionsFile: null,
+  packageManager: null,
+  git: false,
+  tokens: 0,
+});
+
+/** Texte du contexte de projet à injecter, ou `null` s'il manque ou vise un autre dossier. */
+export function projectContextOf(conversationId: string, workspace: string): string | null {
+  const entry = useAgent.getState().projectContext[conversationId];
+  return entry && entry.workspace === workspace && entry.text ? entry.text : null;
+}
+
 export const useAgent = create<AgentState>()((set, get) => ({
   pending: [],
   allowed: {},
@@ -48,9 +84,44 @@ export const useAgent = create<AgentState>()((set, get) => ({
   runningToolId: null,
   aborted: false,
   workspaces: {},
+  projectContext: {},
 
   rememberWorkspace: (conversationId, info) =>
     set((s) => ({ workspaces: { ...s.workspaces, [conversationId]: info } })),
+
+  async ensureProjectContext(conversationId, workspace, force = false) {
+    const current = get().projectContext[conversationId];
+    const fresh =
+      current?.workspace === workspace && Date.now() - current.builtAt < PROJECT_CONTEXT_TTL_MS;
+    if (fresh && !force) return;
+    const key = `${conversationId}\n${workspace}`;
+    const inFlight = building.get(key);
+    if (inFlight && !force) return inFlight;
+    const task = buildProjectContext(workspace)
+      .catch((error: unknown) => {
+        console.warn('project context unavailable', error);
+        return emptyContext(workspace);
+      })
+      .then((context) => {
+        set((s) => ({
+          projectContext: {
+            ...s.projectContext,
+            [conversationId]: { ...context, builtAt: Date.now() },
+          },
+        }));
+      })
+      .finally(() => {
+        if (building.get(key) === task) building.delete(key);
+      });
+    building.set(key, task);
+    return task;
+  },
+
+  invalidateProjectContext: (conversationId) =>
+    set((s) => {
+      const { [conversationId]: _, ...rest } = s.projectContext;
+      return { projectContext: rest };
+    }),
 
   requestDecision({ conversationId, toolMessageId, risk, key }) {
     const policy = useSettings.getState().agentApproval;

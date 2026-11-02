@@ -7,7 +7,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification';
 import i18n, { resolveLanguage } from '@/i18n';
-import { useAgent } from '@/stores/agent';
+import { projectContextOf, useAgent } from '@/stores/agent';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { useModels } from '@/stores/models';
@@ -239,8 +239,9 @@ export async function summarizeOlder(conversation: Conversation): Promise<boolea
 }
 
 /**
- * Historique envoyé à l'API : instruction système, mémoire du persona (souvenirs déjà
- * chargés dans `usePersonaMemory`), résumé, puis messages du chemin actif.
+ * Historique envoyé à l'API : instruction système, bloc agent suivi du contexte de projet (déjà
+ * construit dans `useAgent`), mémoire du persona (souvenirs déjà chargés dans
+ * `usePersonaMemory`), résumé, puis messages du chemin actif.
  */
 export function buildHistory(conversation: Conversation, path: Message[]): ChatMessageInput[] {
   const input: ChatMessageInput[] = [];
@@ -261,9 +262,14 @@ export function buildHistory(conversation: Conversation, path: Message[]): ChatM
           resolveLanguage(useSettings.getState().language),
         )
       : null;
+  const projectContext =
+    agentBlock && conversation.workspace && useSettings.getState().agentProjectContext
+      ? projectContextOf(conversation.id, conversation.workspace)
+      : null;
   const system = [
     conversation.systemPrompt,
     agentBlock,
+    projectContext,
     memory,
     conversation.summary && `${i18n.t('chat.summaryLabel')}\n${conversation.summary}`,
   ]
@@ -363,6 +369,13 @@ async function runAssistant(
 
   // Souvenirs du persona prêts avant de composer l'instruction système.
   await usePersonaMemory.getState().ensure(conversation.presetId);
+  // Contexte de projet (arborescence, instructions…) prêt lui aussi, en mode agent.
+  if (
+    agentEnabled(conversation) &&
+    conversation.workspace &&
+    useSettings.getState().agentProjectContext
+  )
+    await useAgent.getState().ensureProjectContext(conversation.id, conversation.workspace);
 
   // Historique = chemin actif jusqu'au message assistant inclus (préfixe pour une continuation).
   const path = activePath(useChat.getState().all);
