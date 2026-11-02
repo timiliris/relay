@@ -73,3 +73,71 @@ export const agentCommands = {
     invoke<CommandOutput>('tool_run_command', { id, workspace, command, timeoutSecs }),
   cancelTool: (id: string) => invoke<void>('cancel_tool', { id }),
 } as const;
+
+// ---- Panneau Git du dossier de travail (`git.rs`) ----
+
+export type GitFileStatus =
+  | 'modified'
+  | 'added'
+  | 'deleted'
+  | 'renamed'
+  | 'untracked'
+  | 'conflicted';
+
+export interface GitFile {
+  /** Chemin relatif au dossier de travail, séparateurs `/`. */
+  path: string;
+  status: GitFileStatus;
+  /** `true` : entrée de l'index ; `false` : modification de l'arbre de travail. */
+  staged: boolean;
+  origPath: string | null;
+}
+
+export interface GitStatus {
+  /** Nom de la branche, ou hash court en tête détachée. */
+  branch: string;
+  detached: boolean;
+  upstream: string | null;
+  ahead: number;
+  behind: number;
+  files: GitFile[];
+}
+
+export interface GitDiff {
+  diff: string;
+  truncated: boolean;
+}
+
+export interface GitCommit {
+  hash: string;
+  summary: string;
+}
+
+export interface GitLogEntry {
+  hash: string;
+  short: string;
+  subject: string;
+  author: string;
+  /** ISO 8601. */
+  date: string;
+}
+
+export interface GitBranch {
+  name: string;
+  current: boolean;
+}
+
+export const gitCommands = {
+  status: (workspace: string) => invoke<GitStatus>('git_status', { workspace }),
+  diff: (workspace: string, path: string | undefined, staged: boolean) =>
+    invoke<GitDiff>('git_diff', { workspace, path, staged }),
+  stage: (workspace: string, paths: string[], stage: boolean) =>
+    invoke<void>('git_stage', { workspace, paths, stage }),
+  commit: (workspace: string, message: string) =>
+    invoke<GitCommit>('git_commit', { workspace, message }),
+  log: (workspace: string, limit: number) => invoke<GitLogEntry[]>('git_log', { workspace, limit }),
+  branches: (workspace: string) => invoke<GitBranch[]>('git_branches', { workspace }),
+  checkout: (workspace: string, branch: string) =>
+    invoke<void>('git_checkout', { workspace, branch }),
+  init: (workspace: string) => invoke<void>('git_init', { workspace }),
+} as const;
