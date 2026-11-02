@@ -254,6 +254,24 @@
       "noOutput": "(no output)",
       "riskWrite": "Changes files or runs a command",
       "riskRead": "Read only"
+    },
+    "explorer": {
+      "title": "Workspace files",
+      "empty": "Empty folder.",
+      "refresh": "Refresh",
+      "newFile": "New file",
+      "newFileBody": "File path relative to the workspace folder (missing folders are created).",
+      "reveal": "Show in the system file manager",
+      "openFile": "Open in files",
+      "lines_one": "{{count}} line",
+      "lines_other": "{{count}} lines",
+      "unsaved": "unsaved",
+      "unsavedTitle": "Unsaved changes",
+      "unsavedBody": "The open file has been modified. Discard these changes?",
+      "discard": "Discard",
+      "revert": "Revert",
+      "saved": "{{name}} saved.",
+      "readOnly": "File too large to edit: partial read-only view."
     }
   },
   "search": {

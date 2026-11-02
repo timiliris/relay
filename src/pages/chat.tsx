@@ -5,6 +5,7 @@ import {
   ArrowDown,
   Brain,
   Download,
+  FolderTree,
   Globe,
   KeyRound,
   Pin,
@@ -25,6 +26,7 @@ import { PresetBadges } from '@/components/preset-avatar';
 import { PresetPicker } from '@/components/preset-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
+import { WorkspaceExplorer } from '@/components/workspace-explorer';
 import { WorkspacePicker } from '@/components/workspace-picker';
 import { useWindowTitle } from '@/hooks/use-window-title';
 import { resolveLanguage } from '@/i18n';
@@ -56,6 +58,7 @@ import { useApiKey } from '@/stores/api-key';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { dialog } from '@/stores/dialog';
+import { useExplorer } from '@/stores/explorer';
 import { useModels } from '@/stores/models';
 import { usePersonaMemory } from '@/stores/persona-memory';
 import { useSettings } from '@/stores/settings';
@@ -93,6 +96,8 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   const [visibleCount, setVisibleCount] = useState(settings.messagesPageSize);
   const [atBottom, setAtBottom] = useState(true);
   const [pinsOpen, setPinsOpen] = useState(false);
+  const explorerOpen = useExplorer((s) => s.open);
+  const toggleExplorer = useExplorer((s) => s.toggle);
   /** Message à atteindre une fois rendu (volet des épinglés). */
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [memoryOpen, setMemoryOpen] = useState(false);
@@ -288,6 +293,16 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         </p>
         {preset && <PresetBadges preset={preset} className="hidden sm:inline-flex" />}
         <WorkspacePicker conversation={conversation} />
+        {conversation?.workspace && (
+          <IconButton
+            label={t('chat.explorer.title')}
+            aria-pressed={explorerOpen}
+            className={cn(explorerOpen && 'bg-accent text-accent-foreground')}
+            onClick={toggleExplorer}
+          >
+            <FolderTree className={cn('size-4', explorerOpen && 'text-chart-3')} />
+          </IconButton>
+        )}
         {totalCost > 0 && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
@@ -530,6 +545,12 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             )}
           </div>
         </div>
+        {explorerOpen && conversation?.workspace && (
+          <WorkspaceExplorer
+            conversation={conversation}
+            onClose={() => useExplorer.getState().setOpen(false)}
+          />
+        )}
         {memoryOpen && conversation && preset && (
           <PersonaMemoryPanel
             preset={preset}

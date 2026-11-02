@@ -167,6 +167,17 @@ export function isReadOnlyCommand(command: string, allowlist: readonly string[])
   });
 }
 
+/** Arguments requis absents ou vides, d'après le schéma de l'outil. */
+export function missingArgs(name: ToolName, args: Record<string, unknown>): string[] {
+  const def = DEFINITIONS.find((d) => d.function.name === name);
+  const required =
+    (def?.function.parameters as { required?: string[] } | undefined)?.required ?? [];
+  return required.filter((key) => {
+    const value = args[key];
+    return value === undefined || value === null || (typeof value === 'string' && value === '');
+  });
+}
+
 /** Arguments JSON d'un appel, tolérant un JSON invalide (objet vide). */
 export function parseToolArgs(call: ToolCall): Record<string, unknown> {
   try {

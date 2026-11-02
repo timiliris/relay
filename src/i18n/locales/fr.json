@@ -254,6 +254,24 @@
       "noOutput": "(aucune sortie)",
       "riskWrite": "Modifie des fichiers ou exécute une commande",
       "riskRead": "Lecture seule"
+    },
+    "explorer": {
+      "title": "Fichiers du dossier de travail",
+      "empty": "Dossier vide.",
+      "refresh": "Rafraîchir",
+      "newFile": "Nouveau fichier",
+      "newFileBody": "Chemin du fichier, relatif au dossier de travail (les dossiers manquants sont créés).",
+      "reveal": "Afficher dans l'explorateur du système",
+      "openFile": "Ouvrir dans les fichiers",
+      "lines_one": "{{count}} ligne",
+      "lines_other": "{{count}} lignes",
+      "unsaved": "non enregistré",
+      "unsavedTitle": "Modifications non enregistrées",
+      "unsavedBody": "Le fichier ouvert a été modifié. Abandonner ces modifications ?",
+      "discard": "Abandonner",
+      "revert": "Rétablir",
+      "saved": "{{name}} enregistré.",
+      "readOnly": "Fichier trop volumineux pour l'édition : affichage partiel en lecture seule."
     }
   },
   "search": {

@@ -7,12 +7,13 @@ import { platform } from '@tauri-apps/plugin-os';
 import i18n from '@/i18n';
 import { useAgent } from '@/stores/agent';
 import { useChat } from '@/stores/chat';
+import { useExplorer } from '@/stores/explorer';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { type Conversation, type Message, messages as msgRepo, newId } from '../db';
 import { errorMessage, isTauri } from '../tauri';
 import { agentCommands, type Change } from './commands';
-import { approvalKey, parseToolArgs, toolRisk } from './tools';
+import { approvalKey, missingArgs, parseToolArgs, toolRisk } from './tools';
 import { isToolName, type ToolCall, type ToolMeta, type ToolName } from './types';
 
 /** Appels d'outils par tour utilisateur avant arrêt de sécurité. */
@@ -223,6 +224,15 @@ export async function runAgentTurn(
       await finish(`Error: unknown tool "${name}".`, { status: 'error', error: 'unknown tool' });
       continue;
     }
+    // Arguments incomplets (flux coupé, modèle hésitant) : le modèle est invité à rappeler l'outil.
+    const missing = missingArgs(tool, args);
+    if (missing.length) {
+      await finish(
+        `Error: missing required argument(s): ${missing.join(', ')}. Call ${tool} again with all required arguments as JSON.`,
+        { status: 'error', error: `missing ${missing.join(', ')}` },
+      );
+      continue;
+    }
 
     const decision = await agent.requestDecision({
       conversationId: conversation.id,
@@ -248,6 +258,15 @@ export async function runAgentTurn(
       durationMs: outcome.meta.durationMs ?? Date.now() - startedAt,
       ...outcome.meta,
     });
+    // Le volet Fichiers relit l'arborescence après toute écriture ou commande.
+    if (
+      outcome.meta.status !== 'error' &&
+      tool !== 'read_file' &&
+      tool !== 'list_files' &&
+      tool !== 'search_files'
+    ) {
+      useExplorer.getState().refresh();
+    }
   }
 
   if (useAgent.getState().aborted) {

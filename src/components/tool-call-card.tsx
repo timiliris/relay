@@ -4,6 +4,7 @@ import {
   FilePen,
   FilePlus2,
   FileText,
+  FolderOpen,
   FolderTree,
   type LucideIcon,
   Search,
@@ -19,6 +20,7 @@ import type { Message } from '@/lib/db';
 import type { ToolCall } from '@/lib/openrouter';
 import { cn } from '@/lib/utils';
 import { useAgent } from '@/stores/agent';
+import { useExplorer } from '@/stores/explorer';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
@@ -158,6 +160,21 @@ export function ToolCallCard({ message }: { message: Message }) {
             </div>
           )}
           <ArgsLine name={key} args={meta.args} />
+          {(key === 'read_file' || key === 'write_file' || key === 'edit_file') &&
+            typeof meta.args.path === 'string' &&
+            status === 'done' && (
+              <div className="flex justify-end border-b px-3 py-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-xs text-muted-foreground"
+                  onClick={() => useExplorer.getState().openFile(String(meta.args.path))}
+                >
+                  <FolderOpen />
+                  {t('chat.explorer.openFile')}
+                </Button>
+              </div>
+            )}
           {body ? (
             isDiff ? (
               <DiffView diff={body} />

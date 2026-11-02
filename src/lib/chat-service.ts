@@ -499,9 +499,10 @@ async function runAssistant(
   useSettings.getState().rememberModel(model);
 
   // Mode agent : exécute les outils demandés puis laisse le modèle poursuivre.
+  // Certains fournisseurs terminent par `stop` tout en ayant émis des appels : on les honore aussi.
   const wantsTools =
     !acc.error &&
-    finishReason === 'tool_calls' &&
+    finishReason !== 'cancelled' &&
     acc.toolCalls.length > 0 &&
     agentEnabled(conversation);
   if (wantsTools) {

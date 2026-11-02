@@ -3,6 +3,7 @@ import {
   approvalKey,
   DEFAULT_AUTO_COMMANDS,
   isReadOnlyCommand,
+  missingArgs,
   parseToolArgs,
   toolDefinitions,
   toolRisk,
@@ -54,6 +55,14 @@ describe('agent tools', () => {
     expect(approvalKey('read_file', { path: 'a' })).toBe('read_file');
     expect(approvalKey('run_command', { command: 'Pnpm  test --run' })).toBe('cmd:pnpm');
     expect(approvalKey('run_command', {})).toBe('cmd:');
+  });
+
+  it('liste les arguments requis absents ou vides', () => {
+    expect(missingArgs('write_file', {})).toEqual(['path', 'content']);
+    expect(missingArgs('write_file', { path: 'a.md', content: '' })).toEqual(['content']);
+    expect(missingArgs('edit_file', { path: 'a', old: 'x', new: 'y' })).toEqual([]);
+    expect(missingArgs('list_files', {})).toEqual([]);
+    expect(missingArgs('run_command', { command: 'ls' })).toEqual([]);
   });
 
   it('tolère des arguments JSON invalides ou non-objets', () => {

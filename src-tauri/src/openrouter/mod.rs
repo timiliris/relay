@@ -521,6 +521,13 @@ pub async fn stream(
                                     emit(StreamEvent::Image { url: image.image_url.url });
                                 }
                                 for fragment in choice.delta.tool_calls {
+                                    log::debug!(
+                                        "fragment d'appel d'outil : index {} id {:?} nom {:?} arguments {} octet(s)",
+                                        fragment.index,
+                                        fragment.id,
+                                        fragment.function.as_ref().and_then(|f| f.name.as_deref()),
+                                        fragment.function.as_ref().and_then(|f| f.arguments.as_ref()).map_or(0, String::len)
+                                    );
                                     if let Some((id, name)) = tool_calls.push(fragment) {
                                         emit(StreamEvent::ToolCallStart { id, name });
                                     }
@@ -551,6 +558,15 @@ pub async fn stream(
 fn emit_tool_calls(accumulator: ToolCallAccumulator, emit: &impl Fn(StreamEvent)) {
     let calls = accumulator.finish();
     if !calls.is_empty() {
+        log::debug!(
+            "{} appel(s) d'outil complet(s) : {}",
+            calls.len(),
+            calls
+                .iter()
+                .map(|c| format!("{} ({} octets d'arguments)", c.name, c.arguments.len()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
         emit(StreamEvent::ToolCalls { calls });
     }
 }

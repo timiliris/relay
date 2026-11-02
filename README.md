@@ -32,6 +32,7 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 
 - **Dossier de travail** attaché à une conversation (bouton dossier dans l'en-tête ; sans conversation ouverte, choisir un dossier en crée une en mode agent) et interrupteur **Agent** dans le composeur, actif avec un modèle qui accepte les appels d'outils (icône clé dans le sélecteur, filtre « Outils »).
 - **Outils** exécutés par Rust, toujours à l'intérieur du dossier : lister, lire, écrire, éditer (fragment exact et unique, diff affiché), rechercher (regex, `.gitignore` respecté), exécuter une commande (PowerShell ou sh, délai et sortie plafonnés) ; Git et GitHub passent par `git` et `gh` du poste.
+- **Volet Fichiers** : arborescence du dossier de travail (`.gitignore` respecté), lecture et édition manuelle avec enregistrement (Ctrl+S), création de fichier, ouverture dans l'explorateur du système ; il se rafraîchit après chaque écriture ou commande de l'agent, et chaque carte de lecture ou d'écriture propose « Ouvrir dans les fichiers ».
 - **Approbation** : chaque appel apparaît comme une carte dans le fil (état, arguments, diff, sortie). Politique réglable dans Paramètres, Développement : toujours demander, lectures automatiques (défaut : écritures et commandes attendent votre accord, sauf une liste de commandes de lecture auto-approuvées), ou tout automatique. « Toujours pour cette conversation » mémorise un outil ou un programme ; **Arrêter** refuse ce qui est en attente et tue la commande en cours ; 25 appels au plus par message.
 
 **Modèles et OpenRouter**
