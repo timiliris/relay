@@ -8,9 +8,14 @@ import {
   FolderOpen,
   FolderTree,
   Globe,
+  Keyboard,
   type LucideIcon,
+  MousePointerClick,
+  Navigation,
+  ScanText,
   Search,
   ShieldAlert,
+  SquareCode,
   Terminal,
   Wrench,
   X,
@@ -36,6 +41,11 @@ const ICONS: Record<string, LucideIcon> = {
   search_files: Search,
   run_command: Terminal,
   fetch_url: Globe,
+  browser_navigate: Navigation,
+  browser_read: ScanText,
+  browser_click: MousePointerClick,
+  browser_type: Keyboard,
+  browser_eval: SquareCode,
 };
 
 const STATUS_CLASS: Record<ToolStatus, string> = {
@@ -58,25 +68,41 @@ type NameKey =
   | 'edit_file'
   | 'search_files'
   | 'run_command'
+  | 'browser_navigate'
+  | 'browser_read'
+  | 'browser_click'
+  | 'browser_type'
+  | 'browser_eval'
   | 'unknown';
 
 const nameKey = (name: string | null | undefined): NameKey =>
   name && name in ICONS ? (name as NameKey) : 'unknown';
 
-/** Argument principal affiché sous le titre : chemin, motif ou commande. */
+/** Nom de l'argument principal de chaque outil (affiché à côté du titre, masqué de la ligne d'arguments). */
+const PRIMARY_ARG: Record<NameKey, string> = {
+  run_command: 'command',
+  search_files: 'pattern',
+  fetch_url: 'url',
+  browser_navigate: 'url',
+  browser_read: 'selector',
+  browser_click: 'target',
+  browser_type: 'target',
+  browser_eval: 'script',
+  list_files: 'path',
+  read_file: 'path',
+  write_file: 'path',
+  edit_file: 'path',
+  unknown: 'path',
+};
+
+/** Argument principal affiché sous le titre : chemin, motif, commande, cible ou script. */
 function primaryArg(name: string | null | undefined, args: Record<string, unknown>): string {
-  switch (name) {
-    case 'run_command':
-      return String(args.command ?? '');
-    case 'search_files':
-      return String(args.pattern ?? '');
-    case 'fetch_url':
-      return String(args.url ?? '');
-    case 'list_files':
-      return String(args.path ?? '.');
-    default:
-      return String(args.path ?? '');
-  }
+  const key = nameKey(name);
+  const value = args[PRIMARY_ARG[key]];
+  if (value === undefined || value === null) return key === 'list_files' ? '.' : '';
+  const text = String(value);
+  // Un script tient sur une ligne dans l'en-tête ; le détail reste dans la sortie.
+  return key === 'browser_eval' ? (text.split('\n')[0] ?? '') : text;
 }
 
 /** Lignes ajoutées et supprimées d'un diff unifié (les en-têtes `+++`/`---` exclus). */
@@ -159,7 +185,7 @@ export function ToolCallCard({ message }: { message: Message }) {
 
       {expanded && (
         <div className="border-t">
-          {status === 'pending' && <Approval message={message} risk={meta.risk} />}
+          {status === 'pending' && <Approval message={message} risk={meta.risk} name={key} />}
           <ArgsLine name={key} args={meta.args} />
           {isCommand && status === 'pending' && (
             <CommandPreview command={String(meta.args.command ?? '')} cwd={meta.cwd} />
@@ -197,20 +223,32 @@ export function ToolCallCard({ message }: { message: Message }) {
 }
 
 /** Zone d'approbation : Autoriser / Toujours / Refuser, avec motif de refus facultatif. */
-function Approval({ message, risk }: { message: Message; risk: 'read' | 'write' }) {
+function Approval({
+  message,
+  risk,
+  name,
+}: {
+  message: Message;
+  risk: 'read' | 'write';
+  name: NameKey;
+}) {
   const { t } = useTranslation();
   const decide = useAgent((s) => s.decide);
   const [denying, setDenying] = useState(false);
   const [reason, setReason] = useState('');
   const deny = () => decide(message.id, 'deny', reason);
+  const riskKey =
+    risk !== 'write'
+      ? 'chat.tools.riskRead'
+      : name.startsWith('browser_')
+        ? 'chat.tools.riskBrowser'
+        : 'chat.tools.riskWrite';
 
   return (
     <div className="border-b bg-warning/5">
       <div className="flex flex-wrap items-center gap-2 px-3 py-2">
         <ShieldAlert className="size-4 shrink-0 text-warning" aria-hidden="true" />
-        <span className="min-w-0 flex-1 text-xs text-muted-foreground">
-          {t(risk === 'write' ? 'chat.tools.riskWrite' : 'chat.tools.riskRead')}
-        </span>
+        <span className="min-w-0 flex-1 text-xs text-muted-foreground">{t(riskKey)}</span>
         <Button size="sm" className="h-7" onClick={() => decide(message.id, 'allow')}>
           <Check />
           {t('chat.tools.allow')}
@@ -324,11 +362,9 @@ function Output({ text, copyable }: { text: string; copyable: boolean }) {
 /** Arguments secondaires (hors argument principal), compacts. */
 function ArgsLine({ name, args }: { name: NameKey; args: Record<string, unknown> }) {
   const hidden = new Set(
-    name === 'run_command'
-      ? ['command']
-      : name === 'search_files'
-        ? ['pattern']
-        : ['path', 'content', 'old', 'new'],
+    name === 'write_file' || name === 'edit_file'
+      ? ['path', 'content', 'old', 'new']
+      : [PRIMARY_ARG[name]],
   );
   const rest = Object.entries(args).filter(([k, v]) => !hidden.has(k) && v !== undefined);
   if (rest.length === 0) return null;

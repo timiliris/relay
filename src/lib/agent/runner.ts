@@ -12,10 +12,12 @@ import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { type Conversation, type Message, messages as msgRepo, newId } from '../db';
 import { errorMessage, isTauri } from '../tauri';
+import { executeBrowserTool } from './browser-tools';
 import { agentCommands, type Change } from './commands';
 import { approvalKey, missingArgs, parseToolArgs, toolRisk } from './tools';
 import {
   type AgentProgress,
+  isBrowserTool,
   isToolName,
   type ToolCall,
   type ToolMeta,
@@ -51,6 +53,12 @@ export async function executeTool(
     switch (name) {
       case 'fetch_url':
         return await executeWebTool(name, args);
+      case 'browser_navigate':
+      case 'browser_read':
+      case 'browser_click':
+      case 'browser_type':
+      case 'browser_eval':
+        return await executeBrowserTool(name, args, workspace);
       case 'list_files': {
         const result = await agentCommands.listFiles(
           workspace,
@@ -321,7 +329,8 @@ export async function runAgentTurn(
       outcome.meta.status !== 'error' &&
       tool !== 'read_file' &&
       tool !== 'list_files' &&
-      tool !== 'search_files'
+      tool !== 'search_files' &&
+      !isBrowserTool(tool)
     ) {
       useExplorer.getState().refresh();
     }

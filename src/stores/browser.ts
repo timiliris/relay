@@ -26,14 +26,16 @@ const HOST_LIKE =
 const SCHEME = /^[a-z][a-z0-9+.-]*:(?!\d)/i;
 
 /**
- * Transforme la saisie de la barre d'adresse en URL `http(s)` : URL complète conservée,
- * `https://` ajouté devant un hôte, sinon recherche DuckDuckGo. `null` si vide.
+ * Transforme la saisie de la barre d'adresse en URL : URL `http(s)` complète conservée,
+ * `file://` transmis tel quel (Rust ne l'accepte que dans un dossier de travail), `https://`
+ * ajouté devant un hôte, sinon recherche DuckDuckGo. `null` si vide.
  */
 export function normalizeAddress(input: string): string | null {
   const raw = input.trim();
   if (!raw) return null;
   if (SCHEME.test(raw)) {
     if (/^https?:\/\//i.test(raw) && isValidUrl(raw)) return raw;
+    if (/^file:\/\//i.test(raw)) return raw;
     return search(raw);
   }
   if (!/\s/.test(raw) && HOST_LIKE.test(raw) && isValidUrl(`https://${raw}`)) {

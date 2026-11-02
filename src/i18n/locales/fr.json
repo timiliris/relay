@@ -230,7 +230,12 @@
         "search_files": "Rechercher dans les fichiers",
         "run_command": "Exécuter une commande",
         "unknown": "Outil inconnu",
-        "fetch_url": "Lire une page web"
+        "fetch_url": "Lire une page web",
+        "browser_navigate": "Ouvrir une page dans le navigateur",
+        "browser_read": "Lire la page affichée",
+        "browser_click": "Cliquer",
+        "browser_type": "Saisir du texte",
+        "browser_eval": "Exécuter un script dans la page"
       },
       "status": {
         "pending": "Autorisation requise",
@@ -254,7 +259,8 @@
       "summary_other": "{{count}} appels d'outils",
       "noOutput": "(aucune sortie)",
       "riskWrite": "Modifie des fichiers ou exécute une commande",
-      "riskRead": "Lecture seule"
+      "riskRead": "Lecture seule",
+      "riskBrowser": "Agit dans le navigateur intégré (clic, saisie ou script), sous vos yeux"
     },
     "toolsPreview": {
       "lines_one": "ligne",
@@ -785,6 +791,8 @@
     "network": "Connexion à OpenRouter impossible. Vérifiez votre réseau.",
     "keyring": "Accès au trousseau du système impossible.",
     "tool": "L'outil a échoué.",
-    "workspace_denied": "Chemin hors du dossier de travail : refusé."
+    "workspace_denied": "Chemin hors du dossier de travail : refusé.",
+    "browser_closed": "Le navigateur intégré est fermé : ouvrez d'abord une page.",
+    "browser_window_missing": "Fenêtre principale introuvable."
   }
 }

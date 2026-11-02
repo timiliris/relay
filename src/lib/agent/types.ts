@@ -10,7 +10,12 @@ export type ToolName =
   | 'edit_file'
   | 'search_files'
   | 'run_command'
-  | 'fetch_url';
+  | 'fetch_url'
+  | 'browser_navigate'
+  | 'browser_read'
+  | 'browser_click'
+  | 'browser_type'
+  | 'browser_eval';
 
 export const TOOL_NAMES: readonly ToolName[] = [
   'list_files',
@@ -20,7 +25,15 @@ export const TOOL_NAMES: readonly ToolName[] = [
   'search_files',
   'run_command',
   'fetch_url',
+  'browser_navigate',
+  'browser_read',
+  'browser_click',
+  'browser_type',
+  'browser_eval',
 ];
+
+/** Outils qui agissent dans le navigateur intégré (volet visible par l'utilisateur). */
+export const isBrowserTool = (name: string): boolean => name.startsWith('browser_');
 
 export const isToolName = (name: string): name is ToolName =>
   (TOOL_NAMES as readonly string[]).includes(name);

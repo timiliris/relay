@@ -19,6 +19,7 @@ export function agentSystemPrompt(
       'Explique brièvement ce que tu vas faire avant d’agir et résume ce qui a changé à la fin. Les écritures et les commandes peuvent être refusées par l’utilisateur : dans ce cas, propose une alternative au lieu d’insister.',
       'S’il existe un fichier d’instructions du projet (AGENTS.md, CLAUDE.md…), respecte-le. Sinon, quand l’utilisateur fixe des règles durables, propose-lui de les consigner dans un AGENTS.md à la racine.',
       `Git et GitHub passent par run_command (\`git …\`, \`gh …\`). Ne fais ni commit, ni push, ni suppression de branche sans que l’utilisateur l’ait demandé explicitement.`,
+      'Navigateur intégré (browser_navigate, browser_read, browser_click, browser_type, browser_eval) : l’utilisateur voit la page et chaque action dans le volet Navigateur. Sers-t’en pour vérifier un site ou une page que tu as écrits dans le dossier (fichier HTML, serveur de développement sur localhost) ou pour interagir avec une page ; n’installe jamais Playwright ni un navigateur sans tête pour cela. Pour simplement lire une page publique ou une documentation, préfère fetch_url.',
     ].join('\n');
   }
   return [
@@ -27,5 +28,6 @@ export function agentSystemPrompt(
     'Briefly explain what you are about to do before acting and summarise what changed at the end. Writes and commands may be denied by the user: then propose an alternative instead of insisting.',
     'If the project has an instructions file (AGENTS.md, CLAUDE.md…), follow it. Otherwise, when the user sets lasting rules, offer to record them in an AGENTS.md at the root.',
     'Git and GitHub go through run_command (`git …`, `gh …`). Never commit, push or delete branches unless the user explicitly asked for it.',
+    'Built-in browser (browser_navigate, browser_read, browser_click, browser_type, browser_eval): the user sees the page and every action in the Browser panel. Use it to check a site or page you wrote in the folder (HTML file, dev server on localhost) or to interact with a page; never install Playwright or a headless browser for that. To simply read a public page or documentation, prefer fetch_url.',
   ].join('\n');
 }

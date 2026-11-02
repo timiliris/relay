@@ -230,7 +230,12 @@
         "search_files": "Search files",
         "run_command": "Run command",
         "unknown": "Unknown tool",
-        "fetch_url": "Read a web page"
+        "fetch_url": "Read a web page",
+        "browser_navigate": "Open a page in the browser",
+        "browser_read": "Read the displayed page",
+        "browser_click": "Click",
+        "browser_type": "Type text",
+        "browser_eval": "Run a script in the page"
       },
       "status": {
         "pending": "Approval required",
@@ -254,7 +259,8 @@
       "summary_other": "{{count}} tool calls",
       "noOutput": "(no output)",
       "riskWrite": "Changes files or runs a command",
-      "riskRead": "Read only"
+      "riskRead": "Read only",
+      "riskBrowser": "Acts in the built-in browser (click, typing or script), in front of you"
     },
     "toolsPreview": {
       "lines_one": "line",
@@ -785,6 +791,8 @@
     "network": "Could not reach OpenRouter. Check your connection.",
     "keyring": "Could not access the system keychain.",
     "tool": "The tool failed.",
-    "workspace_denied": "Path outside the workspace folder: denied."
+    "workspace_denied": "Path outside the workspace folder: denied.",
+    "browser_closed": "The built-in browser is closed: open a page first.",
+    "browser_window_missing": "Main window not found."
   }
 }

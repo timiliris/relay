@@ -70,6 +70,8 @@ export function BrowserPanel({
   const [webviewOpen, setWebviewOpen] = useState(false);
   /** Même information, à jour de façon synchrone : évite un second `browser_open` avant le rendu. */
   const created = useRef(false);
+  /** Dernière URL demandée au webview ou annoncée par lui : évite de recharger la page courante. */
+  const lastNavigated = useRef<string | null>(null);
 
   const run = (action: () => Promise<void>) =>
     action().catch((err) => {
@@ -79,6 +81,7 @@ export function BrowserPanel({
   const openWebview = (target: string) => {
     if (!inTauri) return;
     setError(null);
+    lastNavigated.current = target;
     const bounds = areaRef.current ? measure(areaRef.current) : undefined;
     if (created.current) {
       run(() => browserCommands.navigate(target));
@@ -97,10 +100,12 @@ export function BrowserPanel({
     });
   };
 
-  // Ouverture du volet avec une URL déjà connue (réouverture, lien d'une carte) : on l'affiche.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `url` déclenche l'affichage initial, pas chaque navigation
+  // L'URL du store pilote le webview : première ouverture (réouverture du volet, lien d'une
+  // carte), puis toute URL nouvelle (barre d'adresse, historique, outil `browser_navigate` de
+  // l'agent). Les URL annoncées par Rust lui-même (`browser://navigated`) ne relancent rien.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `url` seule déclenche la navigation
   useEffect(() => {
-    if (url && !created.current) openWebview(url);
+    if (url && url !== lastNavigated.current) openWebview(url);
   }, [url]);
 
   // L'adresse suit la page courante tant que l'utilisateur ne saisit pas.
@@ -114,6 +119,7 @@ export function BrowserPanel({
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     listen<BrowserNavigated>(BROWSER_NAVIGATED_EVENT, (event) => {
+      lastNavigated.current = event.payload.url;
       navigated(conversationId, event.payload.url, event.payload.title);
     })
       .then((fn) => {
@@ -156,11 +162,20 @@ export function BrowserPanel({
     };
   }, [inTauri]);
 
+  // La barre d'adresse et l'historique ne font que changer l'URL du store ; l'effet ci-dessus
+  // navigue. Une URL identique à la page courante est rechargée.
+  const show = (target: string, title: string | null) => {
+    if (target === lastNavigated.current && created.current) {
+      run(browserCommands.reload);
+      return;
+    }
+    useBrowser.setState({ url: target, title });
+  };
+
   const submit = () => {
     const target = normalizeAddress(address);
     if (!target) return;
-    useBrowser.setState({ url: target, title: null });
-    openWebview(target);
+    show(target, null);
   };
 
   const onAddressKey = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -198,8 +213,7 @@ export function BrowserPanel({
 
   const goTo = (page: VisitedPage) => {
     setHistoryOpen(false);
-    useBrowser.setState({ url: page.url, title: page.title });
-    openWebview(page.url);
+    show(page.url, page.title);
   };
 
   return (

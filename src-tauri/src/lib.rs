@@ -120,6 +120,9 @@ pub fn run() {
             commands::browser::browser_set_bounds,
             commands::browser::browser_close,
             commands::browser::fetch_url,
+            commands::browser::browser_validate_url,
+            commands::browser::browser_wait_load,
+            commands::browser::browser_eval,
         ])
         .setup(|app| {
             let info = app.package_info();
