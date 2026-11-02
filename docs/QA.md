@@ -215,6 +215,19 @@ Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `c
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.9.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.9.0 avec 11 cibles                                           |
 | Installation       | Laissée à la mise à jour intégrée ; vérifier ensuite dans l'app : volet Fichiers (lecture, enregistrement) et un appel `write_file` avec un modèle solide sur les outils |
 
+## Espace de travail : six chantiers parallèles fusionnés (2 novembre 2026)
+
+| Chantier                               | Branche                                 | Vérification par la session                                                                                    |
+| -------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Éditeur de code (CodeMirror 6)         | `claude/workspace-code-editor-4989d6`   | chargé à la demande, thème clair/sombre, barre d'état ; tests de détection de langage et de fin de ligne       |
+| Aperçu des écritures avant approbation | `claude/tool-write-preview-188a34`      | diff montré en attente, refus motivé, progression de la boucle (`useAgentStatus`) ; tests runner               |
+| Panneau Git                            | `claude/workspace-git-panel-d97ed2`     | 8 commandes Rust testées sur dépôt temporaire ; volet non testé dans l'app réelle                              |
+| Contexte de projet                     | `claude/agent-project-context-f1dbe7`   | arborescence compactée, `AGENTS.md`, manifestes, cache, réglage ; tests                                        |
+| Fichiers en contexte (`@`)             | `claude/workspace-file-mentions-c96c18` | menu `@`, bouton du volet, pièce jointe texte ; tests du menu                                                  |
+| Navigateur intégré                     | `claude/in-app-browser-7edc01`          | webview enfant Tauri (feature `unstable`), `fetch_url` sécurisé ; **page affichée et vérifiée dans `app:dev`** |
+
+Fusion une à une dans `main` : conflits sur `src/stores/agent.ts` (contexte × aperçu), `runner.ts`, `commands.ts`, `lib.rs`, `chat.tsx` (Git × navigateur) et les fichiers i18n (union automatique), résolus à la main ; un `} as const;` perdu entre les deux blocs de wrappers rétabli. Câblage ajouté après fusion : barre d'état `AgentStatusBar` au-dessus du composeur, « Lire la page pour l'agent » joint la page au message via `useExplorer.readyAttachments`, outil `fetch_url` dans la carte et les libellés. Résultat : Biome propre, tsc propre, **198 tests Vitest** (32 fichiers), `cargo fmt`, clippy strict, **58 tests Rust**, `cargo deny` ok ; en-tête de la conversation de démo avec les quatre volets (Fichiers, Git, Navigateur, mémoire) dans le navigateur. Non vérifié dans l'app Tauri : panneau Git, éditeur et mentions sur de vrais fichiers, lecture d'une page comme pièce jointe.
+
 ## Optimisations mesurées (0.1.1)
 
 | Mesure                                   | Avant                       | Après                                                     |

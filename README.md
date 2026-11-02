@@ -33,6 +33,12 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 - **Dossier de travail** attaché à une conversation (bouton dossier dans l'en-tête ; sans conversation ouverte, choisir un dossier en crée une en mode agent) et interrupteur **Agent** dans le composeur, actif avec un modèle qui accepte les appels d'outils (icône clé dans le sélecteur, filtre « Outils »).
 - **Outils** exécutés par Rust, toujours à l'intérieur du dossier : lister, lire, écrire, éditer (fragment exact et unique, diff affiché), rechercher (regex, `.gitignore` respecté), exécuter une commande (PowerShell ou sh, délai et sortie plafonnés) ; Git et GitHub passent par `git` et `gh` du poste.
 - **Volet Fichiers** : arborescence du dossier de travail (`.gitignore` respecté), lecture et édition manuelle avec enregistrement (Ctrl+S), création de fichier, ouverture dans l'explorateur du système ; il se rafraîchit après chaque écriture ou commande de l'agent, et chaque carte de lecture ou d'écriture propose « Ouvrir dans les fichiers ».
+- **Éditeur de code** dans le volet Fichiers : CodeMirror 6 chargé à la demande (coloration par langage, recherche, numéros de ligne, thème clair/sombre), barre d'état (langage, position, fin de ligne).
+- **Panneau Git** : branche et avance/retard, fichiers modifiés groupés (indexés, modifications, non suivis) avec diff coloré, indexation, commit, journal, bascule de branche, initialisation d'un dépôt ; tout passe par le `git` du poste, sans push ni pull.
+- **Navigateur intégré** : volet avec barre d'adresse (URL ou recherche), précédent/suivant/recharger, historique de la conversation, page affichée dans une webview enfant de la fenêtre ; « Lire la page pour l'agent » joint le texte de la page au prochain message, et l'outil `fetch_url` permet au modèle de lire une page publique (adresses locales et privées refusées).
+- **Contexte de projet** : au premier message en mode agent, l'arborescence compactée, le fichier `AGENTS.md` (ou `CLAUDE.md`, `RELAY.md`), les manifestes et le début du README sont injectés dans l'instruction (plafonné, mis en cache une heure, désactivable dans Paramètres, Développement).
+- **Fichiers en contexte** : `@` dans le composeur propose les fichiers du dossier et joint celui choisi comme pièce jointe texte ; le volet Fichiers a un bouton « Ajouter au message ».
+- **Aperçu avant approbation** : une écriture ou une édition en attente montre déjà son diff (+N −M, nouveau fichier) ; un refus peut porter un motif transmis au modèle ; une barre d'état au-dessus du composeur suit l'étape de la boucle.
 - **Approbation** : chaque appel apparaît comme une carte dans le fil (état, arguments, diff, sortie). Politique réglable dans Paramètres, Développement : toujours demander, lectures automatiques (défaut : écritures et commandes attendent votre accord, sauf une liste de commandes de lecture auto-approuvées), ou tout automatique. « Toujours pour cette conversation » mémorise un outil ou un programme ; **Arrêter** refuse ce qui est en attente et tue la commande en cours ; 25 appels au plus par message.
 
 **Modèles et OpenRouter**
@@ -101,7 +107,7 @@ src-tauri/src/
 ├── openrouter/sse.rs          # Analyseur SSE incrémental (testé)
 ├── secrets.rs                 # Clé API dans le trousseau système
 ├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement)
-├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas, v3 personnalité, v4 mémoire, v5 épingles, v6 outils de l'agent)
+├── db.rs                      # Migrations SQLite (v1 … v6 outils de l'agent)
 └── menu.rs, tray.rs, shortcut.rs, i18n.rs
 ```
 
