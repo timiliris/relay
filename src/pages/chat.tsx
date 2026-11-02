@@ -488,6 +488,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
               onImpersonate={
                 conversation && preset ? () => impersonate(conversation, preset) : undefined
               }
+              workspace={conversation?.workspace}
             >
               <ModelPicker
                 value={model}
