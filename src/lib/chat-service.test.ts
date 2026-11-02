@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { useAgent } from '@/stores/agent';
 import { useSettings } from '@/stores/settings';
 import { buildHistory, effectiveParams } from './chat-service';
 import type { Conversation, Message } from './db';
@@ -159,6 +160,44 @@ describe('buildHistory en mode agent', () => {
       msg('u1', 'user', 'Salut'),
     ]);
     expect(off[0]?.content).toBe('Sois bref.');
+  });
+});
+
+describe('buildHistory : contexte de projet', () => {
+  const agentConv = conv({ workspace: 'C:\\work\\relay', agent: true });
+  const entry = {
+    workspace: 'C:\\work\\relay',
+    text: 'Project context:\nWorkspace "relay" (Git repository).',
+    instructionsFile: null,
+    packageManager: 'pnpm' as const,
+    git: true,
+    tokens: 12,
+    builtAt: Date.now(),
+  };
+
+  it('ajoute le bloc après le bloc agent quand le cache est rempli et le réglage actif', () => {
+    useSettings.setState({ agentProjectContext: true });
+    useAgent.setState({ projectContext: { c: entry } });
+    const system = String(buildHistory(agentConv, [msg('u1', 'user', 'Salut')])[0]?.content);
+    expect(system).toContain('Project context:');
+    expect(system.indexOf('Agent mode')).toBeLessThan(system.indexOf('Project context:'));
+  });
+
+  it('n’ajoute rien si le réglage est inactif, si le cache est vide ou vise un autre dossier', () => {
+    useSettings.setState({ agentProjectContext: false });
+    useAgent.setState({ projectContext: { c: entry } });
+    expect(buildHistory(agentConv, [])[0]?.content).not.toContain('Project context:');
+
+    useSettings.setState({ agentProjectContext: true });
+    useAgent.setState({ projectContext: {} });
+    expect(buildHistory(agentConv, [])[0]?.content).not.toContain('Project context:');
+
+    useAgent.setState({ projectContext: { c: { ...entry, workspace: 'D:\\autre' } } });
+    expect(buildHistory(agentConv, [])[0]?.content).not.toContain('Project context:');
+
+    // Hors mode agent, le cache est ignoré même s'il est rempli.
+    useAgent.setState({ projectContext: { c: entry } });
+    expect(buildHistory(conv({ workspace: 'C:\\work\\relay' }), [])).toEqual([]);
   });
 });
 

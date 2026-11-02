@@ -623,7 +623,10 @@
       "timeoutHint": "In seconds (5 to 600). The model may ask for less, never more.",
       "autoCommands": "Auto-approved commands",
       "autoCommandsHint": "One per line: a command starting with one of these prefixes counts as a read. Chains (;, &&, |, >) are never auto-approved.",
-      "restoreCommands": "Restore the default list"
+      "restoreCommands": "Restore the default list",
+      "context": "Project context",
+      "projectContext": "Project context at start",
+      "projectContextHint": "Sends the folder tree, the instructions file (AGENTS.md…), the manifests and the start of the README with the first message. Up to about 2,500 tokens per request, refreshed once an hour."
     }
   },
   "onboarding": {

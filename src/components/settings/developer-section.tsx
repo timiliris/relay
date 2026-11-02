@@ -6,6 +6,7 @@ import { useSettings } from '@/stores/settings';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Segmented } from '../ui/segmented';
+import { Switch } from '../ui/switch';
 import { Textarea } from '../ui/textarea';
 import { Field, Group, Row, SettingsSection } from './primitives';
 
@@ -41,6 +42,19 @@ export function DeveloperSection() {
             {t('settings.developer.autoAllWarning')}
           </div>
         )}
+      </Group>
+
+      <Group title={t('settings.developer.context')}>
+        <Row
+          label={t('settings.developer.projectContext')}
+          hint={t('settings.developer.projectContextHint')}
+        >
+          <Switch
+            checked={settings.agentProjectContext}
+            onCheckedChange={(v) => settings.patch({ agentProjectContext: v })}
+            aria-label={t('settings.developer.projectContext')}
+          />
+        </Row>
       </Group>
 
       <Group title={t('settings.developer.commands')}>
