@@ -181,6 +181,95 @@ const DEFINITIONS: ToolDefinition[] = [
       },
     },
   },
+  // ---- Navigateur intégré : le volet est visible, l'utilisateur voit chaque action ----
+  {
+    type: 'function',
+    function: {
+      name: 'browser_navigate',
+      description:
+        'Open a page in the built-in browser panel (visible to the user) and wait for it to load. Accepts http(s) URLs including localhost dev servers, and files of the workspace (relative path such as "dist/index.html"). Returns the title, final URL, the visible text (truncated) and numbered interactive elements — links, buttons, fields — to use as targets of browser_click and browser_type, plus console errors since load. Use it to test a site you wrote or a running dev server instead of installing Playwright or a headless browser; to simply read a public page, prefer fetch_url.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: str(
+            'http(s) URL, or a file path relative to the workspace root (e.g. "index.html").',
+          ),
+        },
+        required: ['url'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_read',
+      description:
+        'Read the page currently shown in the built-in browser: visible text of the whole page or of one element, numbered interactive elements (fresh numbering), and console errors. Call it after a click when the page changed without navigating, or to see more text with a larger max_chars.',
+      parameters: {
+        type: 'object',
+        properties: {
+          selector: str('Optional CSS selector of the element to read (default: the whole page).'),
+          max_chars: int('Maximum characters of text to return, 200 to 100000. Default 15000.'),
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_click',
+      description:
+        'Click an element of the page shown in the built-in browser. The target is an element number from the latest browser_navigate / browser_read / browser_click result, a CSS selector, or the visible text of a link or button. The user sees the click; the result tells whether the URL or title changed and gives an excerpt of the page and its elements afterwards.',
+      parameters: {
+        type: 'object',
+        properties: {
+          target: str(
+            'Element number (e.g. "3"), CSS selector (e.g. "#submit") or visible text (e.g. "Add to cart").',
+          ),
+        },
+        required: ['target'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_type',
+      description:
+        'Type text into an input, textarea, select or editable area of the page shown in the built-in browser (replaces the current value and fires input/change events). For a select, text is the option value or label. With submit true, Enter is pressed and the enclosing form is submitted. Returns what changed afterwards, like browser_click.',
+      parameters: {
+        type: 'object',
+        properties: {
+          target: str('Element number, CSS selector or visible label/placeholder of the field.'),
+          text: str('Text to type (replaces the field content).'),
+          submit: {
+            type: 'boolean',
+            description: 'Press Enter / submit the form after typing. Default false.',
+          },
+        },
+        required: ['target', 'text'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'browser_eval',
+      description:
+        'Run JavaScript in the page shown in the built-in browser and return the value of the last expression (awaited if it is a promise) serialized as JSON, truncated when large. Use it to check DOM state, computed styles, localStorage, or to call functions of the page. The page keeps running; browser_read is cheaper for text.',
+      parameters: {
+        type: 'object',
+        properties: {
+          script: str(
+            'JavaScript source evaluated in the page, e.g. "document.querySelectorAll(\'li\').length".',
+          ),
+          timeout_secs: int('Maximum time to wait for the result, 1 to 120 seconds. Default 15.'),
+        },
+        required: ['script'],
+      },
+    },
+  },
 ];
 
 export const toolDefinitions = (): ToolDefinition[] => DEFINITIONS;
@@ -272,6 +361,8 @@ export function toolRisk(
     case 'fetch_url':
     case 'list_processes':
     case 'read_process_output':
+    case 'browser_navigate':
+    case 'browser_read':
       return 'read';
     case 'run_command':
       return isReadOnlyCommand(String(args.command ?? ''), allowlist) ? 'read' : 'write';

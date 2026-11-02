@@ -1,6 +1,7 @@
 import { CheckCircle2, Download, RefreshCw } from 'lucide-react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import type { ToolInfo } from '@/lib/agent/commands';
 import { playwrightReady } from '@/lib/agent/environment';
 import { openExternal } from '@/lib/open-external';
@@ -88,9 +89,7 @@ export function EnvironmentGroup() {
                   {t('settings.developer.playwright')}
                   {ready && <CheckCircle2 className="size-4 text-green-600" aria-hidden="true" />}
                 </p>
-                <p className="text-muted-foreground">
-                  {playwrightStatus(environment.playwright, t)}
-                </p>
+                <p className="text-muted-foreground">{playwrightStatus(environment.playwright)}</p>
                 {!canInstall && (
                   <p className="mt-1 text-muted-foreground">
                     {t('settings.developer.playwrightNoRuntime')}{' '}
@@ -148,16 +147,23 @@ function ToolItem({ tool }: { tool: ToolInfo }) {
   );
 }
 
-function playwrightStatus(
-  pw: { python: boolean; node: boolean; browsers: string[]; version: string | null },
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  if (!pw.python && !pw.node) return t('settings.developer.playwrightMissing');
+/** Passe par l'instance i18n : un `t` typé passé en paramètre fait exploser l'instanciation de tsc. */
+function playwrightStatus(pw: {
+  python: boolean;
+  node: boolean;
+  browsers: string[];
+  version: string | null;
+}): string {
+  if (!pw.python && !pw.node) return i18n.t('settings.developer.playwrightMissing');
   const via = [pw.python && 'Python', pw.node && 'Node'].filter(Boolean).join(' + ');
   const version = pw.version ?? '';
   return pw.browsers.length
-    ? t('settings.developer.playwrightReady', { version, via, browsers: pw.browsers.join(', ') })
-    : t('settings.developer.playwrightNoBrowser', { version, via });
+    ? i18n.t('settings.developer.playwrightReady', {
+        version,
+        via,
+        browsers: pw.browsers.join(', '),
+      })
+    : i18n.t('settings.developer.playwrightNoBrowser', { version, via });
 }
 
 function ExternalLinkButton({ href, children }: { href: string; children: string }) {

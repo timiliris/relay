@@ -127,6 +127,9 @@ pub fn run() {
             commands::browser::fetch_url,
             commands::agent::detect_environment,
             commands::agent::install_playwright,
+            commands::browser::browser_validate_url,
+            commands::browser::browser_wait_load,
+            commands::browser::browser_eval,
         ])
         .setup(|app| {
             let info = app.package_info();

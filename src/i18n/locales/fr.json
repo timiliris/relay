@@ -233,7 +233,12 @@
         "fetch_url": "Lire une page web",
         "list_processes": "Lister les processus",
         "read_process_output": "Lire la sortie d'un processus",
-        "stop_process": "Arrêter un processus"
+        "stop_process": "Arrêter un processus",
+        "browser_navigate": "Ouvrir une page dans le navigateur",
+        "browser_read": "Lire la page affichée",
+        "browser_click": "Cliquer",
+        "browser_type": "Saisir du texte",
+        "browser_eval": "Exécuter un script dans la page"
       },
       "status": {
         "pending": "Autorisation requise",
@@ -261,7 +266,8 @@
       "liveOutput": "Sortie en direct",
       "backgroundPid": "arrière-plan · PID {{pid}}",
       "pid": "PID {{pid}}",
-      "openProcesses": "Voir dans Processus"
+      "openProcesses": "Voir dans Processus",
+      "riskBrowser": "Agit dans le navigateur intégré (clic, saisie ou script), sous vos yeux"
     },
     "toolsPreview": {
       "lines_one": "ligne",
@@ -837,6 +843,8 @@
     "keyring": "Accès au trousseau du système impossible.",
     "tool": "L'outil a échoué.",
     "workspace_denied": "Chemin hors du dossier de travail : refusé.",
-    "playwright_no_runtime": "Ni Python ni Node n’est installé : impossible d’installer Playwright."
+    "playwright_no_runtime": "Ni Python ni Node n’est installé : impossible d’installer Playwright.",
+    "browser_closed": "Le navigateur intégré est fermé : ouvrez d'abord une page.",
+    "browser_window_missing": "Fenêtre principale introuvable."
   }
 }

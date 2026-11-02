@@ -34,12 +34,13 @@ describe('normalizeAddress', () => {
     );
   });
 
-  it('refuse les schémas non web en les traitant comme une recherche', () => {
-    expect(normalizeAddress('file:///C:/secret.txt')).toBe(
-      'https://duckduckgo.com/?q=file%3A%2F%2F%2FC%3A%2Fsecret.txt',
-    );
+  it('transmet file:// tel quel (validé par Rust) et traite les autres schémas comme une recherche', () => {
+    expect(normalizeAddress('file:///C:/ws/index.html')).toBe('file:///C:/ws/index.html');
     expect(normalizeAddress('javascript:alert(1)')).toBe(
       'https://duckduckgo.com/?q=javascript%3Aalert(1)',
+    );
+    expect(normalizeAddress('tauri://localhost')).toBe(
+      'https://duckduckgo.com/?q=tauri%3A%2F%2Flocalhost',
     );
   });
 

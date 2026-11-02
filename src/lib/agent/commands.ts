@@ -215,6 +215,22 @@ export interface PageText {
   truncated: boolean;
 }
 
+/** Résultat de `browser_eval` : valeur du script sérialisée en JSON par la page. */
+export interface EvalOutcome {
+  /** `false` si le script a levé une exception ; `json` décrit alors l'erreur. */
+  ok: boolean;
+  /** Texte JSON (à parser), déjà borné par la page. */
+  json: string;
+  truncated: boolean;
+}
+
+/** Résultat de `browser_wait_load`. */
+export interface Loaded {
+  /** `false` si le délai est écoulé avant la fin du chargement (ou sans webview). */
+  loaded: boolean;
+  url: string;
+}
+
 export const BROWSER_NAVIGATED_EVENT = 'browser://navigated';
 
 /** Navigateur intégré (`src-tauri/src/commands/browser.rs`) : webview enfant de la fenêtre principale. */
@@ -227,6 +243,12 @@ export const browserCommands = {
   setBounds: (bounds: BrowserBounds) => invoke<void>('browser_set_bounds', { ...bounds }),
   close: () => invoke<void>('browser_close'),
   fetchUrl: (url: string, maxChars?: number) => invoke<PageText>('fetch_url', { url, maxChars }),
+  // Outils de l'agent (`src/lib/agent/browser-tools.ts`).
+  validateUrl: (url: string) => invoke<string>('browser_validate_url', { url }),
+  waitLoad: (timeoutMs: number, settleMs: number) =>
+    invoke<Loaded>('browser_wait_load', { timeoutMs, settleMs }),
+  eval: (script: string, timeoutMs?: number) =>
+    invoke<EvalOutcome>('browser_eval', { script, timeoutMs }),
 } as const;
 
 // ---- Environnement du poste (`env.rs`) : outils installés et Playwright ----

@@ -66,6 +66,25 @@ impl WorkspaceState {
             .ok_or(AppError::Validation("workspace_denied"))
     }
 
+    /// Dossiers enregistrés (canoniques), pour valider une URL `file://` du navigateur.
+    pub fn roots(&self) -> Vec<PathBuf> {
+        self.roots
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    /// `true` si `path` (canonique) est sous l'une des racines enregistrées.
+    pub fn contains(&self, path: &Path) -> bool {
+        self.roots
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .any(|root| path.starts_with(root))
+    }
+
     pub fn track(&self, id: &str) -> CancellationToken {
         let token = CancellationToken::new();
         self.running
@@ -207,6 +226,9 @@ mod tests {
                 .is_err()
         );
         assert!(state.root(std::env::temp_dir().to_str().unwrap()).is_err());
+        assert_eq!(state.roots(), vec![dir.0.clone()]);
+        assert!(state.contains(&dir.0.join("f.txt")));
+        assert!(!state.contains(&std::env::temp_dir()));
     }
 
     #[test]

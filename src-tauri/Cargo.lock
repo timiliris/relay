@@ -3640,13 +3640,18 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 name = "relay"
 version = "0.10.0"
 dependencies = [
+ "block2",
  "dunce",
  "futures-util",
  "globset",
  "html2text",
  "ignore",
+ "javascriptcore-rs",
  "keyring",
  "log",
+ "objc2",
+ "objc2-foundation",
+ "objc2-web-kit",
  "regex",
  "reqwest",
  "serde",
@@ -3672,6 +3677,9 @@ dependencies = [
  "tokio",
  "tokio-util",
  "url",
+ "webkit2gtk",
+ "webview2-com",
+ "windows-core",
 ]
 
 [[package]]

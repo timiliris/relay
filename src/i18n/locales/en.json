@@ -233,7 +233,12 @@
         "fetch_url": "Read a web page",
         "list_processes": "List processes",
         "read_process_output": "Read process output",
-        "stop_process": "Stop a process"
+        "stop_process": "Stop a process",
+        "browser_navigate": "Open a page in the browser",
+        "browser_read": "Read the displayed page",
+        "browser_click": "Click",
+        "browser_type": "Type text",
+        "browser_eval": "Run a script in the page"
       },
       "status": {
         "pending": "Approval required",
@@ -261,7 +266,8 @@
       "liveOutput": "Live output",
       "backgroundPid": "background · PID {{pid}}",
       "pid": "PID {{pid}}",
-      "openProcesses": "Show in Processes"
+      "openProcesses": "Show in Processes",
+      "riskBrowser": "Acts in the built-in browser (click, typing or script), in front of you"
     },
     "toolsPreview": {
       "lines_one": "line",
@@ -837,6 +843,8 @@
     "keyring": "Could not access the system keychain.",
     "tool": "The tool failed.",
     "workspace_denied": "Path outside the workspace folder: denied.",
-    "playwright_no_runtime": "Neither Python nor Node is installed: Playwright cannot be installed."
+    "playwright_no_runtime": "Neither Python nor Node is installed: Playwright cannot be installed.",
+    "browser_closed": "The built-in browser is closed: open a page first.",
+    "browser_window_missing": "Main window not found."
   }
 }
