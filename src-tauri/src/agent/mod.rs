@@ -4,6 +4,7 @@
 //! chemins avec `resolve`, qui refuse tout ce qui sort d'une racine enregistrée (`..`, chemins
 //! absolus étrangers, liens symboliques vers l'extérieur). Rien n'est exécuté hors de ces racines.
 
+pub mod env;
 pub mod exec;
 pub mod fs;
 pub mod git;

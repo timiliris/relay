@@ -68,7 +68,8 @@ async fn drain(mut reader: impl AsyncReadExt + Unpin) -> (Vec<u8>, bool) {
     (kept, truncated)
 }
 
-async fn kill_tree(child: &mut Child) {
+/// Arrêt forcé du processus et de ses enfants (partagé avec `env.rs`).
+pub(crate) async fn kill_tree(child: &mut Child) {
     #[cfg(windows)]
     if let Some(pid) = child.id() {
         let _ = Command::new("taskkill")
