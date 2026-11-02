@@ -1,4 +1,5 @@
 import {
+  Activity,
   Check,
   ChevronDown,
   Copy,
@@ -9,6 +10,8 @@ import {
   FolderTree,
   Globe,
   type LucideIcon,
+  OctagonX,
+  ScrollText,
   Search,
   ShieldAlert,
   Terminal,
@@ -23,7 +26,9 @@ import type { ToolCall } from '@/lib/openrouter';
 import { cn } from '@/lib/utils';
 import { useAgent } from '@/stores/agent';
 import { useExplorer } from '@/stores/explorer';
+import { useProcesses } from '@/stores/processes';
 import { AgentStatusBar, useAgentStatus } from './agent-status';
+import { OutputPane, StopButton } from './process-panel';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -36,6 +41,9 @@ const ICONS: Record<string, LucideIcon> = {
   search_files: Search,
   run_command: Terminal,
   fetch_url: Globe,
+  list_processes: Activity,
+  read_process_output: ScrollText,
+  stop_process: OctagonX,
 };
 
 const STATUS_CLASS: Record<ToolStatus, string> = {
@@ -58,6 +66,9 @@ type NameKey =
   | 'edit_file'
   | 'search_files'
   | 'run_command'
+  | 'list_processes'
+  | 'read_process_output'
+  | 'stop_process'
   | 'unknown';
 
 const nameKey = (name: string | null | undefined): NameKey =>
@@ -74,6 +85,11 @@ function primaryArg(name: string | null | undefined, args: Record<string, unknow
       return String(args.url ?? '');
     case 'list_files':
       return String(args.path ?? '.');
+    case 'list_processes':
+      return '';
+    case 'read_process_output':
+    case 'stop_process':
+      return String(args.id ?? '');
     default:
       return String(args.path ?? '');
   }
@@ -164,6 +180,7 @@ export function ToolCallCard({ message }: { message: Message }) {
           {isCommand && status === 'pending' && (
             <CommandPreview command={String(meta.args.command ?? '')} cwd={meta.cwd} />
           )}
+          {isCommand && status === 'running' && <LiveOutput id={message.id} />}
           {(key === 'read_file' || isDiff) && path && status === 'done' && (
             <div className="flex justify-end border-b px-3 py-1">
               <Button
@@ -288,6 +305,26 @@ function CommandPreview({ command, cwd }: { command: string; cwd?: string | unde
   );
 }
 
+/** Commande en cours : sortie en direct (volet Processus) et bouton Arrêter. */
+function LiveOutput({ id }: { id: string }) {
+  const { t } = useTranslation();
+  const entry = useProcesses((s) => s.items[id]);
+  if (!entry) return null;
+  return (
+    <div className="border-b">
+      <div className="flex items-center gap-2 bg-info/5 px-3 py-1 text-[11px] text-muted-foreground">
+        <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-info" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">
+          {t('chat.tools.liveOutput')}
+          {entry.pid !== null && ` · ${t('chat.tools.pid', { pid: entry.pid })}`}
+        </span>
+        <StopButton id={id} />
+      </div>
+      <OutputPane text={entry.output} truncated={entry.truncated} live />
+    </div>
+  );
+}
+
 /** Sortie brute (commande, lecture, recherche), avec action « Copier » pour les commandes. */
 function Output({ text, copyable }: { text: string; copyable: boolean }) {
   const { t } = useTranslation();
@@ -328,7 +365,9 @@ function ArgsLine({ name, args }: { name: NameKey; args: Record<string, unknown>
       ? ['command']
       : name === 'search_files'
         ? ['pattern']
-        : ['path', 'content', 'old', 'new'],
+        : name === 'read_process_output' || name === 'stop_process'
+          ? ['id']
+          : ['path', 'content', 'old', 'new'],
   );
   const rest = Object.entries(args).filter(([k, v]) => !hidden.has(k) && v !== undefined);
   if (rest.length === 0) return null;
@@ -347,17 +386,35 @@ function Footer({ meta }: { meta: NonNullable<Message['toolMeta']> }) {
   }
   if (meta.timedOut) parts.push(t('chat.tools.timedOut'));
   if (meta.truncated) parts.push(t('chat.tools.truncated'));
+  if (meta.pid !== undefined && meta.pid !== null) {
+    parts.push(
+      meta.background
+        ? t('chat.tools.backgroundPid', { pid: meta.pid })
+        : t('chat.tools.pid', { pid: meta.pid }),
+    );
+  }
   if (meta.durationMs !== undefined) parts.push(`${(meta.durationMs / 1000).toFixed(1)} s`);
   if (meta.error) parts.push(meta.error);
   if (parts.length === 0) return null;
   return (
     <p
       className={cn(
-        'border-t px-3 py-1 text-[11px] text-muted-foreground',
+        'flex items-center gap-2 border-t px-3 py-1 text-[11px] text-muted-foreground',
         meta.error && 'text-destructive',
       )}
     >
-      {parts.join(' · ')}
+      <span className="min-w-0 flex-1 truncate">{parts.join(' · ')}</span>
+      {meta.background && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-5 px-1.5 text-[11px] text-muted-foreground"
+          onClick={() => useProcesses.getState().setOpen(true)}
+        >
+          <Activity className="size-3" />
+          {t('chat.tools.openProcesses')}
+        </Button>
+      )}
     </p>
   );
 }

@@ -107,14 +107,61 @@ const DEFINITIONS: ToolDefinition[] = [
     function: {
       name: 'run_command',
       description:
-        'Run a shell command in the workspace root (PowerShell on Windows, sh elsewhere) and return its exit code, stdout and stderr. Use it for tests, builds, package managers, `git` and `gh` (GitHub CLI). One command per call; avoid interactive commands.',
+        'Run a shell command in the workspace root (PowerShell on Windows, sh elsewhere) and return its exit code, stdout and stderr (last 64 KB of each). Use it for tests, builds, package managers, `git` and `gh` (GitHub CLI). One command per call; avoid interactive commands. For a dev server, watcher or any process that never exits, set `background: true`: the call returns after a few seconds with the process id, pid and first output lines while the process keeps running; read its later output with read_process_output and stop it with stop_process (it is killed when the app closes).',
       parameters: {
         type: 'object',
         properties: {
           command: str('The command line to run.'),
-          timeout_secs: int('Maximum run time in seconds, up to 600. Default 120.'),
+          timeout_secs: int(
+            'Maximum run time in seconds, up to 600. Default 120. Ignored for background processes.',
+          ),
+          background: {
+            type: 'boolean',
+            description:
+              'Keep the process running after the call returns (dev server, watcher). Default false.',
+          },
         },
         required: ['command'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_processes',
+      description:
+        'List the processes started with run_command during this session: id, pid, status (running, done, killed), exit code, command.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_process_output',
+      description:
+        'Read the output accumulated so far by a process started with run_command (last 64 KB of stdout and stderr), with its current status. Use it to check a background server or watcher.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: str('Process id returned by run_command or list_processes.'),
+          lines: int('Return only the last N lines of each stream, 1 to 2000. Default 100.'),
+        },
+        required: ['id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'stop_process',
+      description:
+        'Stop a running process started with run_command (its whole process tree is killed) and return its final status.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: str('Process id returned by run_command or list_processes.'),
+        },
+        required: ['id'],
       },
     },
   },
@@ -216,6 +263,8 @@ export function toolRisk(
     case 'read_file':
     case 'search_files':
     case 'fetch_url':
+    case 'list_processes':
+    case 'read_process_output':
       return 'read';
     case 'run_command':
       return isReadOnlyCommand(String(args.command ?? ''), allowlist) ? 'read' : 'write';

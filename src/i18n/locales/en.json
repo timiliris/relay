@@ -230,7 +230,10 @@
         "search_files": "Search files",
         "run_command": "Run command",
         "unknown": "Unknown tool",
-        "fetch_url": "Read a web page"
+        "fetch_url": "Read a web page",
+        "list_processes": "List processes",
+        "read_process_output": "Read process output",
+        "stop_process": "Stop a process"
       },
       "status": {
         "pending": "Approval required",
@@ -254,7 +257,11 @@
       "summary_other": "{{count}} tool calls",
       "noOutput": "(no output)",
       "riskWrite": "Changes files or runs a command",
-      "riskRead": "Read only"
+      "riskRead": "Read only",
+      "liveOutput": "Live output",
+      "backgroundPid": "background · PID {{pid}}",
+      "pid": "PID {{pid}}",
+      "openProcesses": "Show in Processes"
     },
     "toolsPreview": {
       "lines_one": "line",
@@ -371,6 +378,28 @@
       "untitled": "Untitled page",
       "schemeDenied": "Only http(s) addresses can be opened.",
       "readAttached": "Page attached to the next message ({{count}} characters)."
+    },
+    "processes": {
+      "title": "Processes",
+      "empty": "No command started in this conversation.",
+      "running": "running",
+      "done": "done",
+      "killed": "stopped",
+      "stop": "Stop",
+      "stopping": "Stopping…",
+      "stopped": "Process stopped.",
+      "pid": "PID {{pid}}",
+      "exitCode": "exit {{code}}",
+      "background": "background",
+      "timedOut": "timed out",
+      "showOutput": "Show output",
+      "hideOutput": "Hide output",
+      "noOutput": "(no output yet)",
+      "truncated": "older output dropped (last 64 KB kept)",
+      "clearFinished": "Clear finished",
+      "onlyInApp": "Agent processes are only visible in the app.",
+      "runningCount_one": "{{count}} running process",
+      "runningCount_other": "{{count}} running processes"
     }
   },
   "search": {

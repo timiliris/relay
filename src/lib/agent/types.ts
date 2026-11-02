@@ -10,7 +10,10 @@ export type ToolName =
   | 'edit_file'
   | 'search_files'
   | 'run_command'
-  | 'fetch_url';
+  | 'fetch_url'
+  | 'list_processes'
+  | 'read_process_output'
+  | 'stop_process';
 
 export const TOOL_NAMES: readonly ToolName[] = [
   'list_files',
@@ -20,6 +23,9 @@ export const TOOL_NAMES: readonly ToolName[] = [
   'search_files',
   'run_command',
   'fetch_url',
+  'list_processes',
+  'read_process_output',
+  'stop_process',
 ];
 
 export const isToolName = (name: string): name is ToolName =>
@@ -45,6 +51,10 @@ export interface ToolMeta {
   created?: boolean;
   /** Commande : dossier d'exécution (racine du dossier de travail). */
   cwd?: string;
+  /** Commande : identifiant du processus système, connu une fois lancée. */
+  pid?: number | null;
+  /** Commande lancée en arrière-plan (serveur de dev, watcher) : elle continue après la carte. */
+  background?: boolean;
   error?: string;
 }
 

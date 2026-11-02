@@ -230,7 +230,10 @@
         "search_files": "Rechercher dans les fichiers",
         "run_command": "Exécuter une commande",
         "unknown": "Outil inconnu",
-        "fetch_url": "Lire une page web"
+        "fetch_url": "Lire une page web",
+        "list_processes": "Lister les processus",
+        "read_process_output": "Lire la sortie d'un processus",
+        "stop_process": "Arrêter un processus"
       },
       "status": {
         "pending": "Autorisation requise",
@@ -254,7 +257,11 @@
       "summary_other": "{{count}} appels d'outils",
       "noOutput": "(aucune sortie)",
       "riskWrite": "Modifie des fichiers ou exécute une commande",
-      "riskRead": "Lecture seule"
+      "riskRead": "Lecture seule",
+      "liveOutput": "Sortie en direct",
+      "backgroundPid": "arrière-plan · PID {{pid}}",
+      "pid": "PID {{pid}}",
+      "openProcesses": "Voir dans Processus"
     },
     "toolsPreview": {
       "lines_one": "ligne",
@@ -371,6 +378,28 @@
       "untitled": "Page sans titre",
       "schemeDenied": "Seules les adresses http(s) peuvent être ouvertes.",
       "readAttached": "Page jointe au prochain message ({{count}} caractères)."
+    },
+    "processes": {
+      "title": "Processus",
+      "empty": "Aucune commande lancée dans cette conversation.",
+      "running": "en cours",
+      "done": "terminé",
+      "killed": "arrêté",
+      "stop": "Arrêter",
+      "stopping": "Arrêt…",
+      "stopped": "Processus arrêté.",
+      "pid": "PID {{pid}}",
+      "exitCode": "code {{code}}",
+      "background": "arrière-plan",
+      "timedOut": "délai dépassé",
+      "showOutput": "Afficher la sortie",
+      "hideOutput": "Masquer la sortie",
+      "noOutput": "(aucune sortie pour l'instant)",
+      "truncated": "début de la sortie oublié (64 Ko conservés)",
+      "clearFinished": "Effacer les terminés",
+      "onlyInApp": "Les processus de l'agent ne sont visibles que dans l'application.",
+      "runningCount_one": "{{count}} processus en cours",
+      "runningCount_other": "{{count}} processus en cours"
     }
   },
   "search": {

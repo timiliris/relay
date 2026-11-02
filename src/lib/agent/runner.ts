@@ -8,11 +8,12 @@ import i18n from '@/i18n';
 import { useAgent } from '@/stores/agent';
 import { useChat } from '@/stores/chat';
 import { useExplorer } from '@/stores/explorer';
+import { useProcesses } from '@/stores/processes';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
 import { type Conversation, type Message, messages as msgRepo, newId } from '../db';
 import { errorMessage, isTauri } from '../tauri';
-import { agentCommands, type Change } from './commands';
+import { agentCommands, type Change, type CommandOutput } from './commands';
 import { approvalKey, missingArgs, parseToolArgs, toolRisk } from './tools';
 import {
   type AgentProgress,
@@ -38,12 +39,16 @@ interface ToolOutcome {
   meta: Partial<ToolMeta>;
 }
 
-/** Exécute un outil dans le dossier de travail ; les erreurs Rust deviennent un résultat `error`. */
+/**
+ * Exécute un outil dans le dossier de travail ; les erreurs Rust deviennent un résultat `error`.
+ * `conversationId` rattache une commande au volet Processus.
+ */
 export async function executeTool(
   workspace: string,
   name: ToolName,
   args: Record<string, unknown>,
   toolId: string,
+  conversationId = '',
 ): Promise<ToolOutcome> {
   const s = useSettings.getState();
   const startedAt = Date.now();
@@ -111,32 +116,57 @@ export async function executeTool(
       }
       case 'run_command': {
         const timeout = clamp(Number(args.timeout_secs ?? s.agentCommandTimeout), 1, 600);
+        const command = String(args.command ?? '');
+        const background = Boolean(args.background);
+        const processes = useProcesses.getState();
         useAgent.getState().setRunning(toolId);
+        processes.track({ id: toolId, conversationId, command, cwd: workspace, background });
         try {
+          await processes.ensureListening();
           const out = await agentCommands.runCommand(
             toolId,
             workspace,
-            String(args.command ?? ''),
+            command,
             timeout,
+            background,
           );
-          const parts = [
-            `exit code: ${out.exitCode ?? 'none'}${out.timedOut ? ' (timed out)' : ''}`,
-          ];
-          if (out.stdout.trim()) parts.push(`stdout:\n${out.stdout.trimEnd()}`);
-          if (out.stderr.trim()) parts.push(`stderr:\n${out.stderr.trimEnd()}`);
-          if (out.truncated) parts.push('(output truncated)');
-          return {
-            content: parts.join('\n'),
-            meta: {
-              exitCode: out.exitCode,
-              timedOut: out.timedOut,
-              truncated: out.truncated,
-              durationMs: out.durationMs,
-            },
-          };
+          processes.settle(toolId, out);
+          return { content: commandResult(toolId, out), meta: commandMeta(out) };
+        } catch (err) {
+          processes.fail(toolId, errorMessage(err));
+          throw err;
         } finally {
           useAgent.getState().setRunning(null);
         }
+      }
+      case 'list_processes': {
+        const list = await agentCommands.listProcesses();
+        for (const info of list) useProcesses.getState().sync(info);
+        const lines = list.map(
+          (p) =>
+            `${p.id}  pid=${p.pid ?? '-'}  ${p.status}${p.exitCode !== null ? ` (exit ${p.exitCode})` : ''}${p.background ? '  background' : ''}  ${p.command}`,
+        );
+        return { content: lines.length ? lines.join('\n') : '(no process)', meta: {} };
+      }
+      case 'read_process_output': {
+        const out = await agentCommands.readProcessOutput(String(args.id ?? ''));
+        useProcesses.getState().sync(out.info);
+        const lines = clamp(Number(args.lines ?? 100), 1, 2000);
+        const parts = [
+          `status: ${out.info.status}${out.info.exitCode !== null ? ` (exit ${out.info.exitCode})` : ''}, pid ${out.info.pid ?? '-'}`,
+        ];
+        if (out.stdout.trim()) parts.push(`stdout:\n${lastLines(out.stdout, lines)}`);
+        if (out.stderr.trim()) parts.push(`stderr:\n${lastLines(out.stderr, lines)}`);
+        if (out.truncated) parts.push('(older output dropped)');
+        return { content: parts.join('\n'), meta: { exitCode: out.info.exitCode } };
+      }
+      case 'stop_process': {
+        const info = await agentCommands.stopProcess(String(args.id ?? ''));
+        useProcesses.getState().sync(info);
+        return {
+          content: `Process ${info.id} (pid ${info.pid ?? '-'}) ${info.status}${info.exitCode !== null ? `, exit code ${info.exitCode}` : ''}.`,
+          meta: { exitCode: info.exitCode },
+        };
       }
     }
   } catch (err) {
@@ -161,6 +191,38 @@ export const changeOf = (
         new: String(args.new ?? ''),
         replaceAll: Boolean(args.replace_all),
       };
+
+/** Texte renvoyé au modèle pour une commande (ou les premières lignes d'un arrière-plan). */
+function commandResult(id: string, out: CommandOutput): string {
+  const parts = out.running
+    ? [
+        `Started in background: process id ${id}, pid ${out.pid ?? 'unknown'}. Use read_process_output("${id}") to read its output and stop_process("${id}") to stop it.`,
+      ]
+    : [
+        `exit code: ${out.exitCode ?? 'none'}${out.timedOut ? ' (timed out)' : killed(out) ? ' (killed)' : ''}`,
+      ];
+  if (out.stdout.trim()) parts.push(`stdout:\n${out.stdout.trimEnd()}`);
+  if (out.stderr.trim()) parts.push(`stderr:\n${out.stderr.trimEnd()}`);
+  if (out.truncated) parts.push('(output truncated)');
+  return parts.join('\n');
+}
+
+/** Commande au premier plan tuée (bouton Arrêter, arrêt de l'agent) : ni code ni délai dépassé. */
+const killed = (out: CommandOutput): boolean =>
+  !out.running && out.exitCode === null && !out.timedOut;
+
+const commandMeta = (out: CommandOutput): Partial<ToolMeta> => ({
+  exitCode: out.exitCode,
+  timedOut: out.timedOut,
+  truncated: out.truncated,
+  durationMs: out.durationMs,
+  pid: out.pid,
+  background: out.background,
+  ...(killed(out) ? { status: 'cancelled' as const } : {}),
+});
+
+const lastLines = (text: string, count: number): string =>
+  text.trimEnd().split('\n').slice(-count).join('\n');
 
 const clamp = (n: number, min: number, max: number): number =>
   Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : min;
@@ -310,7 +372,7 @@ export async function runAgentTurn(
     progress({ phase: 'running', toolMessageId: toolMessage.id, toolName: tool });
     useChat.getState().upsert({ ...toolMessage, toolMeta: { ...meta, status: 'running' } });
     const startedAt = Date.now();
-    const outcome = await executeTool(workspace, tool, args, toolMessage.id);
+    const outcome = await executeTool(workspace, tool, args, toolMessage.id, conversation.id);
     await finish(outcome.content, {
       status: outcome.meta.status ?? 'done',
       durationMs: outcome.meta.durationMs ?? Date.now() - startedAt,
@@ -321,7 +383,9 @@ export async function runAgentTurn(
       outcome.meta.status !== 'error' &&
       tool !== 'read_file' &&
       tool !== 'list_files' &&
-      tool !== 'search_files'
+      tool !== 'search_files' &&
+      tool !== 'list_processes' &&
+      tool !== 'read_process_output'
     ) {
       useExplorer.getState().refresh();
     }

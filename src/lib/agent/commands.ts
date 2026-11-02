@@ -50,12 +50,53 @@ export interface SearchResult {
 
 export interface CommandOutput {
   exitCode: number | null;
+  /** Derniers 64 Ko de chaque flux. */
   stdout: string;
   stderr: string;
   durationMs: number;
   timedOut: boolean;
   truncated: boolean;
+  pid: number | null;
+  /** Millisecondes depuis l'époque Unix. */
+  startedAt: number;
+  background: boolean;
+  /** Arrière-plan : `true` si le processus tourne encore au retour de la commande. */
+  running: boolean;
 }
+
+export type ProcessStatus = 'running' | 'done' | 'killed';
+
+/** Fiche d'un processus lancé par l'agent (`exec::ProcessInfo`). */
+export interface ProcessInfo {
+  id: string;
+  pid: number | null;
+  command: string;
+  cwd: string;
+  startedAt: number;
+  endedAt: number | null;
+  status: ProcessStatus;
+  exitCode: number | null;
+  background: boolean;
+  timedOut: boolean;
+}
+
+export interface ProcessOutput {
+  info: ProcessInfo;
+  stdout: string;
+  stderr: string;
+  truncated: boolean;
+}
+
+/** Charge utile de `agent://command-output` : un fragment de sortie d'un processus. */
+export interface OutputChunk {
+  id: string;
+  stream: 'stdout' | 'stderr';
+  chunk: string;
+}
+
+export const COMMAND_OUTPUT_EVENT = 'agent://command-output';
+/** Fin d'un processus (charge utile : `ProcessInfo`). */
+export const PROCESS_EXIT_EVENT = 'agent://process-exit';
 
 export const agentCommands = {
   registerWorkspace: (path: string) => invoke<WorkspaceInfo>('register_workspace', { path }),
@@ -69,9 +110,18 @@ export const agentCommands = {
     invoke<ChangePreview>('tool_apply_change', { workspace, path, change }),
   search: (workspace: string, pattern: string, glob: string | undefined, maxResults: number) =>
     invoke<SearchResult>('tool_search', { workspace, pattern, glob, maxResults }),
-  runCommand: (id: string, workspace: string, command: string, timeoutSecs: number) =>
-    invoke<CommandOutput>('tool_run_command', { id, workspace, command, timeoutSecs }),
+  runCommand: (
+    id: string,
+    workspace: string,
+    command: string,
+    timeoutSecs: number,
+    background = false,
+  ) =>
+    invoke<CommandOutput>('tool_run_command', { id, workspace, command, timeoutSecs, background }),
   cancelTool: (id: string) => invoke<void>('cancel_tool', { id }),
+  listProcesses: () => invoke<ProcessInfo[]>('list_processes'),
+  stopProcess: (id: string) => invoke<ProcessInfo>('stop_process', { id }),
+  readProcessOutput: (id: string) => invoke<ProcessOutput>('read_process_output', { id }),
 } as const;
 
 // ---- Panneau Git du dossier de travail (`git.rs`) ----
