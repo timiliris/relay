@@ -150,4 +150,36 @@ describe('character-card', () => {
     expect(back.name).toBe('Kael');
     expect(back.persona).toEqual(preset.persona);
   });
+
+  it('exporte une petite voix lisible ailleurs et la relit en petite voix', () => {
+    const preset: Preset = {
+      ...base,
+      name: 'Premier rendez-vous',
+      persona: {
+        ...defaultPersona(),
+        mode: 'innerVoice',
+        innerVoice: {
+          ...defaultPersona().innerVoice,
+          characterName: 'Camille',
+          character: 'Nerveuse.',
+          otherName: 'Théo',
+          otherCharacter: 'Calme.',
+          scenario: 'Resto italien.',
+          greeting: 'Je mets quoi ?',
+          format: 'chat',
+        },
+      },
+    };
+    const card = cardFromPreset(preset);
+    // La fiche reste exploitable par un autre logiciel : les deux personnages dans la description.
+    expect(card.data.description).toBe('Nerveuse.\n\nThéo: Calme.');
+    expect(card.data.scenario).toBe('Resto italien.');
+    expect(card.data.first_mes).toBe('Je mets quoi ?');
+    const back = presetFromCard(parseCharacterCard(serializeCard(card)), base, 'fr');
+    expect(back.persona.mode).toBe('innerVoice');
+    expect(back.persona.innerVoice).toEqual(preset.persona.innerVoice);
+    // Une fiche venue d'ailleurs (sans extension Relay) reste un jeu de rôle.
+    const foreign = { ...card, data: { ...card.data, extensions: {} } };
+    expect(presetFromCard(foreign, base, 'fr').persona.mode).toBe('roleplay');
+  });
 });

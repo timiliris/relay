@@ -1,4 +1,4 @@
-import { Dices, LoaderCircle, UserPen, VenetianMask } from 'lucide-react';
+import { Dices, LoaderCircle, SkipForward, UserPen, VenetianMask } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Preset } from '@/lib/db';
@@ -23,9 +23,14 @@ interface RoleplayToolsProps {
   onReplaceDraft: (text: string) => void;
   /** Ajoute un texte à la fin de la zone de saisie. */
   onInsert: (text: string) => void;
+  /** Envoie un message tel quel (petite voix : « Passer le tour »). */
+  onSendText?: ((text: string) => void) | undefined;
 }
 
-/** Outils du composeur en mode jeu de rôle : hors rôle, « Jouer mon tour » et jets de dés. */
+/**
+ * Outils du composeur dans une scène : hors rôle, « Jouer mon tour » (jeu de rôle) ou
+ * « Passer le tour » (petite voix), et jets de dés.
+ */
 export function RoleplayTools({
   preset,
   disabled,
@@ -34,9 +39,11 @@ export function RoleplayTools({
   onImpersonate,
   onReplaceDraft,
   onInsert,
+  onSendText,
 }: RoleplayToolsProps) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
+  const innerVoice = preset.persona.mode === 'innerVoice';
   const user = preset.persona.roleplay.userName.trim() || t('chat.rp.yourCharacter');
 
   const impersonate = async () => {
@@ -84,7 +91,17 @@ export function RoleplayTools({
         <VenetianMask className="size-4" />
         <span className="text-xs font-semibold">{t('chat.rp.ooc')}</span>
       </Button>
-      {onImpersonate && (
+      {innerVoice && onSendText && (
+        <IconButton
+          label={t('chat.rp.skipTurnTitle')}
+          className="size-8 text-muted-foreground"
+          onClick={() => onSendText(t('chat.rp.skipTurnText'))}
+          disabled={disabled}
+        >
+          <SkipForward className="size-4" />
+        </IconButton>
+      )}
+      {!innerVoice && onImpersonate && (
         <IconButton
           label={busy ? t('chat.rp.impersonating') : t('chat.rp.impersonateTitle', { user })}
           className="size-8 text-muted-foreground"

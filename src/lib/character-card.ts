@@ -149,7 +149,9 @@ const joinBlocks = (...parts: Array<string | null | undefined>): string =>
 
 /**
  * Convertit une fiche en persona, à partir d'un preset vierge (identifiant, position).
- * Les fiches exportées par Relay portent le persona complet dans `extensions.relay.persona`.
+ * Les fiches exportées par Relay portent le persona complet dans `extensions.relay.persona`,
+ * mode compris (une fiche « petite voix » revient en petite voix) ; toute autre fiche devient
+ * un jeu de rôle.
  */
 export function presetFromCard(card: CharacterCard, base: Preset, language: 'fr' | 'en'): Preset {
   const d = card.data;
@@ -168,7 +170,7 @@ export function presetFromCard(card: CharacterCard, base: Preset, language: 'fr'
     systemPrompt: joinBlocks(d.system_prompt, d.post_history_instructions) || null,
     persona: {
       ...persona,
-      mode: 'roleplay',
+      mode: persona.mode === 'innerVoice' ? 'innerVoice' : 'roleplay',
       roleplay: {
         ...persona.roleplay,
         character,
@@ -179,17 +181,32 @@ export function presetFromCard(card: CharacterCard, base: Preset, language: 'fr'
   };
 }
 
-/** Fiche V2 exportable ; le persona complet voyage dans `extensions.relay` pour un aller-retour fidèle. */
+/**
+ * Fiche V2 exportable ; le persona complet voyage dans `extensions.relay` pour un aller-retour
+ * fidèle. En petite voix, la description reprend les deux personnages pour rester lisible ailleurs.
+ */
 export function cardFromPreset(preset: Preset): CharacterCard {
-  const rp = preset.persona.roleplay;
+  const { persona } = preset;
+  const iv = persona.innerVoice;
+  const sheet =
+    persona.mode === 'innerVoice'
+      ? {
+          character: joinBlocks(
+            iv.character,
+            iv.otherCharacter && `${iv.otherName.trim() || 'Other'}: ${iv.otherCharacter.trim()}`,
+          ),
+          scenario: iv.scenario,
+          greeting: iv.greeting,
+        }
+      : persona.roleplay;
   return {
     spec: 'chara_card_v2',
     data: {
       name: preset.name,
-      description: rp.character,
+      description: sheet.character,
       personality: '',
-      scenario: rp.scenario,
-      first_mes: rp.greeting,
+      scenario: sheet.scenario,
+      first_mes: sheet.greeting,
       mes_example: '',
       system_prompt: preset.systemPrompt ?? '',
       post_history_instructions: '',

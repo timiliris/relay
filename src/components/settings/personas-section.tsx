@@ -177,7 +177,13 @@ export function PersonasSection() {
                 )}
               </div>
               <p className="truncate text-xs text-muted-foreground">
-                {[p.model, p.systemPrompt, p.persona.roleplay.character]
+                {[
+                  p.model,
+                  p.systemPrompt,
+                  p.persona.mode === 'innerVoice'
+                    ? p.persona.innerVoice.character
+                    : p.persona.roleplay.character,
+                ]
                   .filter(Boolean)
                   .join(' · ') || '—'}
               </p>
