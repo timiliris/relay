@@ -272,6 +272,27 @@
       "revert": "Rétablir",
       "saved": "{{name}} enregistré.",
       "readOnly": "Fichier trop volumineux pour l'édition : affichage partiel en lecture seule."
+    },
+    "browser": {
+      "title": "Navigateur",
+      "address": "Adresse ou recherche",
+      "addressLabel": "Barre d'adresse",
+      "go": "Aller",
+      "back": "Précédent",
+      "forward": "Suivant",
+      "reload": "Recharger",
+      "openExternal": "Ouvrir dans le navigateur du système",
+      "readPage": "Lire la page pour l'agent",
+      "reading": "Lecture de la page…",
+      "readCopied": "Texte de la page copié ({{count}} caractères) : collez-le dans le composeur.",
+      "readTruncated": "Texte de la page copié, tronqué à {{count}} caractères.",
+      "history": "Pages visitées dans cette conversation",
+      "historyEmpty": "Aucune page visitée pour l'instant.",
+      "clearHistory": "Vider la liste",
+      "empty": "Saisissez une adresse ou une recherche ci-dessus.",
+      "onlyInApp": "Le navigateur intégré n'est disponible que dans l'application.",
+      "untitled": "Page sans titre",
+      "schemeDenied": "Seules les adresses http(s) peuvent être ouvertes."
     }
   },
   "search": {

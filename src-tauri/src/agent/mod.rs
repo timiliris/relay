@@ -7,6 +7,7 @@
 pub mod exec;
 pub mod fs;
 pub mod search;
+pub mod web;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};

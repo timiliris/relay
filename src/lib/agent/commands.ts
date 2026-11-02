@@ -73,3 +73,40 @@ export const agentCommands = {
     invoke<CommandOutput>('tool_run_command', { id, workspace, command, timeoutSecs }),
   cancelTool: (id: string) => invoke<void>('cancel_tool', { id }),
 } as const;
+
+/** Rectangle en pixels CSS (logiques), relatif à la zone cliente de la fenêtre principale. */
+export interface BrowserBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Charge utile de l'événement `browser://navigated` ; `title` arrive dans un second événement. */
+export interface BrowserNavigated {
+  url: string;
+  title: string | null;
+}
+
+/** Résultat de `fetch_url` : page publique convertie en texte pour le modèle. */
+export interface PageText {
+  /** URL finale, après redirections. */
+  url: string;
+  title: string | null;
+  text: string;
+  truncated: boolean;
+}
+
+export const BROWSER_NAVIGATED_EVENT = 'browser://navigated';
+
+/** Navigateur intégré (`src-tauri/src/commands/browser.rs`) : webview enfant de la fenêtre principale. */
+export const browserCommands = {
+  open: (url: string, bounds?: BrowserBounds) => invoke<void>('browser_open', { url, bounds }),
+  navigate: (url: string) => invoke<void>('browser_navigate', { url }),
+  back: () => invoke<void>('browser_back'),
+  forward: () => invoke<void>('browser_forward'),
+  reload: () => invoke<void>('browser_reload'),
+  setBounds: (bounds: BrowserBounds) => invoke<void>('browser_set_bounds', { ...bounds }),
+  close: () => invoke<void>('browser_close'),
+  fetchUrl: (url: string, maxChars?: number) => invoke<PageText>('fetch_url', { url, maxChars }),
+} as const;

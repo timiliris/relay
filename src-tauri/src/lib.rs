@@ -9,9 +9,11 @@
 //! - `db.rs`     : migrations SQLite (conversations, messages).
 //! - `openrouter/` : client HTTP OpenRouter (modèles, crédits, streaming SSE).
 //! - `agent/`   : outils du mode agent (fichiers, recherche, commandes) dans un dossier de travail.
+//! - `browser.rs` : navigateur intégré (webview enfant dans la fenêtre principale).
 //! - `secrets.rs` : clé API dans le trousseau système.
 
 mod agent;
+mod browser;
 mod commands;
 mod db;
 mod error;
@@ -102,6 +104,14 @@ pub fn run() {
             commands::agent::tool_search,
             commands::agent::tool_run_command,
             commands::agent::cancel_tool,
+            commands::browser::browser_open,
+            commands::browser::browser_navigate,
+            commands::browser::browser_back,
+            commands::browser::browser_forward,
+            commands::browser::browser_reload,
+            commands::browser::browser_set_bounds,
+            commands::browser::browser_close,
+            commands::browser::fetch_url,
         ])
         .setup(|app| {
             let info = app.package_info();
@@ -118,6 +128,7 @@ pub fn run() {
                 tray::setup(app.handle(), lang)?;
                 shortcut::register(app.handle());
                 app.on_menu_event(|app, event| menu::handle(app, event.id().as_ref()));
+                browser::setup(app.handle());
             }
 
             Ok(())

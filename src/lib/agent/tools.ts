@@ -118,6 +118,22 @@ const DEFINITIONS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'fetch_url',
+      description:
+        'Fetch a public web page (http or https) and return its readable text: title, main content, scripts/styles/navigation removed. Use it to read documentation, articles, issues, changelogs or any URL the user mentions, and to follow links found in a page. Cannot reach localhost or private networks, does not run JavaScript, and returns at most max_chars characters (truncated flag set when cut).',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: str('Absolute http(s) URL of the page to read.'),
+          max_chars: int('Maximum number of characters to return, 200 to 200000. Default 20000.'),
+        },
+        required: ['url'],
+      },
+    },
+  },
 ];
 
 export const toolDefinitions = (): ToolDefinition[] => DEFINITIONS;
@@ -199,6 +215,7 @@ export function toolRisk(
     case 'list_files':
     case 'read_file':
     case 'search_files':
+    case 'fetch_url':
       return 'read';
     case 'run_command':
       return isReadOnlyCommand(String(args.command ?? ''), allowlist) ? 'read' : 'write';
