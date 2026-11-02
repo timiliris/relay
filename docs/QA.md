@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.6.2
+# Fiche de vérification — Relay 0.7.0
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -170,6 +170,16 @@ Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `c
 | Structure    | `src/pages/settings.tsx` (sommaire + ancrages) et `src/components/settings/*` (une section par fichier) | Neuf sections : Compte, Conversations, Personas, Raccourcis, Routage, Apparence, Application, Données, À propos ; en-têtes uniformes (icône, titre, description), sous-groupes, zone sensible encadrée, actions secondaires des personas dans un menu « Plus » |
 | Navigation   | navigateur (données de démo), clics dans le sommaire et défilement                                      | Le clic amène la section en haut (16 px), le sommaire suit le défilement, la section cliquée reste active en bas de page ; lien profond `#presets` conservé                                                                                                    |
 | Tests        | `src/App.test.tsx` (titre, version), 112 tests Vitest                                                   | Verts ; la version apparaît désormais aussi dans l'état des mises à jour                                                                                                                                                                                       |
+
+## Release 0.7.0 (2 novembre 2026)
+
+| Étape              | Résultat                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Contenu            | Page Paramètres réorganisée en sections avec sommaire                                                                          |
+| PR release-please  | `chore(main): release 0.7.0` ; `Cargo.lock` aligné sur la branche de la PR ; CI verte avant fusion                             |
+| Lancement du build | Automatique (sixième fois)                                                                                                     |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.7.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.7.0 avec 11 cibles |
+| Installation       | Laissée à la mise à jour intégrée de l'app (l'utilisateur répond lui-même à l'invite administrateur)                           |
 
 ## Optimisations mesurées (0.1.1)
 
