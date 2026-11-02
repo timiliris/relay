@@ -102,6 +102,14 @@ pub fn run() {
             commands::agent::tool_search,
             commands::agent::tool_run_command,
             commands::agent::cancel_tool,
+            commands::agent::git_status,
+            commands::agent::git_diff,
+            commands::agent::git_stage,
+            commands::agent::git_commit,
+            commands::agent::git_log,
+            commands::agent::git_branches,
+            commands::agent::git_checkout,
+            commands::agent::git_init,
         ])
         .setup(|app| {
             let info = app.package_info();

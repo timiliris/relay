@@ -6,6 +6,7 @@
 
 pub mod exec;
 pub mod fs;
+pub mod git;
 pub mod search;
 
 use std::collections::{HashMap, HashSet};
