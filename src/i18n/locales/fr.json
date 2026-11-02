@@ -295,6 +295,12 @@
       "loading": "Chargement…",
       "attach": "Ajouter au message",
       "binary": "{{name}} : fichier binaire, impossible à joindre."
+    },
+    "editor": {
+      "loading": "Chargement de l’éditeur…",
+      "plainText": "Texte brut",
+      "status": "État de l’éditeur",
+      "position": "Lig. {{line}}, Col. {{column}}"
     }
   },
   "search": {

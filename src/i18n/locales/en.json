@@ -295,6 +295,12 @@
       "loading": "Loading…",
       "attach": "Add to message",
       "binary": "{{name}}: binary file, cannot be attached."
+    },
+    "editor": {
+      "loading": "Loading editor…",
+      "plainText": "Plain text",
+      "status": "Editor status",
+      "position": "Ln {{line}}, Col {{column}}"
     }
   },
   "search": {

@@ -13,15 +13,21 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { agentCommands, type FileEntry } from '@/lib/agent/commands';
 import type { Conversation } from '@/lib/db';
+import {
+  devFixturesEnabled,
+  sampleWorkspaceEntries,
+  sampleWorkspaceFiles,
+} from '@/lib/dev-fixtures';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 import { dialog } from '@/stores/dialog';
 import { useExplorer } from '@/stores/explorer';
 import { toast } from '@/stores/toast';
+import { CodeEditor } from './code-editor';
 import { Button } from './ui/button';
 import { IconButton } from './ui/tooltip-button';
 import { workspaceName } from './workspace-picker';
@@ -67,7 +73,10 @@ export function WorkspaceExplorer({
 
   const loadDir = useCallback(
     async (dir: string) => {
-      if (!inTauri) return;
+      if (!inTauri) {
+        if (devFixturesEnabled()) setDirs((d) => ({ ...d, [dir]: sampleWorkspaceEntries(dir) }));
+        return;
+      }
       try {
         const result = await agentCommands.listFiles(workspace, dir, 1);
         setDirs((d) => ({ ...d, [dir]: result.entries }));
@@ -81,7 +90,13 @@ export function WorkspaceExplorer({
 
   const openFile = useCallback(
     async (path: string) => {
-      if (!inTauri) return;
+      if (!inTauri) {
+        const content = devFixturesEnabled() ? sampleWorkspaceFiles[path] : undefined;
+        if (content === undefined) return;
+        setFile({ path, content, readOnly: false, totalLines: content.split('\n').length });
+        setDraft(content);
+        return;
+      }
       setBusy(true);
       try {
         const result = await agentCommands.readFile(workspace, path, 1, MAX_EDIT_LINES);
@@ -196,21 +211,6 @@ export function WorkspaceExplorer({
     }
   };
 
-  const onEditorKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault();
-      void save();
-    } else if (e.key === 'Tab') {
-      // Tabulation : deux espaces, sans quitter l'éditeur.
-      e.preventDefault();
-      const el = e.currentTarget;
-      const { selectionStart, selectionEnd } = el;
-      const next = `${draft.slice(0, selectionStart)}  ${draft.slice(selectionEnd)}`;
-      setDraft(next);
-      requestAnimationFrame(() => el.setSelectionRange(selectionStart + 2, selectionStart + 2));
-    }
-  };
-
   return (
     <aside
       className="flex w-80 shrink-0 flex-col border-l bg-card/40 sm:w-96 lg:w-[28rem]"
@@ -288,14 +288,12 @@ export function WorkspaceExplorer({
               {t('chat.explorer.readOnly')}
             </p>
           )}
-          <textarea
+          <CodeEditor
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={onEditorKey}
+            onChange={setDraft}
+            path={file.path}
             readOnly={file.readOnly || busy}
-            spellCheck={false}
-            aria-label={file.path}
-            className="min-h-0 flex-1 resize-none bg-transparent px-3 py-2 font-mono text-xs leading-relaxed outline-none"
+            onSave={() => void save()}
           />
           <div className="flex items-center justify-end gap-2 border-t px-3 py-2">
             <Button
