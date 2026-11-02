@@ -2,6 +2,26 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.10.0](https://github.com/timiliris/relay/compare/v0.9.0...v0.10.0) (2026-11-02)
+
+
+### Nouveautés
+
+* **agent:** aperçu du diff avant approbation et refus motivé ([fcc062e](https://github.com/timiliris/relay/commit/fcc062ed4476d1d11d5390343ef709a6f2255308))
+* **agent:** carte d'outil avec diff replié, commande complète et suivi de la boucle ([5c263b1](https://github.com/timiliris/relay/commit/5c263b130cda02541050f72cf66ac40047b4d89a))
+* **agent:** commandes Git du dossier de travail (status, diff, index, commit, journal, branches) ([19d8497](https://github.com/timiliris/relay/commit/19d84979c888f0b4ebe484b5d5a880f47301d6b9))
+* **agent:** contexte de projet construit, mis en cache et injecté en tête de conversation ([ebcc034](https://github.com/timiliris/relay/commit/ebcc034cda4ee30a61866fcfc0d343e6753e7fd1))
+* **agent:** mentions [@fichier](https://github.com/fichier) et bouton « Ajouter au message » dans le volet Fichiers ([56dce5e](https://github.com/timiliris/relay/commit/56dce5eb9978a9821479cd8e2dde154c913b928d))
+* **browser:** navigateur intégré et lecture de pages web par l'agent ([ff71c23](https://github.com/timiliris/relay/commit/ff71c235a5610f0804dd0ab0e6f54d20f8cab48e))
+* **chat:** volet Git du dossier de travail ([f90cb39](https://github.com/timiliris/relay/commit/f90cb39d6ea97fcf4779732a794f94a7e2fdb40e))
+* **explorer:** éditeur CodeMirror 6 à la place de la zone de texte du volet Fichiers ([f0cafbd](https://github.com/timiliris/relay/commit/f0cafbd443c340b345c693a2950e2753e98dc9a1))
+* **settings:** réglage « Contexte de projet au démarrage » dans la section Développement ([87a53fc](https://github.com/timiliris/relay/commit/87a53fcabea9b42f7fa817ef035af34ce06ea32d))
+
+
+### Corrections
+
+* **browser:** un seul browser_open à l'ouverture du volet ([740cb41](https://github.com/timiliris/relay/commit/740cb414b8d76e9ff8d59f70eaa18ab8aba183f6))
+
 ## [0.9.0](https://github.com/timiliris/relay/compare/v0.8.0...v0.9.0) (2026-11-02)
 
 
