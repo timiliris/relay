@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.7.0](https://github.com/timiliris/relay/compare/v0.6.2...v0.7.0) (2026-11-02)
+
+
+### Nouveautés
+
+* **settings:** page réorganisée en sections avec sommaire ([36ba853](https://github.com/timiliris/relay/commit/36ba8535cc1315e70e7a1ebb814f3ec3fc2b859c))
+
 ## [0.6.2](https://github.com/timiliris/relay/compare/v0.6.1...v0.6.2) (2026-11-02)
 
 
