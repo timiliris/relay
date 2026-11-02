@@ -8,6 +8,8 @@ import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { type LanguageSetting, resolveLanguage } from '@/i18n';
+import { DEFAULT_AUTO_COMMANDS } from '@/lib/agent/tools';
+import type { ApprovalPolicy } from '@/lib/agent/types';
 import type { ProviderSort } from '@/lib/openrouter';
 import { defaultSnippets, type Snippet } from '@/lib/snippets';
 import { isTauri } from '@/lib/tauri';
@@ -70,6 +72,10 @@ export interface SettingsData extends GenerationParams {
   /** Raccourcis de prompt (`/résume`…), créés à la première ouverture dans la langue de l'UI. */
   snippets: Snippet[];
   snippetsSeeded: boolean;
+  /** Mode agent : approbation des outils, délai max d'une commande (s), commandes auto-approuvées. */
+  agentApproval: ApprovalPolicy;
+  agentCommandTimeout: number;
+  agentAutoCommands: string[];
 }
 
 export interface SettingsState extends SettingsData {
@@ -105,6 +111,9 @@ const defaults: SettingsData = {
   lastConversationId: null,
   snippets: [],
   snippetsSeeded: false,
+  agentApproval: 'autoRead',
+  agentCommandTimeout: 120,
+  agentAutoCommands: [...DEFAULT_AUTO_COMMANDS],
   ...defaultGeneration,
 };
 

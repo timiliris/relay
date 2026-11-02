@@ -36,6 +36,7 @@ import { toast } from '@/stores/toast';
 import { Markdown } from './markdown';
 import { ModelPicker } from './model-picker';
 import { PresetAvatar } from './preset-avatar';
+import { ToolCallCard, ToolCallList } from './tool-call-card';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { IconButton } from './ui/tooltip-button';
@@ -89,6 +90,7 @@ export function MessageBubble({
   // Pendant le streaming, le Markdown est re-rendu au plus toutes les 80 ms.
   const displayed = useThrottledValue(message.content, 80, streaming);
   const isUser = message.role === 'user';
+  if (message.role === 'tool') return <ToolCallCard message={message} />;
   const hasUsage = message.promptTokens !== null && message.completionTokens !== null;
   const seconds = message.durationMs ? message.durationMs / 1000 : null;
   const tps =
@@ -251,6 +253,9 @@ export function MessageBubble({
       <div className="min-w-0 flex-1">
         {showReasoning && message.reasoning && (
           <Reasoning text={message.reasoning} streaming={streaming && !message.content} />
+        )}
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <ToolCallList calls={message.toolCalls} streaming={streaming} />
         )}
         {displayed ? (
           <Markdown className="text-sm">{displayed}</Markdown>

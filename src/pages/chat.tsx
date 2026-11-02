@@ -10,6 +10,7 @@ import {
   Pin,
   Scissors,
   Sparkles,
+  Wrench,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,6 +25,7 @@ import { PresetBadges } from '@/components/preset-avatar';
 import { PresetPicker } from '@/components/preset-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/tooltip-button';
+import { WorkspacePicker } from '@/components/workspace-picker';
 import { useWindowTitle } from '@/hooks/use-window-title';
 import { resolveLanguage } from '@/i18n';
 import {
@@ -45,7 +47,7 @@ import { chartBg } from '@/lib/color';
 import { estimateContext } from '@/lib/context';
 import type { Attachment, Message, PersonaMemory } from '@/lib/db';
 import { formatCost } from '@/lib/format';
-import { supportsImages } from '@/lib/openrouter';
+import { supportsImages, supportsTools } from '@/lib/openrouter';
 import { estimateMemoryTokens, summarizeForMemory } from '@/lib/persona-memory';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { siblingIndex, siblingsOf } from '@/lib/tree';
@@ -128,6 +130,14 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   const model = conversation?.model ?? settings.defaultModel;
   const systemPrompt = conversation ? (conversation.systemPrompt ?? '') : settings.systemPrompt;
   const webSearch = conversation ? conversation.webSearch : settings.webSearch;
+  const agentOn = Boolean(conversation?.agent && conversation?.workspace);
+  const agentTitle = !conversation?.workspace
+    ? t('chat.agent.needWorkspace')
+    : !supportsTools(modelInfo)
+      ? t('chat.agent.needTools')
+      : agentOn
+        ? t('chat.agent.toggleOn')
+        : t('chat.agent.toggleOff');
   const totalCost = useMemo(() => messages.reduce((sum, m) => sum + (m.cost ?? 0), 0), [messages]);
   const context = useMemo(
     () =>
@@ -277,6 +287,7 @@ export function ChatPage({ conversationId }: ChatPageProps) {
           {conversation?.title ?? (showEmpty ? t('chat.emptyTitle') : t('chat.untitled'))}
         </p>
         {preset && <PresetBadges preset={preset} className="hidden sm:inline-flex" />}
+        <WorkspacePicker conversation={conversation} />
         {totalCost > 0 && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
@@ -488,6 +499,20 @@ export function ChatPage({ conversationId }: ChatPageProps) {
               >
                 <Globe className="size-4" />
                 <span className="hidden text-xs lg:inline">{t('chat.webSearch')}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                title={agentTitle}
+                className={cn('gap-1.5', agentOn ? 'text-primary' : 'text-muted-foreground')}
+                aria-pressed={agentOn}
+                disabled={!conversation?.workspace || (!agentOn && !supportsTools(modelInfo))}
+                onClick={() =>
+                  conversation && void updateConversation(conversation.id, { agent: !agentOn })
+                }
+              >
+                <Wrench className="size-4" />
+                <span className="hidden text-xs lg:inline">{t('chat.agent.toggle')}</span>
               </Button>
               {systemPrompt.trim() && (
                 <span

@@ -204,6 +204,56 @@
       "empty": "Aucun message épinglé dans cette conversation.",
       "goTo": "Aller au message",
       "you": "Vous"
+    },
+    "agent": {
+      "toggle": "Agent",
+      "toggleOn": "Mode agent actif : le modèle peut utiliser les outils du dossier de travail",
+      "toggleOff": "Activer le mode agent (outils dans le dossier de travail)",
+      "needWorkspace": "Choisissez d'abord un dossier de travail",
+      "needTools": "Ce modèle n'accepte pas les appels d'outils : choisissez-en un autre",
+      "workspace": "Dossier de travail",
+      "chooseWorkspace": "Choisir un dossier…",
+      "changeWorkspace": "Changer de dossier",
+      "clearWorkspace": "Retirer le dossier",
+      "workspaceSet": "Dossier de travail : {{name}}",
+      "stepLimit": "Limite de {{count}} appels d'outils atteinte : l'agent s'arrête. Envoyez un message pour continuer.",
+      "stopped": "Agent arrêté.",
+      "pending_one": "{{count}} autorisation en attente",
+      "pending_other": "{{count}} autorisations en attente"
+    },
+    "tools": {
+      "names": {
+        "list_files": "Lister des fichiers",
+        "read_file": "Lire un fichier",
+        "write_file": "Écrire un fichier",
+        "edit_file": "Modifier un fichier",
+        "search_files": "Rechercher dans les fichiers",
+        "run_command": "Exécuter une commande",
+        "unknown": "Outil inconnu"
+      },
+      "status": {
+        "pending": "Autorisation requise",
+        "running": "En cours…",
+        "done": "Terminé",
+        "denied": "Refusé",
+        "error": "Erreur",
+        "cancelled": "Annulé"
+      },
+      "allow": "Autoriser",
+      "allowAlways": "Toujours pour cette conversation",
+      "deny": "Refuser",
+      "deniedByUser": "Appel refusé par l'utilisateur.",
+      "cancelledByUser": "Annulé par l'utilisateur.",
+      "exitCode": "code {{code}}",
+      "timedOut": "délai dépassé",
+      "truncated": "sortie tronquée",
+      "showDetails": "Afficher le détail",
+      "hideDetails": "Masquer le détail",
+      "summary_one": "{{count}} appel d'outil",
+      "summary_other": "{{count}} appels d'outils",
+      "noOutput": "(aucune sortie)",
+      "riskWrite": "Modifie des fichiers ou exécute une commande",
+      "riskRead": "Lecture seule"
     }
   },
   "search": {
@@ -238,7 +288,9 @@
     "sort": "Trier",
     "sortName": "Nom",
     "sortPrice": "Prix",
-    "sortContext": "Contexte"
+    "sortContext": "Contexte",
+    "filterTools": "Outils",
+    "tools": "Accepte les appels d'outils (mode agent)"
   },
   "params": {
     "title": "Paramètres de génération",
@@ -509,7 +561,8 @@
       "appearance": "Apparence",
       "app": "Application",
       "data": "Données",
-      "about": "À propos"
+      "about": "À propos",
+      "developer": "Développement"
     },
     "creditsRemainingLabel": "Restant",
     "creditsUsedLabel": "Utilisé",
@@ -533,7 +586,27 @@
     "restartOnboardingHint": "Revoir les étapes du premier lancement (clé, modèle, préférences).",
     "restart": "Relancer",
     "dangerZoneHint": "Irréversible : les conversations supprimées ne peuvent pas être récupérées.",
-    "repo": "Code source et versions"
+    "repo": "Code source et versions",
+    "developer": {
+      "title": "Développement",
+      "help": "Mode agent : le modèle peut lire, écrire et exécuter dans un dossier de travail que vous choisissez par conversation. Chaque action est tracée dans le fil.",
+      "approval": "Approbation des outils",
+      "approvalAsk": "Toujours demander",
+      "approvalAutoRead": "Lectures automatiques",
+      "approvalAutoAll": "Tout automatique",
+      "approvalHint": {
+        "ask": "Chaque appel d'outil attend votre accord, même une simple lecture.",
+        "autoRead": "Lister, lire et chercher passent sans question ; écrire et exécuter attendent votre accord (sauf les commandes auto-approuvées ci-dessous).",
+        "autoAll": "Aucune question : le modèle écrit et exécute librement dans le dossier de travail."
+      },
+      "autoAllWarning": "Le modèle pourra modifier des fichiers et lancer des commandes sans confirmation. À réserver à des dossiers de travail jetables ou versionnés.",
+      "commands": "Commandes",
+      "timeout": "Délai maximal d'une commande",
+      "timeoutHint": "En secondes (5 à 600). Le modèle peut demander moins, jamais plus.",
+      "autoCommands": "Commandes auto-approuvées",
+      "autoCommandsHint": "Une par ligne : une commande qui commence par l'un de ces préfixes est traitée comme une lecture. Les enchaînements (;, &&, |, >) ne sont jamais auto-approuvés.",
+      "restoreCommands": "Restaurer la liste par défaut"
+    }
   },
   "onboarding": {
     "welcome": "Bienvenue dans Relay",
@@ -590,6 +663,8 @@
     "api_key_missing": "Aucune clé API OpenRouter configurée.",
     "api_key_empty": "La clé API ne peut pas être vide.",
     "network": "Connexion à OpenRouter impossible. Vérifiez votre réseau.",
-    "keyring": "Accès au trousseau du système impossible."
+    "keyring": "Accès au trousseau du système impossible.",
+    "tool": "L'outil a échoué.",
+    "workspace_denied": "Chemin hors du dossier de travail : refusé."
   }
 }

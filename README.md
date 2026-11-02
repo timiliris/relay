@@ -28,6 +28,12 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 - Page **Usage** : dépenses et tokens par jour et par modèle.
 - **Import** d'exports ChatGPT, Claude ou Relay ; export Markdown par conversation, export JSON complet.
 
+**Mode développement (agent)**
+
+- **Dossier de travail** attaché à une conversation (bouton dossier dans l'en-tête ; sans conversation ouverte, choisir un dossier en crée une en mode agent) et interrupteur **Agent** dans le composeur, actif avec un modèle qui accepte les appels d'outils (icône clé dans le sélecteur, filtre « Outils »).
+- **Outils** exécutés par Rust, toujours à l'intérieur du dossier : lister, lire, écrire, éditer (fragment exact et unique, diff affiché), rechercher (regex, `.gitignore` respecté), exécuter une commande (PowerShell ou sh, délai et sortie plafonnés) ; Git et GitHub passent par `git` et `gh` du poste.
+- **Approbation** : chaque appel apparaît comme une carte dans le fil (état, arguments, diff, sortie). Politique réglable dans Paramètres, Développement : toujours demander, lectures automatiques (défaut : écritures et commandes attendent votre accord, sauf une liste de commandes de lecture auto-approuvées), ou tout automatique. « Toujours pour cette conversation » mémorise un outil ou un programme ; **Arrêter** refuse ce qui est en attente et tue la commande en cours ; 25 appels au plus par message.
+
 **Modèles et OpenRouter**
 
 - Catalogue complet avec recherche, filtres (favoris, vision, gratuits, raisonnement), favoris, modèles récents, prix par million de tokens.
@@ -94,7 +100,7 @@ src-tauri/src/
 ├── openrouter/sse.rs          # Analyseur SSE incrémental (testé)
 ├── secrets.rs                 # Clé API dans le trousseau système
 ├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement)
-├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas, v3 personnalité, v4 mémoire, v5 épingles)
+├── db.rs                      # Migrations SQLite (v1 conversations/messages, v2 arbre, dossiers, personas, v3 personnalité, v4 mémoire, v5 épingles, v6 outils de l'agent)
 └── menu.rs, tray.rs, shortcut.rs, i18n.rs
 ```
 

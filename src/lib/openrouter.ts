@@ -4,7 +4,35 @@
  */
 import { Channel, invoke } from '@tauri-apps/api/core';
 
-export type Role = 'system' | 'user' | 'assistant';
+export type Role = 'system' | 'user' | 'assistant' | 'tool';
+
+/** Appel d'outil demandé par le modèle ; `arguments` est la chaîne JSON reçue. */
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+/** Appel d'outil au format OpenAI, tel qu'il est renvoyé dans l'historique. */
+export interface ToolCallPayload {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
+export const toToolCallPayload = (call: ToolCall): ToolCallPayload => ({
+  id: call.id,
+  type: 'function',
+  function: { name: call.name, arguments: call.arguments },
+});
+
+/** Outil proposé au modèle (`tools` de la requête). */
+export interface ToolDefinitionInput {
+  type: 'function';
+  function: { name: string; description: string; parameters: Record<string, unknown> };
+}
+
+export type ToolChoice = 'auto' | 'none' | { type: 'function'; function: { name: string } };
 
 /** Partie d'un message multimodal (format OpenAI / OpenRouter). */
 export type ContentPart =
@@ -17,6 +45,10 @@ export interface ChatMessageInput {
   content: string | ContentPart[];
   /** Images générées par l'assistant à un tour précédent (champ `images` de l'API). */
   images?: Extract<ContentPart, { type: 'image_url' }>[];
+  /** Appels d'outils d'un message assistant (noms de champs de l'API, relayés tels quels par Rust). */
+  tool_calls?: ToolCallPayload[];
+  /** Pour `role: 'tool'` : identifiant de l'appel auquel ce message répond. */
+  tool_call_id?: string;
 }
 
 /** Modalités de sortie demandées ; `['image', 'text']` active la génération d'images. */
@@ -36,6 +68,9 @@ export interface ChatRequest {
   ignoreProviders?: string[];
   dataCollectionDeny?: boolean;
   modalities?: OutputModality[];
+  tools?: ToolDefinitionInput[];
+  toolChoice?: ToolChoice;
+  parallelToolCalls?: boolean;
 }
 
 export type StreamEvent =
@@ -43,6 +78,10 @@ export type StreamEvent =
   | { type: 'reasoning'; content: string }
   /** Image générée, sous forme de data URL (`data:image/png;base64,…`). */
   | { type: 'image'; url: string }
+  /** Le modèle commence un appel d'outil (arguments encore en cours de réception). */
+  | { type: 'toolCallStart'; id: string; name: string }
+  /** Appels d'outils complets, juste avant `done` (`finishReason: 'tool_calls'`). */
+  | { type: 'toolCalls'; calls: ToolCall[] }
   | { type: 'usage'; promptTokens: number; completionTokens: number; cost: number | null }
   | { type: 'done'; finishReason: string | null }
   | { type: 'error'; message: string };
@@ -51,6 +90,7 @@ export type StreamEvent =
 export interface CompletionOutput {
   content: string;
   images: string[];
+  toolCalls: ToolCall[];
 }
 
 export interface Credits {
@@ -70,6 +110,8 @@ export interface ModelInfo {
   inputModalities: string[];
   outputModalities: string[];
   supportsReasoning: boolean;
+  /** `supported_parameters` contient `tools` : appels d'outils (mode agent) possibles. */
+  supportsTools: boolean;
   created: number;
 }
 
@@ -108,6 +150,7 @@ export function normalizeModel(raw: unknown): ModelInfo | null {
       ? (m.architecture.output_modalities as string[])
       : ['text'],
     supportsReasoning: params.includes('reasoning') || params.includes('include_reasoning'),
+    supportsTools: params.includes('tools'),
     created: typeof m.created === 'number' ? m.created : 0,
   };
 }
@@ -121,6 +164,10 @@ export const supportsFiles = (model: ModelInfo | undefined): boolean =>
 /** Le modèle produit des images (`architecture.output_modalities` contient `image`). */
 export const supportsImageOutput = (model: ModelInfo | undefined): boolean =>
   model?.outputModalities.includes('image') ?? false;
+
+/** Le modèle accepte les appels d'outils (`supported_parameters` contient `tools`). */
+export const supportsTools = (model: ModelInfo | undefined): boolean =>
+  model?.supportsTools ?? false;
 
 export const openrouter = {
   async fetchModels(): Promise<ModelInfo[]> {

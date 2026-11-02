@@ -1,4 +1,4 @@
-import { Brain, Check, ChevronDown, Eye, ImagePlus, RefreshCw, Star } from 'lucide-react';
+import { Brain, Check, ChevronDown, Eye, ImagePlus, RefreshCw, Star, Wrench } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPrice, formatTokens } from '@/lib/format';
@@ -11,9 +11,9 @@ import { Dropdown } from './ui/dropdown';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
 
-type Filter = 'all' | 'favorites' | 'vision' | 'images' | 'free' | 'reasoning';
+type Filter = 'all' | 'favorites' | 'vision' | 'images' | 'free' | 'reasoning' | 'tools';
 type Sort = 'name' | 'price' | 'context';
-const FILTERS: Filter[] = ['all', 'favorites', 'vision', 'images', 'free', 'reasoning'];
+const FILTERS: Filter[] = ['all', 'favorites', 'vision', 'images', 'free', 'reasoning', 'tools'];
 const FILTER_LABELS = {
   all: 'model.filterAll',
   favorites: 'model.filterFavorites',
@@ -21,6 +21,7 @@ const FILTER_LABELS = {
   images: 'chat.images.filter',
   free: 'model.filterFree',
   reasoning: 'model.filterReasoning',
+  tools: 'model.filterTools',
 } as const satisfies Record<Filter, string>;
 
 interface ModelPickerProps {
@@ -67,6 +68,7 @@ export function ModelPicker({
     if (filter === 'free')
       list = list.filter((m) => m.promptPrice === 0 && m.completionPrice === 0);
     if (filter === 'reasoning') list = list.filter((m) => m.supportsReasoning);
+    if (filter === 'tools') list = list.filter((m) => m.supportsTools);
     list = [...list].sort((a, b) =>
       sort === 'price'
         ? a.promptPrice + a.completionPrice - (b.promptPrice + b.completionPrice) ||
@@ -246,6 +248,9 @@ function Row({
               className="size-3 shrink-0 text-chart-1"
               aria-label={t('model.filterReasoning')}
             />
+          )}
+          {model.supportsTools && (
+            <Wrench className="size-3 shrink-0 text-chart-5" aria-label={t('model.tools')} />
           )}
           {selected && <Check className="size-3.5 shrink-0 text-primary" />}
         </div>

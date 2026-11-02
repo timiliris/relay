@@ -122,6 +122,46 @@ describe('buildHistory : images générées', () => {
   });
 });
 
+describe('buildHistory en mode agent', () => {
+  it('ajoute le bloc agent, relaie les appels d’outils et les résultats au format OpenAI', () => {
+    const history = buildHistory(
+      conv({ systemPrompt: 'Sois bref.', workspace: 'C:\\work\\relay', agent: true }),
+      [
+        msg('u1', 'user', 'Lis a.rs'),
+        msg('a1', 'assistant', '', {
+          toolCalls: [{ id: 'call_1', name: 'read_file', arguments: '{"path":"a.rs"}' }],
+        }),
+        msg('t1', 'tool', 'fn main() {}', { toolCallId: 'call_1', toolName: 'read_file' }),
+        msg('a2', 'assistant', 'Voici a.rs.'),
+      ],
+    );
+    expect(history[0]?.role).toBe('system');
+    expect(history[0]?.content).toContain('Sois bref.');
+    expect(history[0]?.content).toContain('Mode agent');
+    expect(history[0]?.content).toContain('C:\\work\\relay');
+    expect(history[2]).toEqual({
+      role: 'assistant',
+      content: '',
+      tool_calls: [
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'read_file', arguments: '{"path":"a.rs"}' },
+        },
+      ],
+    });
+    expect(history[3]).toEqual({ role: 'tool', content: 'fn main() {}', tool_call_id: 'call_1' });
+    expect(history[4]).toEqual({ role: 'assistant', content: 'Voici a.rs.' });
+  });
+
+  it('n’ajoute rien quand le mode agent est inactif ou sans dossier', () => {
+    const off = buildHistory(conv({ systemPrompt: 'Sois bref.', agent: true }), [
+      msg('u1', 'user', 'Salut'),
+    ]);
+    expect(off[0]?.content).toBe('Sois bref.');
+  });
+});
+
 describe('effectiveParams', () => {
   it('préfère les réglages de la conversation aux valeurs globales', () => {
     useSettings.setState({ temperature: 0.7, topP: null, maxTokens: null, reasoning: true });

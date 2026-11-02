@@ -1,0 +1,211 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useAgent } from '@/stores/agent';
+import { useChat } from '@/stores/chat';
+import { useSettings } from '@/stores/settings';
+import type { Conversation, Message } from '../db';
+import { runAgentTurn } from './runner';
+
+const { added, updated, commands } = vi.hoisted(() => ({
+  added: [] as Array<Record<string, unknown>>,
+  updated: [] as Array<[string, Record<string, unknown>]>,
+  commands: {
+    registerWorkspace: vi.fn(async (path: string) => ({ root: path, name: 'relay', git: true })),
+    readFile: vi.fn(async () => ({ content: 'fn main() {}\n', totalLines: 1, truncated: false })),
+    runCommand: vi.fn(async () => ({
+      exitCode: 0,
+      stdout: 'ok\n',
+      stderr: '',
+      durationMs: 42,
+      timedOut: false,
+      truncated: false,
+    })),
+    applyChange: vi.fn(async () => ({
+      diff: '--- a\n+++ b\n@@\n-x\n+y',
+      exists: true,
+      created: false,
+    })),
+    listFiles: vi.fn(),
+    search: vi.fn(),
+    previewChange: vi.fn(),
+    cancelTool: vi.fn(),
+  },
+}));
+
+vi.mock('./commands', () => ({ agentCommands: commands }));
+
+vi.mock('../db', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db')>();
+  let seq = 0;
+  return {
+    ...actual,
+    messages: {
+      ...actual.messages,
+      async add(input: Record<string, unknown>) {
+        added.push(input);
+        return { id: `t${++seq}`, active: true, pinned: false, createdAt: '', ...input };
+      },
+      async update(id: string, patch: Record<string, unknown>) {
+        updated.push([id, patch]);
+      },
+    },
+  };
+});
+
+vi.mock('@tauri-apps/plugin-os', () => ({ platform: () => 'windows' }));
+
+const conversation: Conversation = {
+  id: 'c1',
+  title: 'Agent',
+  model: 'openai/gpt-4.1',
+  systemPrompt: null,
+  pinned: false,
+  archived: false,
+  folderId: null,
+  presetId: null,
+  temperature: null,
+  topP: null,
+  maxTokens: null,
+  reasoning: null,
+  webSearch: false,
+  summary: null,
+  summaryUntilId: null,
+  workspace: 'C:\\work\\relay',
+  agent: true,
+  createdAt: '',
+  updatedAt: '',
+};
+
+const assistant: Message = {
+  id: 'a1',
+  conversationId: 'c1',
+  parentId: null,
+  active: true,
+  role: 'assistant',
+  content: '',
+  reasoning: null,
+  attachments: [],
+  model: 'openai/gpt-4.1',
+  promptTokens: null,
+  completionTokens: null,
+  cost: null,
+  finishReason: 'tool_calls',
+  durationMs: null,
+  pinned: false,
+  createdAt: '',
+};
+
+describe('runAgentTurn', () => {
+  beforeEach(() => {
+    added.length = 0;
+    updated.length = 0;
+    vi.clearAllMocks();
+    useSettings.getState().patch({ agentApproval: 'autoRead' });
+    useAgent.setState({ pending: [], allowed: {}, steps: {}, aborted: false, workspaces: {} });
+    useChat.setState({ conversationId: 'c1', all: [assistant], messages: [assistant] });
+    useAgent.getState().startTurn('c1');
+  });
+
+  it('exécute une lecture sans question puis relance le modèle sous le message tool', async () => {
+    const continueWith = vi.fn(async () => {});
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_1', name: 'read_file', arguments: '{"path":"src/main.rs"}' }],
+      continueWith,
+    );
+    expect(commands.registerWorkspace).toHaveBeenCalledWith('C:\\work\\relay');
+    expect(commands.readFile).toHaveBeenCalledWith('C:\\work\\relay', 'src/main.rs', 1, 400);
+    expect(added[0]).toMatchObject({ role: 'tool', parentId: 'a1', toolCallId: 'call_1' });
+    const [, patch] = updated.at(-1) ?? [];
+    expect(String(patch?.content)).toContain('    1| fn main() {}');
+    expect(patch?.toolMeta).toMatchObject({ status: 'done', risk: 'read' });
+    expect(continueWith).toHaveBeenCalledWith('t1');
+    expect(useChat.getState().messages.at(-1)?.role).toBe('tool');
+  });
+
+  it('attend l’autorisation pour une commande, puis l’exécute quand elle est accordée', async () => {
+    const continueWith = vi.fn(async () => {});
+    const turn = runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_2', name: 'run_command', arguments: '{"command":"pnpm test"}' }],
+      continueWith,
+    );
+    // Laisse la boucle créer le message tool et enregistrer l'attente.
+    await vi.waitFor(() => expect(useAgent.getState().pending).toHaveLength(1));
+    expect(commands.runCommand).not.toHaveBeenCalled();
+    const pendingId = useAgent.getState().pending[0]?.toolMessageId ?? '';
+    useAgent.getState().decide(pendingId, 'allowAlways');
+    await turn;
+    expect(commands.runCommand).toHaveBeenCalledWith(
+      pendingId,
+      'C:\\work\\relay',
+      'pnpm test',
+      120,
+    );
+    expect(useAgent.getState().allowed.c1).toEqual(['cmd:pnpm']);
+    const [, patch] = updated.at(-1) ?? [];
+    expect(String(patch?.content)).toContain('exit code: 0');
+    expect(patch?.toolMeta).toMatchObject({ status: 'done', exitCode: 0 });
+    expect(continueWith).toHaveBeenCalledTimes(1);
+  });
+
+  it('transmet un refus au modèle sans exécuter l’outil', async () => {
+    const continueWith = vi.fn(async () => {});
+    const turn = runAgentTurn(
+      conversation,
+      assistant,
+      [{ id: 'call_3', name: 'edit_file', arguments: '{"path":"a","old":"x","new":"y"}' }],
+      continueWith,
+    );
+    await vi.waitFor(() => expect(useAgent.getState().pending).toHaveLength(1));
+    useAgent.getState().decide(useAgent.getState().pending[0]?.toolMessageId ?? '', 'deny');
+    await turn;
+    expect(commands.applyChange).not.toHaveBeenCalled();
+    const [, patch] = updated.at(-1) ?? [];
+    expect(patch?.toolMeta).toMatchObject({ status: 'denied' });
+    expect(continueWith).toHaveBeenCalledTimes(1);
+  });
+
+  it('s’arrête sans relancer le modèle quand l’utilisateur interrompt', async () => {
+    const continueWith = vi.fn(async () => {});
+    const turn = runAgentTurn(
+      conversation,
+      assistant,
+      [
+        { id: 'call_4', name: 'run_command', arguments: '{"command":"pnpm build"}' },
+        { id: 'call_5', name: 'read_file', arguments: '{"path":"b"}' },
+      ],
+      continueWith,
+    );
+    await vi.waitFor(() => expect(useAgent.getState().pending).toHaveLength(1));
+    useAgent.getState().abort();
+    await turn;
+    expect(commands.runCommand).not.toHaveBeenCalled();
+    expect(commands.readFile).not.toHaveBeenCalled();
+    expect(updated.map(([, p]) => (p.toolMeta as { status: string }).status)).toEqual([
+      'cancelled',
+      'cancelled',
+    ]);
+    expect(continueWith).not.toHaveBeenCalled();
+  });
+
+  it('signale un outil inconnu et convertit une erreur Rust en résultat « error »', async () => {
+    commands.readFile.mockRejectedValueOnce(new Error('binary'));
+    const continueWith = vi.fn(async () => {});
+    await runAgentTurn(
+      conversation,
+      assistant,
+      [
+        { id: 'call_6', name: 'teleport', arguments: '{}' },
+        { id: 'call_7', name: 'read_file', arguments: '{"path":"img.png"}' },
+      ],
+      continueWith,
+    );
+    const statuses = updated.map(([, p]) => (p.toolMeta as { status: string }).status);
+    expect(statuses).toEqual(['error', 'error']);
+    expect(String(updated[0]?.[1].content)).toContain('unknown tool');
+    expect(String(updated[1]?.[1].content)).toContain('binary');
+    expect(continueWith).toHaveBeenCalledTimes(1);
+  });
+});

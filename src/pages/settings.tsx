@@ -10,6 +10,7 @@ import {
   Route,
   Slash,
   UserRound,
+  Wrench,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import { AppSection } from '@/components/settings/app-section';
 import { AppearanceSection } from '@/components/settings/appearance-section';
 import { DataSection } from '@/components/settings/data-section';
 import { DefaultsSection } from '@/components/settings/defaults-section';
+import { DeveloperSection } from '@/components/settings/developer-section';
 import { PersonasSection } from '@/components/settings/personas-section';
 import { RoutingSection } from '@/components/settings/routing-section';
 import { SettingsNav, type SettingsNavItem } from '@/components/settings/settings-nav';
@@ -47,6 +49,7 @@ export function SettingsPage() {
       { id: 'presets', label: t('settings.sections.personas'), icon: UserRound },
       { id: 'snippets', label: t('settings.sections.snippets'), icon: Slash },
       { id: 'routing', label: t('settings.sections.routing'), icon: Route },
+      { id: 'developer', label: t('settings.sections.developer'), icon: Wrench },
       { id: 'appearance', label: t('settings.sections.appearance'), icon: Palette },
       { id: 'app', label: t('settings.sections.app'), icon: AppWindow },
       { id: 'data', label: t('settings.sections.data'), icon: Database },
@@ -149,6 +152,7 @@ export function SettingsPage() {
             <PersonasSection />
             <SnippetSettings />
             <RoutingSection />
+            <DeveloperSection />
             <AppearanceSection />
             <AppSection />
             <DataSection />

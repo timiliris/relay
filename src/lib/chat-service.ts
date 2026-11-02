@@ -7,12 +7,17 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification';
 import i18n, { resolveLanguage } from '@/i18n';
+import { useAgent } from '@/stores/agent';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { useModels } from '@/stores/models';
 import { memoriesOf, usePersonaMemory } from '@/stores/persona-memory';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
+import { agentCommands } from './agent/commands';
+import { agentSystemPrompt } from './agent/prompt';
+import { agentEnabled, osName, runAgentTurn } from './agent/runner';
+import { toolDefinitions } from './agent/tools';
 import { toContentParts } from './attachments';
 import {
   type Attachment,
@@ -30,6 +35,9 @@ import {
   type ChatRequest,
   openrouter,
   supportsImageOutput,
+  supportsTools,
+  type ToolCall,
+  toToolCallPayload,
 } from './openrouter';
 import { buildSystemPrompt, greetingOf } from './persona';
 import { formatMemoryBlock } from './persona-memory';
@@ -49,6 +57,10 @@ const emptyAssistant = {
   cost: null,
   finishReason: null,
   durationMs: null,
+  toolCalls: null,
+  toolCallId: null,
+  toolName: null,
+  toolMeta: null,
 };
 
 /** Paramètres effectifs : ceux de la conversation, sinon les valeurs globales. */
@@ -182,6 +194,10 @@ export async function retryLast(conversation: Conversation): Promise<void> {
 export function stopStreaming(): void {
   const stream = useChat.getState().stream;
   if (stream) void openrouter.cancelStream(stream.requestId);
+  // Mode agent : refuse les approbations en attente et interrompt la boucle.
+  const agent = useAgent.getState();
+  agent.abort();
+  if (agent.runningToolId) void agentCommands.cancelTool(agent.runningToolId);
 }
 
 /**
@@ -197,7 +213,11 @@ export async function summarizeOlder(conversation: Conversation): Promise<boolea
   if (candidates.length < 2) return false;
 
   const transcript = candidates
-    .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+    .map((m) => {
+      const who =
+        m.role === 'user' ? 'User' : m.role === 'tool' ? `Tool ${m.toolName ?? ''}` : 'Assistant';
+      return `${who}: ${m.content}`;
+    })
     .join('\n\n');
   const previous = conversation.summary
     ? `${i18n.t('chat.summaryPrevious')}\n${conversation.summary}\n\n`
@@ -230,8 +250,20 @@ export function buildHistory(conversation: Conversation, path: Message[]): ChatM
         resolveLanguage(useSettings.getState().language),
       )
     : null;
+  const agentBlock =
+    agentEnabled(conversation) && conversation.workspace
+      ? agentSystemPrompt(
+          {
+            workspace: conversation.workspace,
+            os: osName(),
+            git: useAgent.getState().workspaces[conversation.id]?.git ?? false,
+          },
+          resolveLanguage(useSettings.getState().language),
+        )
+      : null;
   const system = [
     conversation.systemPrompt,
+    agentBlock,
     memory,
     conversation.summary && `${i18n.t('chat.summaryLabel')}\n${conversation.summary}`,
   ]
@@ -244,10 +276,24 @@ export function buildHistory(conversation: Conversation, path: Message[]): ChatM
     : 0;
   for (const m of path.slice(Math.max(0, start))) {
     if (m.role === 'system') continue;
+    if (m.role === 'tool') {
+      input.push({
+        role: 'tool',
+        content: m.content || '(no output)',
+        tool_call_id: m.toolCallId ?? '',
+      });
+      continue;
+    }
     if (m.role === 'assistant') {
       // Les images générées repartent dans `images`, pas dans `content` (édition multi-tours).
       const images = toImageParts(m.attachments);
-      input.push({ role: m.role, content: m.content, ...(images.length ? { images } : {}) });
+      const toolCalls = m.toolCalls?.length ? m.toolCalls.map(toToolCallPayload) : null;
+      input.push({
+        role: m.role,
+        content: m.content,
+        ...(images.length ? { images } : {}),
+        ...(toolCalls ? { tool_calls: toolCalls } : {}),
+      });
       continue;
     }
     input.push({ role: m.role, content: toContentParts(m.content, m.attachments) });
@@ -276,6 +322,10 @@ function buildRequest(
     // Seuls les modèles à sortie image acceptent `modalities` : ne l'envoyer qu'à eux.
     ...(supportsImageOutput(useModels.getState().byId(conversation.model))
       ? { modalities: ['image', 'text'] as const }
+      : {}),
+    // Mode agent : outils proposés seulement aux modèles qui les acceptent, un appel à la fois.
+    ...(agentEnabled(conversation) && supportsTools(useModels.getState().byId(model))
+      ? { tools: toolDefinitions(), parallelToolCalls: false }
       : {}),
   };
 }
@@ -322,10 +372,15 @@ async function runAssistant(
     upTo >= 0 ? path.slice(0, upTo + (resume ? 1 : 0)) : path,
   );
 
+  // Nouveau tour utilisateur (parent non `tool`) : remise à zéro du compteur d'étapes de l'agent.
+  const parentMessage = useChat.getState().all.find((m) => m.id === parentId);
+  if (!resume && parentMessage?.role !== 'tool') useAgent.getState().startTurn(conversation.id);
+
   const acc = {
     content: resume?.content ?? '',
     reasoning: resume?.reasoning ?? '',
     attachments: [...(resume?.attachments ?? [])],
+    toolCalls: [] as ToolCall[],
     usage: null as { promptTokens: number; completionTokens: number; cost: number | null } | null,
     finishReason: null as string | null,
     error: null as string | null,
@@ -377,6 +432,16 @@ async function runAssistant(
           void msgRepo.update(assistant.id, { attachments: acc.attachments });
           break;
         }
+        case 'toolCallStart':
+          if (!acc.toolCalls.some((c) => c.id === event.id)) {
+            acc.toolCalls.push({ id: event.id, name: event.name, arguments: '' });
+            const current = useChat.getState().all.find((m) => m.id === assistant.id);
+            if (current) useChat.getState().upsert({ ...current, toolCalls: [...acc.toolCalls] });
+          }
+          break;
+        case 'toolCalls':
+          acc.toolCalls = event.calls;
+          break;
         case 'usage':
           acc.usage = event;
           break;
@@ -405,9 +470,10 @@ async function runAssistant(
     cost: (acc.usage?.cost ?? 0) + (resume?.cost ?? 0) || null,
     finishReason,
     durationMs,
+    toolCalls: acc.toolCalls.length ? acc.toolCalls : null,
   };
 
-  if (!acc.content && !acc.reasoning && acc.attachments.length === 0) {
+  if (!acc.content && !acc.reasoning && acc.attachments.length === 0 && !acc.toolCalls.length) {
     // Rien reçu (erreur immédiate ou arrêt avant le premier token) : pas de message vide.
     await msgRepo.removeSubtree(conversation.id, assistant.id);
     useChat.getState().removeMany([assistant.id]);
@@ -421,6 +487,7 @@ async function runAssistant(
       cost: final.cost,
       finishReason,
       durationMs,
+      toolCalls: final.toolCalls ?? null,
     });
     useChat.getState().upsert(final);
   }
@@ -430,6 +497,19 @@ async function runAssistant(
   const at = await convRepo.touch(conversation.id);
   useConversations.getState().touched(conversation.id, at);
   useSettings.getState().rememberModel(model);
+
+  // Mode agent : exécute les outils demandés puis laisse le modèle poursuivre.
+  const wantsTools =
+    !acc.error &&
+    finishReason === 'tool_calls' &&
+    acc.toolCalls.length > 0 &&
+    agentEnabled(conversation);
+  if (wantsTools) {
+    await runAgentTurn(conversation, final, acc.toolCalls, (nextParent) =>
+      runAssistant(conversation, nextParent, undefined, modelOverride),
+    );
+    return;
+  }
 
   if (!acc.error && useSettings.getState().notifyOnComplete) {
     void notifyIfHidden(conversation.title, acc.content);

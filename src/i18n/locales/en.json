@@ -204,6 +204,56 @@
       "empty": "No pinned message in this conversation.",
       "goTo": "Go to message",
       "you": "You"
+    },
+    "agent": {
+      "toggle": "Agent",
+      "toggleOn": "Agent mode on: the model can use the workspace tools",
+      "toggleOff": "Enable agent mode (tools in the workspace folder)",
+      "needWorkspace": "Choose a workspace folder first",
+      "needTools": "This model does not support tool calls: pick another one",
+      "workspace": "Workspace folder",
+      "chooseWorkspace": "Choose a folder…",
+      "changeWorkspace": "Change folder",
+      "clearWorkspace": "Remove folder",
+      "workspaceSet": "Workspace: {{name}}",
+      "stepLimit": "Limit of {{count}} tool calls reached: the agent stops. Send a message to continue.",
+      "stopped": "Agent stopped.",
+      "pending_one": "{{count}} approval pending",
+      "pending_other": "{{count}} approvals pending"
+    },
+    "tools": {
+      "names": {
+        "list_files": "List files",
+        "read_file": "Read file",
+        "write_file": "Write file",
+        "edit_file": "Edit file",
+        "search_files": "Search files",
+        "run_command": "Run command",
+        "unknown": "Unknown tool"
+      },
+      "status": {
+        "pending": "Approval required",
+        "running": "Running…",
+        "done": "Done",
+        "denied": "Denied",
+        "error": "Error",
+        "cancelled": "Cancelled"
+      },
+      "allow": "Allow",
+      "allowAlways": "Always for this conversation",
+      "deny": "Deny",
+      "deniedByUser": "Tool call denied by the user.",
+      "cancelledByUser": "Cancelled by the user.",
+      "exitCode": "exit {{code}}",
+      "timedOut": "timed out",
+      "truncated": "output truncated",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "summary_one": "{{count}} tool call",
+      "summary_other": "{{count}} tool calls",
+      "noOutput": "(no output)",
+      "riskWrite": "Changes files or runs a command",
+      "riskRead": "Read only"
     }
   },
   "search": {
@@ -238,7 +288,9 @@
     "sort": "Sort",
     "sortName": "Name",
     "sortPrice": "Price",
-    "sortContext": "Context"
+    "sortContext": "Context",
+    "filterTools": "Tools",
+    "tools": "Supports tool calls (agent mode)"
   },
   "params": {
     "title": "Generation settings",
@@ -509,7 +561,8 @@
       "appearance": "Appearance",
       "app": "Application",
       "data": "Data",
-      "about": "About"
+      "about": "About",
+      "developer": "Development"
     },
     "creditsRemainingLabel": "Remaining",
     "creditsUsedLabel": "Used",
@@ -533,7 +586,27 @@
     "restartOnboardingHint": "Go through the first-launch steps again (key, model, preferences).",
     "restart": "Run again",
     "dangerZoneHint": "Irreversible: deleted conversations cannot be recovered.",
-    "repo": "Source code and releases"
+    "repo": "Source code and releases",
+    "developer": {
+      "title": "Development",
+      "help": "Agent mode: the model can read, write and run inside a workspace folder you choose per conversation. Every action is shown in the thread.",
+      "approval": "Tool approval",
+      "approvalAsk": "Always ask",
+      "approvalAutoRead": "Auto-approve reads",
+      "approvalAutoAll": "Fully automatic",
+      "approvalHint": {
+        "ask": "Every tool call waits for your approval, even a plain read.",
+        "autoRead": "Listing, reading and searching run without asking; writing and running wait for your approval (except the auto-approved commands below).",
+        "autoAll": "No questions: the model writes and runs freely inside the workspace folder."
+      },
+      "autoAllWarning": "The model will be able to change files and run commands without confirmation. Reserve it for disposable or version-controlled folders.",
+      "commands": "Commands",
+      "timeout": "Maximum command duration",
+      "timeoutHint": "In seconds (5 to 600). The model may ask for less, never more.",
+      "autoCommands": "Auto-approved commands",
+      "autoCommandsHint": "One per line: a command starting with one of these prefixes counts as a read. Chains (;, &&, |, >) are never auto-approved.",
+      "restoreCommands": "Restore the default list"
+    }
   },
   "onboarding": {
     "welcome": "Welcome to Relay",
@@ -590,6 +663,8 @@
     "api_key_missing": "No OpenRouter API key configured.",
     "api_key_empty": "The API key cannot be empty.",
     "network": "Could not reach OpenRouter. Check your connection.",
-    "keyring": "Could not access the system keychain."
+    "keyring": "Could not access the system keychain.",
+    "tool": "The tool failed.",
+    "workspace_denied": "Path outside the workspace folder: denied."
   }
 }

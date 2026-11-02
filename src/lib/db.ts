@@ -3,7 +3,8 @@
  * migrations Rust (`src-tauri/src/db.rs`). Ce module est le seul à parler SQL.
  */
 import Database from '@tauri-apps/plugin-sql';
-import type { Role } from './openrouter';
+import type { ToolMeta } from './agent/types';
+import type { Role, ToolCall } from './openrouter';
 import { type Persona, parsePersona, serializePersona } from './persona';
 
 /** Pièce jointe d'un message, stockée en JSON dans la colonne `attachments`. */
@@ -37,6 +38,9 @@ export interface Conversation {
   /** Résumé des anciens messages (jusqu'à `summaryUntilId` inclus). */
   summary: string | null;
   summaryUntilId: string | null;
+  /** Mode agent : dossier de travail (chemin absolu enregistré côté Rust) et activation. */
+  workspace?: string | null;
+  agent?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,6 +65,11 @@ export interface Message {
   durationMs: number | null;
   /** Épinglé dans la conversation (volet des épinglés). */
   pinned: boolean;
+  /** Mode agent : appels demandés par l'assistant, ou (rôle `tool`) appel auquel on répond. */
+  toolCalls?: ToolCall[] | null;
+  toolCallId?: string | null;
+  toolName?: string | null;
+  toolMeta?: ToolMeta | null;
   createdAt: string;
 }
 
@@ -132,6 +141,8 @@ interface ConversationRow {
   web_search: number;
   summary: string | null;
   summary_until_id: string | null;
+  workspace: string | null;
+  agent: number;
   created_at: string;
   updated_at: string;
 }
@@ -152,6 +163,10 @@ interface MessageRow {
   finish_reason: string | null;
   duration_ms: number | null;
   pinned: number;
+  tool_calls: string | null;
+  tool_call_id: string | null;
+  tool_name: string | null;
+  tool_meta: string | null;
   created_at: string;
 }
 
@@ -212,9 +227,20 @@ const toConversation = (r: ConversationRow): Conversation => ({
   webSearch: r.web_search === 1,
   summary: r.summary,
   summaryUntilId: r.summary_until_id,
+  workspace: r.workspace ?? null,
+  agent: r.agent === 1,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
+
+function parseJson<T>(json: string | null): T | null {
+  if (!json) return null;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return null;
+  }
+}
 
 function parseAttachments(json: string | null): Attachment[] {
   if (!json) return [];
@@ -242,6 +268,10 @@ const toMessage = (r: MessageRow): Message => ({
   finishReason: r.finish_reason,
   durationMs: r.duration_ms,
   pinned: r.pinned === 1,
+  toolCalls: parseJson<ToolCall[]>(r.tool_calls),
+  toolCallId: r.tool_call_id ?? null,
+  toolName: r.tool_name ?? null,
+  toolMeta: parseJson<ToolMeta>(r.tool_meta),
   createdAt: r.created_at,
 });
 
@@ -304,6 +334,8 @@ export type ConversationPatch = Partial<
     | 'webSearch'
     | 'summary'
     | 'summaryUntilId'
+    | 'workspace'
+    | 'agent'
   >
 >;
 
@@ -326,6 +358,8 @@ export const conversations = {
     maxTokens?: number | null;
     reasoning?: boolean | null;
     webSearch?: boolean;
+    workspace?: string | null;
+    agent?: boolean;
     createdAt?: string;
     updatedAt?: string;
     id?: string;
@@ -347,14 +381,16 @@ export const conversations = {
       webSearch: input.webSearch ?? false,
       summary: null,
       summaryUntilId: null,
+      workspace: input.workspace ?? null,
+      agent: input.agent ?? false,
       createdAt: input.createdAt ?? at,
       updatedAt: input.updatedAt ?? at,
     };
     await (await connection()).execute(
       `INSERT INTO conversations
         (id, title, model, system_prompt, pinned, archived, folder_id, preset_id, temperature, top_p,
-         max_tokens, reasoning, web_search, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 0, 0, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         max_tokens, reasoning, web_search, workspace, agent, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 0, 0, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         c.id,
         c.title,
@@ -367,6 +403,8 @@ export const conversations = {
         c.maxTokens,
         int(c.reasoning),
         c.webSearch ? 1 : 0,
+        c.workspace,
+        c.agent ? 1 : 0,
         c.createdAt,
         c.updatedAt,
       ],
@@ -390,6 +428,8 @@ export const conversations = {
       web_search: patch.webSearch === undefined ? undefined : patch.webSearch ? 1 : 0,
       summary: patch.summary,
       summary_until_id: patch.summaryUntilId,
+      workspace: patch.workspace,
+      agent: patch.agent === undefined ? undefined : patch.agent ? 1 : 0,
     });
     if (!sql) return;
     values.push(id);
@@ -437,6 +477,8 @@ export type MessagePatch = Partial<
     | 'model'
     | 'attachments'
     | 'pinned'
+    | 'toolCalls'
+    | 'toolMeta'
   >
 >;
 
@@ -473,8 +515,9 @@ export const messages = {
     await c.execute(
       `INSERT INTO messages
         (id, conversation_id, parent_id, active, role, content, reasoning, attachments, model,
-         prompt_tokens, completion_tokens, cost, finish_reason, duration_ms, pinned, created_at)
-       VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+         prompt_tokens, completion_tokens, cost, finish_reason, duration_ms, pinned,
+         tool_calls, tool_call_id, tool_name, tool_meta, created_at)
+       VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
       [
         message.id,
         message.conversationId,
@@ -490,6 +533,10 @@ export const messages = {
         message.finishReason,
         message.durationMs,
         message.pinned ? 1 : 0,
+        message.toolCalls?.length ? JSON.stringify(message.toolCalls) : null,
+        message.toolCallId ?? null,
+        message.toolName ?? null,
+        message.toolMeta ? JSON.stringify(message.toolMeta) : null,
         message.createdAt,
       ],
     );
@@ -513,6 +560,18 @@ export const messages = {
             ? JSON.stringify(patch.attachments)
             : null,
       pinned: patch.pinned === undefined ? undefined : patch.pinned ? 1 : 0,
+      tool_calls:
+        patch.toolCalls === undefined
+          ? undefined
+          : patch.toolCalls?.length
+            ? JSON.stringify(patch.toolCalls)
+            : null,
+      tool_meta:
+        patch.toolMeta === undefined
+          ? undefined
+          : patch.toolMeta
+            ? JSON.stringify(patch.toolMeta)
+            : null,
     });
     if (!sql) return;
     values.push(id);
