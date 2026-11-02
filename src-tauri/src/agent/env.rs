@@ -776,9 +776,10 @@ mod tests {
 
     #[test]
     fn plans_python_first_then_npm_then_refuses() {
-        let py = plan_install(Some("C:\\py\\python.exe"), Some("npm"), Some("npx")).unwrap();
+        // Barres obliques : `Path::file_name` ne coupe pas sur `\` sous Unix (CI Linux).
+        let py = plan_install(Some("/opt/py/python.exe"), Some("npm"), Some("npx")).unwrap();
         assert_eq!(py.len(), 2);
-        assert_eq!(py[0][..4], ["C:\\py\\python.exe", "-m", "pip", "install"]);
+        assert_eq!(py[0][..4], ["/opt/py/python.exe", "-m", "pip", "install"]);
         assert_eq!(py[1][1..], ["-m", "playwright", "install", "chromium"]);
         assert_eq!(
             display_step(&py[1]),
