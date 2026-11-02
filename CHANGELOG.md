@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.6.2](https://github.com/timiliris/relay/compare/v0.6.1...v0.6.2) (2026-11-02)
+
+
+### Corrections
+
+* **app:** l'assistant de bienvenue ne revient plus à chaque lancement ([4b050b5](https://github.com/timiliris/relay/commit/4b050b53f495c60f285b5cec8bb333e45b4c5025))
+
 ## [0.6.1](https://github.com/timiliris/relay/compare/v0.6.0...v0.6.1) (2026-11-02)
 
 
