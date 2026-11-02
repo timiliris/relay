@@ -5,6 +5,7 @@
  * Indépendant de React (appelé depuis les pages).
  */
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { info as logInfo } from '@tauri-apps/plugin-log';
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification';
 import i18n, { resolveLanguage } from '@/i18n';
 import { projectContextOf, useAgent } from '@/stores/agent';
@@ -41,7 +42,7 @@ import {
 } from './openrouter';
 import { buildSystemPrompt, greetingOf } from './persona';
 import { formatMemoryBlock } from './persona-memory';
-import { errorMessage } from './tauri';
+import { errorMessage, isTauri } from './tauri';
 import { activePath, siblingsOf, tail } from './tree';
 
 /** Nombre de messages récents conservés en clair lors d'un résumé. */
@@ -506,6 +507,11 @@ async function runAssistant(
   }
   useChat.getState().endStream(acc.error);
   if (acc.error) toast.error(acc.error);
+  if (isTauri()) {
+    void logInfo(
+      `[chat] ${model} ${finishReason} · ${durationMs} ms · ${final.promptTokens ?? '?'}/${final.completionTokens ?? '?'} tokens · ${acc.toolCalls.length} tool call(s)`,
+    ).catch(() => {});
+  }
 
   const at = await convRepo.touch(conversation.id);
   useConversations.getState().touched(conversation.id, at);

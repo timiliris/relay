@@ -169,6 +169,9 @@ export const supportsImageOutput = (model: ModelInfo | undefined): boolean =>
 export const supportsTools = (model: ModelInfo | undefined): boolean =>
   model?.supportsTools ?? false;
 
+/** Délai maximal d'attente de l'événement terminal après le retour de la commande Rust. */
+const STREAM_SETTLE_MS = 10_000;
+
 export const openrouter = {
   async fetchModels(): Promise<ModelInfo[]> {
     const raw = await invoke<unknown[]>('fetch_models');
@@ -176,11 +179,36 @@ export const openrouter = {
   },
   fetchCredits: () => invoke<Credits>('fetch_credits'),
   completeChat: (request: ChatRequest) => invoke<CompletionOutput>('complete_chat', { request }),
-  /** Démarre un streaming ; la promesse se résout quand le flux est terminé. */
-  streamChat(requestId: string, request: ChatRequest, onEvent: (event: StreamEvent) => void) {
+  /**
+   * Démarre un streaming ; la promesse se résout quand l'événement terminal (`done` ou `error`)
+   * a été reçu. La commande Rust rend la main dès que le flux HTTP est fini, mais les derniers
+   * messages du canal (un appel d'outil de plusieurs dizaines de Ko, puis `done`) peuvent être
+   * livrés après : sans cette attente, le message serait persisté avec des arguments vides.
+   */
+  async streamChat(
+    requestId: string,
+    request: ChatRequest,
+    onEvent: (event: StreamEvent) => void,
+  ): Promise<void> {
+    let settle: () => void = () => {};
+    const terminal = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
     const channel = new Channel<StreamEvent>();
-    channel.onmessage = onEvent;
-    return invoke<void>('stream_chat', { requestId, request, onEvent: channel });
+    channel.onmessage = (event) => {
+      onEvent(event);
+      if (event.type === 'done' || event.type === 'error') settle();
+    };
+    await invoke<void>('stream_chat', { requestId, request, onEvent: channel });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const guard = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, STREAM_SETTLE_MS);
+    });
+    try {
+      await Promise.race([terminal, guard]);
+    } finally {
+      clearTimeout(timer);
+    }
   },
   cancelStream: (requestId: string) => invoke<void>('cancel_stream', { requestId }),
   setApiKey: (key: string) => invoke<string>('set_api_key', { key }),

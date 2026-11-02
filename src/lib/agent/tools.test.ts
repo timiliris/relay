@@ -59,8 +59,12 @@ describe('agent tools', () => {
 
   it('liste les arguments requis absents ou vides', () => {
     expect(missingArgs('write_file', {})).toEqual(['path', 'content']);
-    expect(missingArgs('write_file', { path: 'a.md', content: '' })).toEqual(['content']);
+    expect(missingArgs('write_file', { path: '', content: 'x' })).toEqual(['path']);
     expect(missingArgs('edit_file', { path: 'a', old: 'x', new: 'y' })).toEqual([]);
+    expect(missingArgs('edit_file', { path: 'a', old: '', new: 'y' })).toEqual(['old']);
+    // Une chaîne vide est une valeur : fichier vide, suppression d'un bloc.
+    expect(missingArgs('write_file', { path: 'a.md', content: '' })).toEqual([]);
+    expect(missingArgs('edit_file', { path: 'a', old: 'x', new: '' })).toEqual([]);
     expect(missingArgs('list_files', {})).toEqual([]);
     expect(missingArgs('run_command', { command: 'ls' })).toEqual([]);
   });
