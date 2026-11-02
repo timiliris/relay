@@ -623,7 +623,10 @@
       "timeoutHint": "En secondes (5 à 600). Le modèle peut demander moins, jamais plus.",
       "autoCommands": "Commandes auto-approuvées",
       "autoCommandsHint": "Une par ligne : une commande qui commence par l'un de ces préfixes est traitée comme une lecture. Les enchaînements (;, &&, |, >) ne sont jamais auto-approuvés.",
-      "restoreCommands": "Restaurer la liste par défaut"
+      "restoreCommands": "Restaurer la liste par défaut",
+      "context": "Contexte de projet",
+      "projectContext": "Contexte de projet au démarrage",
+      "projectContextHint": "Envoie l’arborescence, le fichier d’instructions (AGENTS.md…), les manifestes et le début du README avec le premier message. Jusqu’à environ 2 500 tokens par requête, rafraîchi une fois par heure."
     }
   },
   "onboarding": {

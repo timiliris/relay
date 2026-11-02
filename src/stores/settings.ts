@@ -76,6 +76,8 @@ export interface SettingsData extends GenerationParams {
   agentApproval: ApprovalPolicy;
   agentCommandTimeout: number;
   agentAutoCommands: string[];
+  /** Mode agent : contexte de projet (arborescence, instructions, manifestes) en tête de conversation. */
+  agentProjectContext: boolean;
 }
 
 export interface SettingsState extends SettingsData {
@@ -114,6 +116,7 @@ const defaults: SettingsData = {
   agentApproval: 'autoRead',
   agentCommandTimeout: 120,
   agentAutoCommands: [...DEFAULT_AUTO_COMMANDS],
+  agentProjectContext: true,
   ...defaultGeneration,
 };
 
