@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AgentStatusBar } from '@/components/agent-status';
+import { BrowserPanel } from '@/components/browser-panel';
 import { Composer } from '@/components/composer';
 import { GenerationParams } from '@/components/generation-params';
 import { GitPanel } from '@/components/git-panel';
@@ -57,6 +59,7 @@ import { errorMessage, isTauri } from '@/lib/tauri';
 import { siblingIndex, siblingsOf } from '@/lib/tree';
 import { cn } from '@/lib/utils';
 import { useApiKey } from '@/stores/api-key';
+import { useBrowser } from '@/stores/browser';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { dialog } from '@/stores/dialog';
@@ -103,6 +106,8 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   const toggleExplorer = useExplorer((s) => s.toggle);
   const gitOpen = useGit((s) => s.open);
   const toggleGit = useGit((s) => s.toggle);
+  const browserOpen = useBrowser((s) => s.open);
+  const toggleBrowser = useBrowser((s) => s.toggle);
   /** Message à atteindre une fois rendu (volet des épinglés). */
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [memoryOpen, setMemoryOpen] = useState(false);
@@ -318,6 +323,14 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             <GitBranch className={cn('size-4', gitOpen && 'text-chart-2')} />
           </IconButton>
         )}
+        <IconButton
+          label={t('chat.browser.title')}
+          aria-pressed={browserOpen}
+          className={cn(browserOpen && 'bg-accent text-accent-foreground')}
+          onClick={toggleBrowser}
+        >
+          <Globe className={cn('size-4', browserOpen && 'text-chart-2')} />
+        </IconButton>
         {totalCost > 0 && (
           <span className="hidden text-xs text-muted-foreground sm:inline">
             {t('chat.conversationCost', { cost: formatCost(totalCost) })}
@@ -489,6 +502,10 @@ export function ChatPage({ conversationId }: ChatPageProps) {
                 </IconButton>
               </div>
             )}
+            <AgentStatusBar
+              conversationId={conversationId}
+              className="mx-auto mb-1 max-w-3xl rounded-md"
+            />
             <Composer
               streaming={streaming}
               disabled={!inTauri}
@@ -569,6 +586,12 @@ export function ChatPage({ conversationId }: ChatPageProps) {
         )}
         {gitOpen && conversation?.workspace && (
           <GitPanel conversation={conversation} onClose={() => useGit.getState().setOpen(false)} />
+        )}
+        {browserOpen && (
+          <BrowserPanel
+            conversationId={conversationId}
+            onClose={() => useBrowser.getState().setOpen(false)}
+          />
         )}
         {memoryOpen && conversation && preset && (
           <PersonaMemoryPanel

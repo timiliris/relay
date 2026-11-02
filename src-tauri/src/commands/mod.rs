@@ -6,5 +6,6 @@
 
 pub mod agent;
 pub mod app;
+pub mod browser;
 pub mod openrouter;
 pub mod secrets;

@@ -9,7 +9,8 @@ export type ToolName =
   | 'write_file'
   | 'edit_file'
   | 'search_files'
-  | 'run_command';
+  | 'run_command'
+  | 'fetch_url';
 
 export const TOOL_NAMES: readonly ToolName[] = [
   'list_files',
@@ -18,6 +19,7 @@ export const TOOL_NAMES: readonly ToolName[] = [
   'edit_file',
   'search_files',
   'run_command',
+  'fetch_url',
 ];
 
 export const isToolName = (name: string): name is ToolName =>

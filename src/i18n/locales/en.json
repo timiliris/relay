@@ -229,7 +229,8 @@
         "edit_file": "Edit file",
         "search_files": "Search files",
         "run_command": "Run command",
-        "unknown": "Unknown tool"
+        "unknown": "Unknown tool",
+        "fetch_url": "Read a web page"
       },
       "status": {
         "pending": "Approval required",
@@ -348,6 +349,28 @@
         "untracked": "Untracked",
         "conflicted": "Conflicted"
       }
+    },
+    "browser": {
+      "title": "Browser",
+      "address": "Address or search",
+      "addressLabel": "Address bar",
+      "go": "Go",
+      "back": "Back",
+      "forward": "Forward",
+      "reload": "Reload",
+      "openExternal": "Open in the system browser",
+      "readPage": "Read the page for the agent",
+      "reading": "Reading the page…",
+      "readCopied": "Page text copied ({{count}} characters): paste it in the composer.",
+      "readTruncated": "Page text copied, truncated to {{count}} characters.",
+      "history": "Pages visited in this conversation",
+      "historyEmpty": "No page visited yet.",
+      "clearHistory": "Clear the list",
+      "empty": "Type an address or a search above.",
+      "onlyInApp": "The embedded browser is only available inside the app.",
+      "untitled": "Untitled page",
+      "schemeDenied": "Only http(s) addresses can be opened.",
+      "readAttached": "Page attached to the next message ({{count}} characters)."
     }
   },
   "search": {

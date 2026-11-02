@@ -3,6 +3,7 @@
  * déclenché par les écritures de l'agent.
  */
 import { create } from 'zustand';
+import type { Attachment } from '@/lib/db';
 
 /** Fichier que le volet demande au composeur de joindre au message (bouton « Ajouter au message »). */
 export interface AttachRequest {
@@ -24,6 +25,8 @@ interface ExplorerState {
    * le fichier et l'ajoute à ses pièces jointes.
    */
   attachRequests: AttachRequest[];
+  /** Pièces jointes déjà construites (page web lue, par exemple), consommées par le composeur. */
+  readyAttachments: Attachment[];
   toggle: () => void;
   setOpen: (open: boolean) => void;
   /** Ouvre le volet sur un fichier (depuis une carte d'outil, par exemple). */
@@ -32,6 +35,8 @@ interface ExplorerState {
   refresh: () => void;
   requestAttach: (path: string, size?: number | null) => void;
   consumeAttachRequests: () => void;
+  attachReady: (attachment: Attachment) => void;
+  consumeReadyAttachments: () => void;
 }
 
 export const useExplorer = create<ExplorerState>()((set) => ({
@@ -39,6 +44,7 @@ export const useExplorer = create<ExplorerState>()((set) => ({
   pendingPath: null,
   version: 0,
   attachRequests: [],
+  readyAttachments: [],
   toggle: () => set((s) => ({ open: !s.open })),
   setOpen: (open) => set({ open }),
   openFile: (path) => set({ open: true, pendingPath: path }),
@@ -47,4 +53,7 @@ export const useExplorer = create<ExplorerState>()((set) => ({
   requestAttach: (path, size = null) =>
     set((s) => ({ attachRequests: [...s.attachRequests, { path, size }] })),
   consumeAttachRequests: () => set({ attachRequests: [] }),
+  attachReady: (attachment) =>
+    set((s) => ({ readyAttachments: [...s.readyAttachments, attachment] })),
+  consumeReadyAttachments: () => set({ readyAttachments: [] }),
 }));

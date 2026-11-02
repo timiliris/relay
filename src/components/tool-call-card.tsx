@@ -7,6 +7,7 @@ import {
   FileText,
   FolderOpen,
   FolderTree,
+  Globe,
   type LucideIcon,
   Search,
   ShieldAlert,
@@ -34,6 +35,7 @@ const ICONS: Record<string, LucideIcon> = {
   edit_file: FilePen,
   search_files: Search,
   run_command: Terminal,
+  fetch_url: Globe,
 };
 
 const STATUS_CLASS: Record<ToolStatus, string> = {
@@ -49,6 +51,7 @@ const STATUS_CLASS: Record<ToolStatus, string> = {
 export const DIFF_FOLD_LINES = 40;
 
 type NameKey =
+  | 'fetch_url'
   | 'list_files'
   | 'read_file'
   | 'write_file'
@@ -67,6 +70,8 @@ function primaryArg(name: string | null | undefined, args: Record<string, unknow
       return String(args.command ?? '');
     case 'search_files':
       return String(args.pattern ?? '');
+    case 'fetch_url':
+      return String(args.url ?? '');
     case 'list_files':
       return String(args.path ?? '.');
     default:

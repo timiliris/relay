@@ -94,6 +94,16 @@ export function Composer({
     onAttach: addWorkspaceAttachment,
   });
 
+  // Pièces déjà prêtes (page web lue par le navigateur intégré).
+  const readyAttachments = useExplorer((s) => s.readyAttachments);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: déclenché par la file d'attente seulement
+  useEffect(() => {
+    if (readyAttachments.length === 0) return;
+    useExplorer.getState().consumeReadyAttachments();
+    for (const item of readyAttachments) addWorkspaceAttachment(item);
+    ref.current?.focus();
+  }, [readyAttachments]);
+
   // Fichiers déposés par le volet Fichiers (bouton « Ajouter au message »).
   const attachRequests = useExplorer((s) => s.attachRequests);
   // biome-ignore lint/correctness/useExhaustiveDependencies: déclenché par la file d'attente seulement

@@ -21,6 +21,7 @@ import {
   type ToolMeta,
   type ToolName,
 } from './types';
+import { executeWebTool } from './web-tools';
 
 /** Appels d'outils par tour utilisateur avant arrêt de sécurité. */
 export const MAX_AGENT_STEPS = 25;
@@ -48,6 +49,8 @@ export async function executeTool(
   const startedAt = Date.now();
   try {
     switch (name) {
+      case 'fetch_url':
+        return await executeWebTool(name, args);
       case 'list_files': {
         const result = await agentCommands.listFiles(
           workspace,
