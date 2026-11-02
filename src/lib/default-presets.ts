@@ -66,8 +66,8 @@ function firstDate(language: Language): Persona {
         : 'Camille, 31, graphic designer. Lively and funny once at ease, but still recovering from a breakup and unsure of her charm. She looks for signs, over-reads silences and tends to talk too fast when nervous. She dislikes being told what to do but gladly takes good advice.',
       otherName: fr ? 'Théo' : 'Theo',
       otherCharacter: fr
-        ? 'Théo, 34 ans, kinésithérapeute, rencontré sur une application. Calme, attentif, un humour discret ; il revient d’un an de voyage en Amérique du Sud et n’en parle que si on le lui demande. Il observe beaucoup et décide vite.'
-        : 'Theo, 34, physiotherapist, met on a dating app. Calm, attentive, quietly funny; just back from a year travelling in South America and only talks about it when asked. He observes a lot and decides fast.',
+        ? '34 ans, kinésithérapeute, rencontré sur une application. Calme, attentif, un humour discret ; il revient d’un an de voyage en Amérique du Sud et n’en parle que si on le lui demande. Il observe beaucoup et décide vite.'
+        : '34, physiotherapist, met on a dating app. Calm, attentive, quietly funny; just back from a year travelling in South America and only talks about it when asked. He observes a lot and decides fast.',
       scenario: fr
         ? 'Premier rendez-vous un vendredi soir, dans un petit restaurant italien du quartier. Camille se prépare chez elle une heure avant ; la soirée se joue sur ses choix et ceux de sa petite voix.'
         : 'First date on a Friday evening at a small neighbourhood Italian restaurant. Camille is getting ready at home an hour before; the evening hinges on her choices and those of her inner voice.',
@@ -95,8 +95,8 @@ function jobInterview(language: Language): Persona {
         : 'Sami, 27, developer, three years at a small agency. Competent and conscientious, but too modest: he downplays his achievements, apologizes often and panics at salary questions. He gladly follows his voice’s advice, except when it means lying or bragging, which he refuses.',
       otherName: fr ? 'Mme Lefebvre' : 'Ms. Hart',
       otherCharacter: fr
-        ? 'Claire Lefebvre, directrice technique d’une scale-up de 80 personnes. Directe, pressée, allergique au jargon creux ; elle pose des questions courtes, laisse des silences et note tout. Elle cherche quelqu’un de fiable qui sait dire non.'
-        : 'Claire Hart, CTO of an 80-person scale-up. Direct, in a hurry, allergic to empty jargon; she asks short questions, leaves silences and writes everything down. She is looking for someone reliable who can say no.',
+        ? 'Claire Lefebvre, 44 ans, directrice technique d’une scale-up de 80 personnes. Directe, pressée, allergique au jargon creux ; elle pose des questions courtes, laisse des silences et note tout. Elle cherche quelqu’un de fiable qui sait dire non.'
+        : 'Claire Hart, 44, CTO of an 80-person scale-up. Direct, in a hurry, allergic to empty jargon; she asks short questions, leaves silences and writes everything down. She is looking for someone reliable who can say no.',
       scenario: fr
         ? 'Entretien d’embauche pour un poste de développeur senior, un mardi matin dans une salle vitrée au dernier étage. Trente minutes prévues ; le salaire affiché est 15 % au-dessus de ce que Sami gagne.'
         : 'Job interview for a senior developer position, on a Tuesday morning in a glass-walled room on the top floor. Thirty minutes planned; the advertised salary is 15% above what Sami currently earns.',
