@@ -1,4 +1,4 @@
-# Fiche de vérification — Relay 0.6.0
+# Fiche de vérification — Relay 0.6.1
 
 Dernière exécution complète : 31 octobre 2026, Windows 11, Rust 1.91, Node 24, pnpm 12.
 
@@ -142,6 +142,16 @@ Après fusion : Biome propre, tsc propre, **109 tests Vitest** (21 fichiers), `c
 | Lancement du build | Automatique (troisième fois)                                                                                                                                                                                                                                          |
 | Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.6.0 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.6.0 avec 11 cibles                                                                                                                                        |
 | Installation       | MSI téléchargé depuis la release, SHA-256 égal au `digest` annoncé par GitHub, signature minisign vérifiée (Ed25519 pur Python, `scripts/verify-minisign.py` absent du dépôt : script de session) ; `msiexec /i … /passive` : 0.1.1 → 0.6.0, code 0, binaire en 0.6.0 |
+
+## Release 0.6.1 (2 novembre 2026)
+
+| Étape              | Résultat                                                                                                                                                                                  |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contenu            | Reprise des anciennes données ciblée (liste blanche) et exécutée une seule fois (marqueur `.legacy-migrated`)                                                                             |
+| PR release-please  | `chore(main): release 0.6.1` ; `Cargo.lock` aligné sur la branche de la PR ; CI verte avant fusion                                                                                        |
+| Lancement du build | Automatique (quatrième fois)                                                                                                                                                              |
+| Artefacts          | https://github.com/timiliris/relay/releases/tag/v0.6.1 — 17 fichiers, 4 builds réussis ; `latest.json` en 0.6.1 avec 11 cibles                                                            |
+| Installation       | MSI téléchargé, SHA-256 égal au `digest` GitHub, signature minisign valide ; `msiexec` interrompu (code 1602, élévation refusée) ; l'app 0.6.0 détecte « Mise à jour disponible : 0.6.1 » |
 
 ## Optimisations mesurées (0.1.1)
 
