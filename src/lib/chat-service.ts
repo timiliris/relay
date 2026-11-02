@@ -10,6 +10,7 @@ import i18n, { resolveLanguage } from '@/i18n';
 import { projectContextOf, useAgent } from '@/stores/agent';
 import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
+import { environmentBlockOf, useEnvironment } from '@/stores/environment';
 import { useModels } from '@/stores/models';
 import { memoriesOf, usePersonaMemory } from '@/stores/persona-memory';
 import { useSettings } from '@/stores/settings';
@@ -240,7 +241,7 @@ export async function summarizeOlder(conversation: Conversation): Promise<boolea
 
 /**
  * Historique envoyé à l'API : instruction système, bloc agent suivi du contexte de projet (déjà
- * construit dans `useAgent`), mémoire du persona (souvenirs déjà chargés dans
+ * construit dans `useAgent`) et du bloc Environment (`useEnvironment`), mémoire du persona (souvenirs déjà chargés dans
  * `usePersonaMemory`), résumé, puis messages du chemin actif.
  */
 export function buildHistory(conversation: Conversation, path: Message[]): ChatMessageInput[] {
@@ -266,10 +267,13 @@ export function buildHistory(conversation: Conversation, path: Message[]): ChatM
     agentBlock && conversation.workspace && useSettings.getState().agentProjectContext
       ? projectContextOf(conversation.id, conversation.workspace)
       : null;
+  const environment =
+    agentBlock && useSettings.getState().agentEnvironment ? environmentBlockOf() : null;
   const system = [
     conversation.systemPrompt,
     agentBlock,
     projectContext,
+    environment,
     memory,
     conversation.summary && `${i18n.t('chat.summaryLabel')}\n${conversation.summary}`,
   ]
@@ -376,6 +380,13 @@ async function runAssistant(
     useSettings.getState().agentProjectContext
   )
     await useAgent.getState().ensureProjectContext(conversation.id, conversation.workspace);
+  // Relevé du poste (outils installés, Playwright) : en cache côté Rust, ~2 s la première fois.
+  if (
+    agentEnabled(conversation) &&
+    conversation.workspace &&
+    useSettings.getState().agentEnvironment
+  )
+    await useEnvironment.getState().ensure(conversation.workspace);
 
   // Historique = chemin actif jusqu'au message assistant inclus (préfixe pour une continuation).
   const path = activePath(useChat.getState().all);

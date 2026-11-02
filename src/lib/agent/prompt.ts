@@ -19,6 +19,7 @@ export function agentSystemPrompt(
       'Explique brièvement ce que tu vas faire avant d’agir et résume ce qui a changé à la fin. Les écritures et les commandes peuvent être refusées par l’utilisateur : dans ce cas, propose une alternative au lieu d’insister.',
       'S’il existe un fichier d’instructions du projet (AGENTS.md, CLAUDE.md…), respecte-le. Sinon, quand l’utilisateur fixe des règles durables, propose-lui de les consigner dans un AGENTS.md à la racine.',
       `Git et GitHub passent par run_command (\`git …\`, \`gh …\`). Ne fais ni commit, ni push, ni suppression de branche sans que l’utilisateur l’ait demandé explicitement.`,
+      'Si un bloc « Environment » est fourni, il fait foi : ne sonde pas le poste (`--version`, `require.resolve`…) et ne réinstalle pas ce qui y figure. Quand un outil manque, propose son installation à l’utilisateur au lieu de l’installer sans demander ; Playwright s’installe en un clic depuis Paramètres › Développement.',
     ].join('\n');
   }
   return [
@@ -27,5 +28,6 @@ export function agentSystemPrompt(
     'Briefly explain what you are about to do before acting and summarise what changed at the end. Writes and commands may be denied by the user: then propose an alternative instead of insisting.',
     'If the project has an instructions file (AGENTS.md, CLAUDE.md…), follow it. Otherwise, when the user sets lasting rules, offer to record them in an AGENTS.md at the root.',
     'Git and GitHub go through run_command (`git …`, `gh …`). Never commit, push or delete branches unless the user explicitly asked for it.',
+    'If an "Environment" block is provided, trust it: do not probe the machine (`--version`, `require.resolve`…) and do not reinstall what it lists. When a tool is missing, offer the user to install it instead of installing it unasked; Playwright can be installed in one click from Settings › Development.',
   ].join('\n');
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useAgent } from '@/stores/agent';
+import { useEnvironment } from '@/stores/environment';
 import { useSettings } from '@/stores/settings';
 import { buildHistory, effectiveParams } from './chat-service';
 import type { Conversation, Message } from './db';
@@ -197,6 +198,54 @@ describe('buildHistory : contexte de projet', () => {
 
     // Hors mode agent, le cache est ignoré même s'il est rempli.
     useAgent.setState({ projectContext: { c: entry } });
+    expect(buildHistory(conv({ workspace: 'C:\\work\\relay' }), [])).toEqual([]);
+  });
+});
+
+describe('buildHistory : bloc Environment', () => {
+  const agentConv = conv({ workspace: 'C:\\work\\relay', agent: true });
+  const environment = {
+    os: 'Windows 11',
+    shell: 'PowerShell',
+    tools: [
+      { name: 'git', version: '2.47.1', path: 'C:\\Git\\git.exe' },
+      { name: 'docker', version: null, path: null },
+    ],
+    playwright: { python: true, node: false, browsers: ['chromium'], version: '1.64.1' },
+  };
+  const projectContext = {
+    workspace: 'C:\\work\\relay',
+    text: 'Project context:\nWorkspace "relay".',
+    instructionsFile: null,
+    packageManager: null,
+    git: true,
+    tokens: 8,
+    builtAt: Date.now(),
+  };
+
+  it('ajoute le bloc après le contexte de projet quand le relevé est connu et le réglage actif', () => {
+    useSettings.setState({ agentEnvironment: true, agentProjectContext: true });
+    useAgent.setState({ projectContext: { c: projectContext } });
+    useEnvironment.setState({ environment, workspace: null });
+    const system = String(buildHistory(agentConv, [msg('u1', 'user', 'Salut')])[0]?.content);
+    expect(system).toContain('Environment: Windows 11, PowerShell shell.');
+    expect(system).toContain(
+      'Available: git 2.47.1, playwright 1.64.1 (python; browsers: chromium).',
+    );
+    expect(system).toContain('Missing: docker.');
+    expect(system.indexOf('Project context:')).toBeLessThan(system.indexOf('Environment:'));
+  });
+
+  it('n’ajoute rien sans relevé, réglage inactif ou hors mode agent', () => {
+    useSettings.setState({ agentEnvironment: false });
+    useEnvironment.setState({ environment, workspace: null });
+    expect(buildHistory(agentConv, [])[0]?.content).not.toContain('Environment:');
+
+    useSettings.setState({ agentEnvironment: true });
+    useEnvironment.setState({ environment: null });
+    expect(buildHistory(agentConv, [])[0]?.content).not.toContain('Environment:');
+
+    useEnvironment.setState({ environment, workspace: null });
     expect(buildHistory(conv({ workspace: 'C:\\work\\relay' }), [])).toEqual([]);
   });
 });
