@@ -6,6 +6,7 @@ use tauri::State;
 use crate::AppResult;
 use crate::agent::exec::{self, CommandOutput};
 use crate::agent::fs::{self, Change, ChangePreview, FileContent, ListResult};
+use crate::agent::git::{self, GitBranch, GitCommit, GitDiff, GitLogEntry, GitStatus};
 use crate::agent::search::{self, SearchResult};
 use crate::agent::{WorkspaceInfo, WorkspaceState};
 
@@ -111,4 +112,90 @@ pub async fn tool_run_command(
 #[tauri::command]
 pub fn cancel_tool(state: State<'_, WorkspaceState>, id: String) {
     state.cancel(&id);
+}
+
+// ---- Panneau Git du dossier de travail (manuel, indépendant de l'agent) ----
+
+/// Branche, suivi distant, avance/retard et fichiers modifiés (`git status --porcelain=v2`).
+#[tauri::command]
+pub async fn git_status(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+) -> AppResult<GitStatus> {
+    let root = state.root(&workspace)?;
+    git::status(&root).await
+}
+
+/// Diff d'un fichier (ou de tout le dépôt sans `path`), de l'index si `staged`.
+#[tauri::command]
+pub async fn git_diff(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+    path: Option<String>,
+    staged: bool,
+) -> AppResult<GitDiff> {
+    let root = state.root(&workspace)?;
+    git::diff(&root, path.as_deref(), staged).await
+}
+
+/// Indexe (`stage: true`) ou désindexe des chemins relatifs au dossier de travail.
+#[tauri::command]
+pub async fn git_stage(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+    paths: Vec<String>,
+    stage: bool,
+) -> AppResult<()> {
+    let root = state.root(&workspace)?;
+    git::stage(&root, &paths, stage).await
+}
+
+/// Commit de l'index avec `message` ; renvoie le hash et le sujet.
+#[tauri::command]
+pub async fn git_commit(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+    message: String,
+) -> AppResult<GitCommit> {
+    let root = state.root(&workspace)?;
+    git::commit(&root, &message).await
+}
+
+/// Les `limit` derniers commits (vide sans commit).
+#[tauri::command]
+pub async fn git_log(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+    limit: usize,
+) -> AppResult<Vec<GitLogEntry>> {
+    let root = state.root(&workspace)?;
+    git::log(&root, limit).await
+}
+
+/// Branches locales, la courante marquée.
+#[tauri::command]
+pub async fn git_branches(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+) -> AppResult<Vec<GitBranch>> {
+    let root = state.root(&workspace)?;
+    git::branches(&root).await
+}
+
+/// Bascule sur une branche locale existante.
+#[tauri::command]
+pub async fn git_checkout(
+    state: State<'_, WorkspaceState>,
+    workspace: String,
+    branch: String,
+) -> AppResult<()> {
+    let root = state.root(&workspace)?;
+    git::checkout(&root, &branch).await
+}
+
+/// `git init` dans le dossier de travail.
+#[tauri::command]
+pub async fn git_init(state: State<'_, WorkspaceState>, workspace: String) -> AppResult<()> {
+    let root = state.root(&workspace)?;
+    git::init(&root).await
 }

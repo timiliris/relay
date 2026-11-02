@@ -6,6 +6,7 @@ import {
   Brain,
   Download,
   FolderTree,
+  GitBranch,
   Globe,
   KeyRound,
   Pin,
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Composer } from '@/components/composer';
 import { GenerationParams } from '@/components/generation-params';
+import { GitPanel } from '@/components/git-panel';
 import { MessageBubble } from '@/components/message-bubble';
 import { ModelPicker } from '@/components/model-picker';
 import { PersonaMemoryPanel } from '@/components/persona-memory-panel';
@@ -59,6 +61,7 @@ import { useChat } from '@/stores/chat';
 import { useConversations } from '@/stores/conversations';
 import { dialog } from '@/stores/dialog';
 import { useExplorer } from '@/stores/explorer';
+import { useGit } from '@/stores/git';
 import { useModels } from '@/stores/models';
 import { usePersonaMemory } from '@/stores/persona-memory';
 import { useSettings } from '@/stores/settings';
@@ -98,6 +101,8 @@ export function ChatPage({ conversationId }: ChatPageProps) {
   const [pinsOpen, setPinsOpen] = useState(false);
   const explorerOpen = useExplorer((s) => s.open);
   const toggleExplorer = useExplorer((s) => s.toggle);
+  const gitOpen = useGit((s) => s.open);
+  const toggleGit = useGit((s) => s.toggle);
   /** Message à atteindre une fois rendu (volet des épinglés). */
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [memoryOpen, setMemoryOpen] = useState(false);
@@ -301,6 +306,16 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             onClick={toggleExplorer}
           >
             <FolderTree className={cn('size-4', explorerOpen && 'text-chart-3')} />
+          </IconButton>
+        )}
+        {conversation?.workspace && (
+          <IconButton
+            label={t('chat.git.title')}
+            aria-pressed={gitOpen}
+            className={cn(gitOpen && 'bg-accent text-accent-foreground')}
+            onClick={toggleGit}
+          >
+            <GitBranch className={cn('size-4', gitOpen && 'text-chart-2')} />
           </IconButton>
         )}
         {totalCost > 0 && (
@@ -551,6 +566,9 @@ export function ChatPage({ conversationId }: ChatPageProps) {
             conversation={conversation}
             onClose={() => useExplorer.getState().setOpen(false)}
           />
+        )}
+        {gitOpen && conversation?.workspace && (
+          <GitPanel conversation={conversation} onClose={() => useGit.getState().setOpen(false)} />
         )}
         {memoryOpen && conversation && preset && (
           <PersonaMemoryPanel
