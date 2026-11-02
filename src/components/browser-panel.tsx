@@ -66,6 +66,8 @@ export function BrowserPanel({
   const lastBounds = useRef<BrowserBounds | null>(null);
   /** `true` une fois le webview créé par `browser_open` (il faut alors suivre sa zone). */
   const [webviewOpen, setWebviewOpen] = useState(false);
+  /** Même information, à jour de façon synchrone : évite un second `browser_open` avant le rendu. */
+  const created = useRef(false);
 
   const run = (action: () => Promise<void>) =>
     action().catch((err) => {
@@ -76,12 +78,19 @@ export function BrowserPanel({
     if (!inTauri) return;
     setError(null);
     const bounds = areaRef.current ? measure(areaRef.current) : undefined;
+    if (created.current) {
+      run(() => browserCommands.navigate(target));
+      return;
+    }
+    created.current = true;
+    lastBounds.current = bounds ?? null;
     run(async () => {
-      if (webviewOpen) await browserCommands.navigate(target);
-      else {
+      try {
         await browserCommands.open(target, bounds);
-        lastBounds.current = bounds ?? null;
         setWebviewOpen(true);
+      } catch (err) {
+        created.current = false;
+        throw err;
       }
     });
   };
@@ -89,7 +98,7 @@ export function BrowserPanel({
   // Ouverture du volet avec une URL déjà connue (réouverture, lien d'une carte) : on l'affiche.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `url` déclenche l'affichage initial, pas chaque navigation
   useEffect(() => {
-    if (url && !webviewOpen) openWebview(url);
+    if (url && !created.current) openWebview(url);
   }, [url]);
 
   // L'adresse suit la page courante tant que l'utilisateur ne saisit pas.
