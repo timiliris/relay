@@ -36,6 +36,7 @@ application de bureau rapide et légère (**Windows / macOS / Linux**), construi
 - **Éditeur de code** dans le volet Fichiers : CodeMirror 6 chargé à la demande (coloration par langage, recherche, numéros de ligne, thème clair/sombre), barre d'état (langage, position, fin de ligne).
 - **Panneau Git** : branche et avance/retard, fichiers modifiés groupés (indexés, modifications, non suivis) avec diff coloré, indexation, commit, journal, bascule de branche, initialisation d'un dépôt ; tout passe par le `git` du poste, sans push ni pull.
 - **Navigateur intégré** : volet avec barre d'adresse (URL ou recherche), précédent/suivant/recharger, historique de la conversation, page affichée dans une webview enfant de la fenêtre ; « Lire la page pour l'agent » joint le texte de la page au prochain message, et l'outil `fetch_url` permet au modèle de lire une page publique (adresses locales et privées refusées).
+- **Outils navigateur de l'agent** : le modèle pilote ce même volet, sous les yeux de l'utilisateur, au lieu d'installer Playwright pour tester ce qu'il écrit. `browser_navigate` ouvre une URL `http(s)` (y compris un serveur de développement sur `localhost`) ou un fichier du dossier de travail (`index.html`, `file://` accepté uniquement sous le dossier) et attend la fin du chargement ; `browser_read` renvoie le texte visible, les liens, boutons et champs **numérotés**, et les erreurs de console depuis le chargement ; `browser_click` et `browser_type` ciblent un numéro, un sélecteur CSS ou un texte visible (l'élément est surligné un instant), puis décrivent ce qui a changé (URL, titre, extrait) ; `browser_eval` exécute du JavaScript et renvoie la valeur en JSON (plafonnée, promesses attendues). Navigation et lecture sont des outils de lecture ; clic, saisie et script demandent une approbation selon la politique (« Toujours pour cette conversation » possible). Chaque appel apparaît comme une carte.
 - **Contexte de projet** : au premier message en mode agent, l'arborescence compactée, le fichier `AGENTS.md` (ou `CLAUDE.md`, `RELAY.md`), les manifestes et le début du README sont injectés dans l'instruction (plafonné, mis en cache une heure, désactivable dans Paramètres, Développement).
 - **Fichiers en contexte** : `@` dans le composeur propose les fichiers du dossier et joint celui choisi comme pièce jointe texte ; le volet Fichiers a un bouton « Ajouter au message ».
 - **Aperçu avant approbation** : une écriture ou une édition en attente montre déjà son diff (+N −M, nouveau fichier) ; un refus peut porter un motif transmis au modèle ; une barre d'état au-dessus du composeur suit l'étape de la boucle.
@@ -106,7 +107,9 @@ src-tauri/src/
 │                              # options de routage et plugins (recherche web)
 ├── openrouter/sse.rs          # Analyseur SSE incrémental (testé)
 ├── secrets.rs                 # Clé API dans le trousseau système
-├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement)
+├── browser.rs                 # Navigateur intégré : webview enfant, file:// du dossier, eval natif
+│                              # (WebView2 / WKWebView / WebKitGTK), attente de chargement
+├── commands/                  # openrouter.rs, secrets.rs, app.rs (langue, menu, lancement), browser.rs
 ├── db.rs                      # Migrations SQLite (v1 … v6 outils de l'agent)
 └── menu.rs, tray.rs, shortcut.rs, i18n.rs
 ```

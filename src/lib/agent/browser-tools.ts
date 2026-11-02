@@ -128,7 +128,8 @@ export function readScript(options: {
       n,
       kind: tag === 'a' ? 'link' : tag === 'input' ? type : ['button', 'textarea', 'select', 'summary'].includes(tag) ? tag : el.getAttribute('role') || tag,
     };
-    let text = clean(el.innerText || el.textContent);
+    // Le texte d'un <select> serait la liste de ses options : on s'en tient à son étiquette.
+    let text = tag === 'select' ? '' : clean(el.innerText || el.textContent);
     if (!text) {
       const img = el.querySelector && el.querySelector('img[alt]');
       text = clean(el.getAttribute('aria-label') || el.getAttribute('title') || (img && img.alt));
