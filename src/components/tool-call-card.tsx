@@ -1,6 +1,7 @@
 import {
   Check,
   ChevronDown,
+  Copy,
   FilePen,
   FilePlus2,
   FileText,
@@ -21,8 +22,10 @@ import type { ToolCall } from '@/lib/openrouter';
 import { cn } from '@/lib/utils';
 import { useAgent } from '@/stores/agent';
 import { useExplorer } from '@/stores/explorer';
+import { AgentStatusBar, useAgentStatus } from './agent-status';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 const ICONS: Record<string, LucideIcon> = {
   list_files: FolderTree,
@@ -41,6 +44,9 @@ const STATUS_CLASS: Record<ToolStatus, string> = {
   cancelled: 'border-border bg-muted text-muted-foreground',
   error: 'border-destructive/40 bg-destructive/10 text-destructive',
 };
+
+/** Au-delà de ce nombre de lignes, un diff est replié derrière « Tout afficher ». */
+export const DIFF_FOLD_LINES = 40;
 
 type NameKey =
   | 'list_files'
@@ -68,11 +74,22 @@ function primaryArg(name: string | null | undefined, args: Record<string, unknow
   }
 }
 
+/** Lignes ajoutées et supprimées d'un diff unifié (les en-têtes `+++`/`---` exclus). */
+export function diffStats(diff: string): { added: number; removed: number } {
+  let added = 0;
+  let removed = 0;
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('+') && !line.startsWith('+++')) added++;
+    else if (line.startsWith('-') && !line.startsWith('---')) removed++;
+  }
+  return { added, removed };
+}
+
 /** Carte d'un message `tool` : outil, argument, état, détail repliable, approbation. */
 export function ToolCallCard({ message }: { message: Message }) {
   const { t } = useTranslation();
-  const decide = useAgent((s) => s.decide);
   const awaiting = useAgent((s) => s.pending.some((p) => p.toolMessageId === message.id));
+  const progress = useAgentStatus(message.conversationId);
   const meta = message.toolMeta ?? { args: {}, status: 'done' as const, risk: 'read' as const };
   const status: ToolStatus = awaiting ? 'pending' : meta.status;
   const key = nameKey(message.toolName);
@@ -80,7 +97,9 @@ export function ToolCallCard({ message }: { message: Message }) {
   const [open, setOpen] = useState<boolean | null>(null);
   const expanded = open ?? (status === 'pending' || status === 'running' || status === 'error');
   const isDiff = key === 'write_file' || key === 'edit_file';
+  const isCommand = key === 'run_command';
   const body = isDiff && meta.diff ? meta.diff : message.content;
+  const path = typeof meta.args.path === 'string' ? meta.args.path : '';
 
   return (
     <div
@@ -128,60 +147,36 @@ export function ToolCallCard({ message }: { message: Message }) {
         />
       </button>
 
+      {/* Suivi de la boucle, rendu dans la carte de l'outil en attente ou en cours. */}
+      {progress?.toolMessageId === message.id && (
+        <AgentStatusBar conversationId={message.conversationId} className="border-t" />
+      )}
+
       {expanded && (
         <div className="border-t">
-          {status === 'pending' && (
-            <div className="flex flex-wrap items-center gap-2 border-b bg-warning/5 px-3 py-2">
-              <ShieldAlert className="size-4 shrink-0 text-warning" aria-hidden="true" />
-              <span className="min-w-0 flex-1 text-xs text-muted-foreground">
-                {t(meta.risk === 'write' ? 'chat.tools.riskWrite' : 'chat.tools.riskRead')}
-              </span>
-              <Button size="sm" className="h-7" onClick={() => decide(message.id, 'allow')}>
-                <Check />
-                {t('chat.tools.allow')}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7"
-                onClick={() => decide(message.id, 'allowAlways')}
-              >
-                {t('chat.tools.allowAlways')}
-              </Button>
+          {status === 'pending' && <Approval message={message} risk={meta.risk} />}
+          <ArgsLine name={key} args={meta.args} />
+          {isCommand && status === 'pending' && (
+            <CommandPreview command={String(meta.args.command ?? '')} cwd={meta.cwd} />
+          )}
+          {(key === 'read_file' || isDiff) && path && status === 'done' && (
+            <div className="flex justify-end border-b px-3 py-1">
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-destructive hover:text-destructive"
-                onClick={() => decide(message.id, 'deny')}
+                className="h-6 text-xs text-muted-foreground"
+                onClick={() => useExplorer.getState().openFile(path)}
               >
-                <X />
-                {t('chat.tools.deny')}
+                <FolderOpen />
+                {t('chat.explorer.openFile')}
               </Button>
             </div>
           )}
-          <ArgsLine name={key} args={meta.args} />
-          {(key === 'read_file' || key === 'write_file' || key === 'edit_file') &&
-            typeof meta.args.path === 'string' &&
-            status === 'done' && (
-              <div className="flex justify-end border-b px-3 py-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs text-muted-foreground"
-                  onClick={() => useExplorer.getState().openFile(String(meta.args.path))}
-                >
-                  <FolderOpen />
-                  {t('chat.explorer.openFile')}
-                </Button>
-              </div>
-            )}
           {body ? (
             isDiff ? (
-              <DiffView diff={body} />
+              <DiffView diff={body} path={path} created={meta.created} />
             ) : (
-              <pre className="max-h-72 overflow-auto px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                {body}
-              </pre>
+              <Output text={body} copyable={isCommand} />
             )
           ) : (
             status !== 'pending' &&
@@ -192,6 +187,131 @@ export function ToolCallCard({ message }: { message: Message }) {
           <Footer meta={meta} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Zone d'approbation : Autoriser / Toujours / Refuser, avec motif de refus facultatif. */
+function Approval({ message, risk }: { message: Message; risk: 'read' | 'write' }) {
+  const { t } = useTranslation();
+  const decide = useAgent((s) => s.decide);
+  const [denying, setDenying] = useState(false);
+  const [reason, setReason] = useState('');
+  const deny = () => decide(message.id, 'deny', reason);
+
+  return (
+    <div className="border-b bg-warning/5">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+        <ShieldAlert className="size-4 shrink-0 text-warning" aria-hidden="true" />
+        <span className="min-w-0 flex-1 text-xs text-muted-foreground">
+          {t(risk === 'write' ? 'chat.tools.riskWrite' : 'chat.tools.riskRead')}
+        </span>
+        <Button size="sm" className="h-7" onClick={() => decide(message.id, 'allow')}>
+          <Check />
+          {t('chat.tools.allow')}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7"
+          onClick={() => decide(message.id, 'allowAlways')}
+        >
+          {t('chat.tools.allowAlways')}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-destructive hover:text-destructive"
+          aria-expanded={denying}
+          onClick={() => (denying ? deny() : setDenying(true))}
+        >
+          <X />
+          {t('chat.tools.deny')}
+        </Button>
+      </div>
+      {denying && (
+        <form
+          className="flex flex-wrap items-center gap-2 border-t border-warning/20 px-3 py-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            deny();
+          }}
+        >
+          <label className="text-xs text-muted-foreground" htmlFor={`deny-reason-${message.id}`}>
+            {t('chat.toolsPreview.reasonLabel')}
+          </label>
+          <Input
+            id={`deny-reason-${message.id}`}
+            autoFocus
+            className="h-7 min-w-40 flex-1 text-xs"
+            maxLength={300}
+            placeholder={t('chat.toolsPreview.reasonPlaceholder')}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setDenying(false);
+            }}
+          />
+          <Button size="sm" variant="destructive" className="h-7" type="submit">
+            <X />
+            {t('chat.toolsPreview.confirmDeny')}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7" onClick={() => setDenying(false)}>
+            {t('common.cancel')}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+/** Commande en attente : ligne complète et dossier d'exécution. */
+function CommandPreview({ command, cwd }: { command: string; cwd?: string | undefined }) {
+  const { t } = useTranslation();
+  return (
+    <div className="border-b px-3 py-2">
+      <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
+        <span className="select-none text-muted-foreground">$ </span>
+        {command}
+      </pre>
+      {cwd && (
+        <p className="mt-1 truncate text-[11px] text-muted-foreground" title={cwd}>
+          {t('chat.toolsPreview.runIn', { cwd })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Sortie brute (commande, lecture, recherche), avec action « Copier » pour les commandes. */
+function Output({ text, copyable }: { text: string; copyable: boolean }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // presse-papiers indisponible
+    }
+  };
+  return (
+    <div className="relative">
+      {copyable && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="absolute top-1 right-2 h-6 bg-card/80 px-1.5 text-[11px] text-muted-foreground backdrop-blur-sm"
+          onClick={copy}
+        >
+          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+          {copied ? t('common.copied') : t('common.copy')}
+        </Button>
+      )}
+      <pre className="max-h-72 overflow-auto px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+        {text}
+      </pre>
     </div>
   );
 }
@@ -237,26 +357,75 @@ function Footer({ meta }: { meta: NonNullable<Message['toolMeta']> }) {
   );
 }
 
-/** Diff unifié coloré ligne par ligne. */
-function DiffView({ diff }: { diff: string }) {
+/** Diff unifié coloré ligne par ligne, avec compteur, nom du fichier et repli au-delà de 40 lignes. */
+function DiffView({
+  diff,
+  path,
+  created,
+}: {
+  diff: string;
+  path?: string | undefined;
+  created?: boolean | undefined;
+}) {
+  const { t } = useTranslation();
+  const [showAll, setShowAll] = useState(false);
+  const lines = diff.split('\n');
+  const { added, removed } = diffStats(diff);
+  const folded = !showAll && lines.length > DIFF_FOLD_LINES;
+  const visible = folded ? lines.slice(0, DIFF_FOLD_LINES) : lines;
   return (
-    <pre className="max-h-80 overflow-auto px-0 py-1 font-mono text-xs leading-relaxed">
-      {diff.split('\n').map((line, i) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: lignes d'un diff statique
-          key={i}
-          className={cn(
-            'px-3 whitespace-pre-wrap',
-            line.startsWith('+') && !line.startsWith('+++') && 'bg-success/10 text-success',
-            line.startsWith('-') && !line.startsWith('---') && 'bg-destructive/10 text-destructive',
-            line.startsWith('@@') && 'text-info',
-            (line.startsWith('+++') || line.startsWith('---')) && 'text-muted-foreground',
-          )}
-        >
-          {line || ' '}
+    <div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b bg-muted/30 px-3 py-1 text-[11px]">
+        {path && <code className="truncate font-mono text-foreground">{path}</code>}
+        {created && (
+          <Badge className="px-1.5 font-sans border-success/40 bg-success/10 text-success">
+            {t('chat.toolsPreview.newFile')}
+          </Badge>
+        )}
+        <span className="ml-auto font-mono tabular-nums">
+          <span className="text-success">+{added}</span>{' '}
+          <span className="text-destructive">−{removed}</span>{' '}
+          <span className="text-muted-foreground">
+            {t('chat.toolsPreview.lines', { count: added + removed })}
+          </span>
+        </span>
+      </div>
+      <pre className="max-h-[32rem] overflow-auto px-0 py-1 font-mono text-xs leading-relaxed">
+        {visible.map((line, i) => (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: lignes d'un diff statique
+            key={i}
+            className={cn(
+              'px-3 whitespace-pre-wrap',
+              line.startsWith('+') && !line.startsWith('+++') && 'bg-success/10 text-success',
+              line.startsWith('-') &&
+                !line.startsWith('---') &&
+                'bg-destructive/10 text-destructive',
+              line.startsWith('@@') && 'text-info',
+              (line.startsWith('+++') || line.startsWith('---')) && 'text-muted-foreground',
+            )}
+          >
+            {line || ' '}
+          </div>
+        ))}
+      </pre>
+      {lines.length > DIFF_FOLD_LINES && (
+        <div className="flex justify-center border-t bg-muted/30 py-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 text-xs text-muted-foreground"
+            onClick={() => setShowAll(!showAll)}
+            aria-expanded={showAll}
+          >
+            <ChevronDown className={cn('size-3.5 transition-transform', showAll && 'rotate-180')} />
+            {showAll
+              ? t('chat.toolsPreview.collapse')
+              : t('chat.toolsPreview.showAll', { count: lines.length - DIFF_FOLD_LINES })}
+          </Button>
         </div>
-      ))}
-    </pre>
+      )}
+    </div>
   );
 }
 
