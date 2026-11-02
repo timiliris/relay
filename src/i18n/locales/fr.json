@@ -725,7 +725,29 @@
       "restoreCommands": "Restaurer la liste par défaut",
       "context": "Contexte de projet",
       "projectContext": "Contexte de projet au démarrage",
-      "projectContextHint": "Envoie l’arborescence, le fichier d’instructions (AGENTS.md…), les manifestes et le début du README avec le premier message. Jusqu’à environ 2 500 tokens par requête, rafraîchi une fois par heure."
+      "projectContextHint": "Envoie l’arborescence, le fichier d’instructions (AGENTS.md…), les manifestes et le début du README avec le premier message. Jusqu’à environ 2 500 tokens par requête, rafraîchi une fois par heure.",
+      "environment": "Environnement",
+      "environmentSetting": "Relevé de l’environnement au démarrage",
+      "environmentSettingHint": "Envoie avec le premier message la liste des outils installés sur ce poste (git, node, python, Playwright…) et des absents, pour que l’agent ne sonde pas la machine ni ne réinstalle ce qui est déjà là. Une centaine de tokens.",
+      "refresh": "Actualiser",
+      "detecting": "Relevé en cours…",
+      "missingTool": "absent",
+      "unknownVersion": "version inconnue",
+      "playwright": "Playwright",
+      "playwrightReady": "Prêt {{version}} ({{via}}) · navigateurs : {{browsers}}",
+      "playwrightNoBrowser": "Paquet {{version}} présent ({{via}}), aucun navigateur téléchargé",
+      "playwrightMissing": "Absent : l’agent devra l’installer pour tester un site dans un navigateur.",
+      "playwrightNoRuntime": "Ni Python ni Node n’est installé. Installez l’un des deux puis actualisez :",
+      "installPlaywright": "Installer Playwright",
+      "reinstallPlaywright": "Réinstaller",
+      "installPlaywrightHint": "Installe le paquet Playwright puis Chromium avec {{tool}} dans un dialogue de progression. Une à deux minutes selon la connexion.",
+      "installTitle": "Installation de Playwright",
+      "installStarting": "Préparation…",
+      "installStep": "Étape {{index}}/{{total}} : {{command}}",
+      "installSuccess": "Playwright et Chromium sont installés. L’agent en sera informé au prochain message.",
+      "installFailed": "L’installation a échoué (code {{code}}). Le journal ci-dessous indique la cause.",
+      "installCancelled": "Installation annulée.",
+      "installTimedOut": "Délai de dix minutes dépassé : installation interrompue."
     }
   },
   "onboarding": {
@@ -785,6 +807,7 @@
     "network": "Connexion à OpenRouter impossible. Vérifiez votre réseau.",
     "keyring": "Accès au trousseau du système impossible.",
     "tool": "L'outil a échoué.",
-    "workspace_denied": "Chemin hors du dossier de travail : refusé."
+    "workspace_denied": "Chemin hors du dossier de travail : refusé.",
+    "playwright_no_runtime": "Ni Python ni Node n’est installé : impossible d’installer Playwright."
   }
 }

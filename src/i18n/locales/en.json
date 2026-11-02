@@ -725,7 +725,29 @@
       "restoreCommands": "Restore the default list",
       "context": "Project context",
       "projectContext": "Project context at start",
-      "projectContextHint": "Sends the folder tree, the instructions file (AGENTS.md…), the manifests and the start of the README with the first message. Up to about 2,500 tokens per request, refreshed once an hour."
+      "projectContextHint": "Sends the folder tree, the instructions file (AGENTS.md…), the manifests and the start of the README with the first message. Up to about 2,500 tokens per request, refreshed once an hour.",
+      "environment": "Environment",
+      "environmentSetting": "Environment summary at start",
+      "environmentSettingHint": "Sends with the first message the list of tools installed on this machine (git, node, python, Playwright…) and the missing ones, so the agent neither probes the machine nor reinstalls what is already there. About a hundred tokens.",
+      "refresh": "Refresh",
+      "detecting": "Detecting…",
+      "missingTool": "missing",
+      "unknownVersion": "unknown version",
+      "playwright": "Playwright",
+      "playwrightReady": "Ready {{version}} ({{via}}) · browsers: {{browsers}}",
+      "playwrightNoBrowser": "Package {{version}} present ({{via}}), no browser downloaded",
+      "playwrightMissing": "Missing: the agent would have to install it to test a site in a browser.",
+      "playwrightNoRuntime": "Neither Python nor Node is installed. Install one of them, then refresh:",
+      "installPlaywright": "Install Playwright",
+      "reinstallPlaywright": "Reinstall",
+      "installPlaywrightHint": "Installs the Playwright package then Chromium with {{tool}} in a progress dialog. One to two minutes depending on the connection.",
+      "installTitle": "Installing Playwright",
+      "installStarting": "Preparing…",
+      "installStep": "Step {{index}}/{{total}}: {{command}}",
+      "installSuccess": "Playwright and Chromium are installed. The agent will know from the next message on.",
+      "installFailed": "The installation failed (code {{code}}). The log below shows why.",
+      "installCancelled": "Installation cancelled.",
+      "installTimedOut": "Ten-minute limit exceeded: installation stopped."
     }
   },
   "onboarding": {
@@ -785,6 +807,7 @@
     "network": "Could not reach OpenRouter. Check your connection.",
     "keyring": "Could not access the system keychain.",
     "tool": "The tool failed.",
-    "workspace_denied": "Path outside the workspace folder: denied."
+    "workspace_denied": "Path outside the workspace folder: denied.",
+    "playwright_no_runtime": "Neither Python nor Node is installed: Playwright cannot be installed."
   }
 }
