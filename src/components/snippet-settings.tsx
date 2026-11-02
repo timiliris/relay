@@ -5,8 +5,8 @@ import { normalizeTrigger, SNIPPET_PREFIX, type Snippet } from '@/lib/snippets';
 import { dialog } from '@/stores/dialog';
 import { seedSnippets, useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
+import { SettingsSection } from './settings/primitives';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 
@@ -141,75 +141,72 @@ export function SnippetSettings() {
   );
 
   return (
-    <Card id="snippets">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Slash className="size-4" />
-          {t('chat.snippets.title')}
-        </CardTitle>
-        <CardDescription>{t('chat.snippets.description', templates)}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
-        {sorted.length === 0 && editing !== 'new' && (
-          <p className="text-muted-foreground">{t('chat.snippets.none')}</p>
-        )}
-        <ul className="flex flex-col divide-y">
-          {sorted.map((s) => (
-            <li key={s.id} className="py-2">
-              {editing === s.id ? (
-                form
-              ) : (
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 rounded bg-muted px-1.5 font-mono text-xs text-primary">
-                        {SNIPPET_PREFIX}
-                        {s.trigger}
-                      </span>
-                      <p className="truncate font-medium">{s.title}</p>
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
-                      {s.body}
-                    </p>
+    <SettingsSection
+      id="snippets"
+      icon={Slash}
+      title={t('chat.snippets.title')}
+      description={t('chat.snippets.description', templates)}
+      contentClassName="gap-3"
+    >
+      {sorted.length === 0 && editing !== 'new' && (
+        <p className="text-muted-foreground">{t('chat.snippets.none')}</p>
+      )}
+      <ul className="flex flex-col divide-y">
+        {sorted.map((s) => (
+          <li key={s.id} className="py-2">
+            {editing === s.id ? (
+              form
+            ) : (
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 rounded bg-muted px-1.5 font-mono text-xs text-primary">
+                      {SNIPPET_PREFIX}
+                      {s.trigger}
+                    </span>
+                    <p className="truncate font-medium">{s.title}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('chat.snippets.edit')}
-                    title={t('chat.snippets.edit')}
-                    onClick={() => startEdit(s)}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    aria-label={t('chat.snippets.delete')}
-                    title={t('chat.snippets.delete')}
-                    onClick={() => void remove(s)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                    {s.body}
+                  </p>
                 </div>
-              )}
-            </li>
-          ))}
-        </ul>
-        {editing === 'new' ? (
-          form
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={startNew}>
-              <Plus />
-              {t('chat.snippets.add')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={restore}>
-              {t('chat.snippets.restoreDefaults')}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('chat.snippets.edit')}
+                  title={t('chat.snippets.edit')}
+                  onClick={() => startEdit(s)}
+                >
+                  <Pencil />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  aria-label={t('chat.snippets.delete')}
+                  title={t('chat.snippets.delete')}
+                  onClick={() => void remove(s)}
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {editing === 'new' ? (
+        form
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={startNew}>
+            <Plus />
+            {t('chat.snippets.add')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={restore}>
+            {t('chat.snippets.restoreDefaults')}
+          </Button>
+        </div>
+      )}
+    </SettingsSection>
   );
 }

@@ -24,7 +24,8 @@ describe('Relay', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Paramètres' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/^Version \d+\.\d+\.\d+/)).toBeInTheDocument();
+    // La version figure dans « À propos » et dans l'état des mises à jour.
+    expect(screen.getAllByText(/^Version \d+\.\d+\.\d+/).length).toBeGreaterThan(0);
   });
 
   it('affiche les pages Comparer et Usage', async () => {
