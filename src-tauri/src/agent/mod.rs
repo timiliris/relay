@@ -243,10 +243,9 @@ mod tests {
 
     #[test]
     fn display_relative_uses_forward_slashes() {
-        let root = Path::new("C:\\w");
-        assert_eq!(
-            display_relative(root, Path::new("C:\\w\\src\\a.rs")),
-            "src/a.rs"
-        );
+        // Indépendant de la plateforme : la racine et le chemin sont construits avec le séparateur natif.
+        let root = std::env::temp_dir();
+        let path = root.join("src").join("a.rs");
+        assert_eq!(display_relative(&root, &path), "src/a.rs");
     }
 }

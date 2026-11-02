@@ -42,6 +42,9 @@ fn shell_command(command: &str, cwd: &Path) -> Command {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    // Unix : groupe de processus dédié, pour tuer aussi les enfants du shell (`sleep`, `node`…).
+    #[cfg(unix)]
+    cmd.process_group(0);
     cmd
 }
 
@@ -75,7 +78,36 @@ async fn kill_tree(child: &mut Child) {
             .status()
             .await;
     }
+    #[cfg(unix)]
+    if let Some(pid) = child.id() {
+        let _ = Command::new("kill")
+            .args(["-9", "--", &format!("-{pid}")])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await;
+    }
     let _ = child.kill().await;
+}
+
+/// Récupère la sortie d'un flux ; après un arrêt forcé, n'attend pas plus de deux secondes
+/// (un petit-enfant survivant pourrait garder le tube ouvert).
+async fn collect(
+    task: &mut tokio::task::JoinHandle<(Vec<u8>, bool)>,
+    killed: bool,
+) -> (Vec<u8>, bool) {
+    let wait = if killed {
+        Duration::from_secs(2)
+    } else {
+        Duration::from_secs(MAX_TIMEOUT_SECS)
+    };
+    match tokio::time::timeout(wait, &mut *task).await {
+        Ok(Ok(output)) => output,
+        _ => {
+            task.abort();
+            (Vec::new(), true)
+        }
+    }
 }
 
 pub async fn run_command(
@@ -88,8 +120,8 @@ pub async fn run_command(
     let mut child = shell_command(command, cwd).spawn()?;
     let stdout = child.stdout.take().expect("stdout piped");
     let stderr = child.stderr.take().expect("stderr piped");
-    let out_task = tokio::spawn(drain(stdout));
-    let err_task = tokio::spawn(drain(stderr));
+    let mut out_task = tokio::spawn(drain(stdout));
+    let mut err_task = tokio::spawn(drain(stderr));
     let timeout = Duration::from_secs(timeout_secs.clamp(1, MAX_TIMEOUT_SECS));
 
     let (status, timed_out) = tokio::select! {
@@ -103,8 +135,9 @@ pub async fn run_command(
             (None, false)
         }
     };
-    let (stdout, out_trunc) = out_task.await.unwrap_or_default();
-    let (stderr, err_trunc) = err_task.await.unwrap_or_default();
+    let killed = status.is_none();
+    let (stdout, out_trunc) = collect(&mut out_task, killed).await;
+    let (stderr, err_trunc) = collect(&mut err_task, killed).await;
     Ok(CommandOutput {
         exit_code: status,
         stdout: String::from_utf8_lossy(&stdout).into_owned(),
