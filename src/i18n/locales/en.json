@@ -272,6 +272,12 @@
       "revert": "Revert",
       "saved": "{{name}} saved.",
       "readOnly": "File too large to edit: partial read-only view."
+    },
+    "editor": {
+      "loading": "Loading editor…",
+      "plainText": "Plain text",
+      "status": "Editor status",
+      "position": "Ln {{line}}, Col {{column}}"
     }
   },
   "search": {

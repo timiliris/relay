@@ -272,6 +272,12 @@
       "revert": "Rétablir",
       "saved": "{{name}} enregistré.",
       "readOnly": "Fichier trop volumineux pour l'édition : affichage partiel en lecture seule."
+    },
+    "editor": {
+      "loading": "Chargement de l’éditeur…",
+      "plainText": "Texte brut",
+      "status": "État de l’éditeur",
+      "position": "Lig. {{line}}, Col. {{column}}"
     }
   },
   "search": {

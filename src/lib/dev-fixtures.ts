@@ -3,6 +3,7 @@
  * (hors Tauri, mode `development`) pour travailler l'interface sans base SQLite.
  * Jamais chargées dans l'application ni dans les tests.
  */
+import type { FileEntry } from './agent/commands';
 import type { Conversation, Message, PersonaMemory } from './db';
 import { defaultPresetId } from './default-presets';
 import { isTauri } from './tauri';
@@ -485,3 +486,109 @@ export const sampleMemories: Record<string, PersonaMemory[]> = {
     },
   ],
 };
+
+/** Dossier de travail fictif pour le volet Fichiers (hors Tauri, les commandes Rust échouent). */
+export const sampleWorkspaceFiles: Record<string, string> = {
+  'README.md': `# Relay
+
+Client de bureau pour **OpenRouter**.
+
+- Tauri v2 + React 19
+- \`pnpm dev --port 1441\`
+
+> Voir [la doc](https://tauri.app) pour la configuration.
+`,
+  'package.json': `{
+  "name": "demo",
+  "version": "1.0.0",
+  "scripts": { "dev": "vite" },
+  "ok": true,
+  "count": 42
+}
+`,
+  'src/main.ts': `import { createRoot } from 'react-dom/client';
+
+/** Point d'entrée : monte l'application. */
+export function boot(selector = '#root'): void {
+  const el = document.querySelector<HTMLDivElement>(selector);
+  if (!el) throw new Error(\`Élément introuvable : \${selector}\`);
+  const root = createRoot(el);
+  root.render(null);
+  console.log('started', { at: Date.now(), retries: 3 });
+}
+
+boot();
+`,
+  'src/styles.css': `:root {
+  --accent: oklch(0.6 0.16 240);
+}
+
+.card:hover > .title {
+  color: var(--accent);
+  font-weight: 600;
+}
+`,
+  'src-tauri/src/main.rs': `use std::collections::HashMap;\r
+\r
+#[derive(Debug, Default)]\r
+struct Counter {\r
+    hits: HashMap<String, u32>,\r
+}\r
+\r
+impl Counter {\r
+    /// Incrémente la clé et renvoie la nouvelle valeur.\r
+    fn bump(&mut self, key: &str) -> u32 {\r
+        let n = self.hits.entry(key.to_owned()).or_insert(0);\r
+        *n += 1;\r
+        *n\r
+    }\r
+}\r
+\r
+fn main() {\r
+    let mut c = Counter::default();\r
+    println!("{}", c.bump("boot"));\r
+}\r
+`,
+  'scripts/release.py': `import json
+from pathlib import Path
+
+def bump(version: str) -> str:
+    """Incrémente le dernier segment."""
+    major, minor, patch = (int(p) for p in version.split("."))
+    return f"{major}.{minor}.{patch + 1}"
+
+if __name__ == "__main__":
+    data = json.loads(Path("package.json").read_text())
+    print(bump(data["version"]))
+`,
+  '.github/workflows/ci.yml': `name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pnpm test
+`,
+  LICENSE: 'MIT License\n\nCopyright (c) 2026\n',
+};
+
+/** Entrées d'un dossier fictif (`.` pour la racine), dossiers d'abord. */
+export function sampleWorkspaceEntries(dir: string): FileEntry[] {
+  const prefix = dir === '.' ? '' : `${dir}/`;
+  const seen = new Map<string, 'file' | 'dir'>();
+  for (const path of Object.keys(sampleWorkspaceFiles)) {
+    if (!path.startsWith(prefix)) continue;
+    const rest = path.slice(prefix.length);
+    const slash = rest.indexOf('/');
+    if (slash === -1) seen.set(path, 'file');
+    else seen.set(prefix + rest.slice(0, slash), 'dir');
+  }
+  return [...seen]
+    .map(([path, kind]) => ({
+      path,
+      kind,
+      size: kind === 'file' ? new TextEncoder().encode(sampleWorkspaceFiles[path]).length : null,
+    }))
+    .sort((a, b) => (a.kind === b.kind ? a.path.localeCompare(b.path) : a.kind === 'dir' ? -1 : 1));
+}
