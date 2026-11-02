@@ -31,10 +31,16 @@ serde_json = "1"
 log = "0.4"
 thiserror = "2"
 reqwest = { version = "0.13", default-features = false, features = ["json", "stream", "rustls", "gzip"] }
-tokio = { version = "1", features = ["sync", "macros"] }
+tokio = { version = "1", features = ["sync", "macros", "process", "time", "io-util"] }
 tokio-util = "0.7"
 futures-util = "0.3"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# Mode agent : diff des écritures, parcours respectant .gitignore, recherche, chemins canoniques lisibles.
+similar = "2"
+ignore = "0.4"
+globset = "0.4"
+regex = "1"
+dunce = "1"
 
 [dev-dependencies]
 # Tests d'intégration réseau (`cargo test -- --ignored`).

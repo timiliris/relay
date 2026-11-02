@@ -30,6 +30,10 @@ pub enum AppError {
 
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+
+    /// Refus ou échec d'un outil du mode agent ; le message est destiné au modèle tel quel.
+    #[error("{0}")]
+    Tool(String),
 }
 
 pub type AppResult<T> = Result<T, AppError>;
@@ -54,6 +58,7 @@ impl Serialize for AppError {
             AppError::Io(_) => ("io", None, None),
             AppError::Tauri(_) => ("tauri", None, None),
             AppError::Json(_) => ("json", None, None),
+            AppError::Tool(_) => ("tool", None, None),
         };
         ErrorPayload {
             kind,

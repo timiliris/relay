@@ -8,8 +8,10 @@
 //! - `menu.rs`, `tray.rs`, `shortcut.rs` : intégration desktop.
 //! - `db.rs`     : migrations SQLite (conversations, messages).
 //! - `openrouter/` : client HTTP OpenRouter (modèles, crédits, streaming SSE).
+//! - `agent/`   : outils du mode agent (fichiers, recherche, commandes) dans un dossier de travail.
 //! - `secrets.rs` : clé API dans le trousseau système.
 
+mod agent;
 mod commands;
 mod db;
 mod error;
@@ -78,6 +80,7 @@ pub fn run() {
         .plugin(db::init())
         .manage(state::AppState::new(start_hidden, auto_update))
         .manage(openrouter::OpenRouterState::new())
+        .manage(agent::WorkspaceState::default())
         .invoke_handler(tauri::generate_handler![
             commands::app::set_language,
             commands::app::should_start_hidden,
@@ -91,6 +94,14 @@ pub fn run() {
             commands::secrets::set_api_key,
             commands::secrets::get_api_key_hint,
             commands::secrets::clear_api_key,
+            commands::agent::register_workspace,
+            commands::agent::tool_list_files,
+            commands::agent::tool_read_file,
+            commands::agent::tool_preview_change,
+            commands::agent::tool_apply_change,
+            commands::agent::tool_search,
+            commands::agent::tool_run_command,
+            commands::agent::cancel_tool,
         ])
         .setup(|app| {
             let info = app.package_info();

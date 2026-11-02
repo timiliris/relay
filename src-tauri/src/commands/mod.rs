@@ -4,6 +4,7 @@
 //! `generate_handler!` (voir `lib.rs`) avec son chemin complet. Côté TypeScript,
 //! les appels passent par les wrappers typés de `src/lib/tauri.ts` et `src/lib/openrouter.ts`.
 
+pub mod agent;
 pub mod app;
 pub mod openrouter;
 pub mod secrets;
