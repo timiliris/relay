@@ -2,6 +2,20 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.8.0](https://github.com/timiliris/relay/compare/v0.7.0...v0.8.0) (2026-11-02)
+
+
+### Nouveautés
+
+* **agent:** exécuteurs d'outils Rust dans un dossier de travail ([c42fdf0](https://github.com/timiliris/relay/commit/c42fdf0d4df3ef714ce0a0d77113ff411686384a))
+* **agent:** mode développement — boucle d'agent, cartes d'outils, dossier de travail ([80dbf92](https://github.com/timiliris/relay/commit/80dbf92e4b45a1e74d8d38e3b6f08042002b96f1))
+* **openrouter:** appels d'outils (tools, tool_calls, rôle tool) et migration v6 ([320543b](https://github.com/timiliris/relay/commit/320543ba0b64a13c4c280f47fd9a10f0e7833ddc))
+
+
+### Corrections
+
+* **agent:** arrêt des commandes et test de chemin portables sous Linux ([7a39ab5](https://github.com/timiliris/relay/commit/7a39ab5c9bd98bfe6de64728987fe3a5a269140d))
+
 ## [0.7.0](https://github.com/timiliris/relay/compare/v0.6.2...v0.7.0) (2026-11-02)
 
 
