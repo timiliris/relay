@@ -7,6 +7,7 @@ import {
   Folder,
   FolderOpen,
   FolderTree,
+  MessageSquarePlus,
   RefreshCw,
   RotateCcw,
   Save,
@@ -339,6 +340,7 @@ function Tree({
   onSelect: (path: string) => void;
 }) {
   const { t } = useTranslation();
+  const requestAttach = useExplorer((s) => s.requestAttach);
   const entries = dirs[dir];
   if (!entries) return null;
   if (entries.length === 0 && depth === 0) {
@@ -378,15 +380,26 @@ function Tree({
                 )}
               </>
             ) : (
-              <TreeRow
-                depth={depth}
-                selected={selected === entry.path}
-                onClick={() => onSelect(entry.path)}
-              >
-                <span className="size-3.5 shrink-0" aria-hidden="true" />
-                <File className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span className="truncate">{name}</span>
-              </TreeRow>
+              <div className="group/row relative">
+                <TreeRow
+                  depth={depth}
+                  selected={selected === entry.path}
+                  onClick={() => onSelect(entry.path)}
+                  className="pr-8"
+                >
+                  <span className="size-3.5 shrink-0" aria-hidden="true" />
+                  <File className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="truncate">{name}</span>
+                </TreeRow>
+                {/* Visible au survol ou au focus : joint le fichier au message en cours. */}
+                <IconButton
+                  label={t('chat.mention.attach')}
+                  className="absolute top-1/2 right-1 size-6 -translate-y-1/2 text-muted-foreground opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
+                  onClick={() => requestAttach(entry.path, entry.size)}
+                >
+                  <MessageSquarePlus className="size-3.5" />
+                </IconButton>
+              </div>
             )}
           </li>
         );
@@ -398,6 +411,7 @@ function Tree({
 function TreeRow({
   depth,
   selected,
+  className,
   children,
   ...props
 }: React.ComponentProps<'button'> & { depth: number; selected?: boolean }) {
@@ -407,6 +421,7 @@ function TreeRow({
       className={cn(
         'flex w-full items-center gap-1.5 py-1 pr-2 text-left text-xs hover:bg-accent/60',
         selected && 'bg-accent font-medium',
+        className,
       )}
       style={{ paddingLeft: `${8 + depth * 14}px` }}
       {...props}

@@ -288,6 +288,13 @@
       "revert": "Rétablir",
       "saved": "{{name}} enregistré.",
       "readOnly": "Fichier trop volumineux pour l'édition : affichage partiel en lecture seule."
+    },
+    "mention": {
+      "menuTitle": "Fichiers du dossier de travail",
+      "menuHint": "↑↓ pour choisir, Entrée pour joindre, Échap pour fermer",
+      "loading": "Chargement…",
+      "attach": "Ajouter au message",
+      "binary": "{{name}} : fichier binaire, impossible à joindre."
     }
   },
   "search": {

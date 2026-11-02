@@ -288,6 +288,13 @@
       "revert": "Revert",
       "saved": "{{name}} saved.",
       "readOnly": "File too large to edit: partial read-only view."
+    },
+    "mention": {
+      "menuTitle": "Workspace files",
+      "menuHint": "↑↓ to choose, Enter to attach, Esc to close",
+      "loading": "Loading…",
+      "attach": "Add to message",
+      "binary": "{{name}}: binary file, cannot be attached."
     }
   },
   "search": {

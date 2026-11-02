@@ -15,8 +15,10 @@ import { formatTokens } from '@/lib/format';
 import { expandLeadingSnippet } from '@/lib/snippets';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
+import { useExplorer } from '@/stores/explorer';
 import { useSettings } from '@/stores/settings';
 import { toast } from '@/stores/toast';
+import { attachWorkspaceFile, useFileMentionMenu } from './file-mention-menu';
 import { AttachmentList } from './message-bubble';
 import { RoleplayTools } from './roleplay-tools';
 import { useSnippetMenu } from './snippet-menu';
@@ -40,6 +42,8 @@ interface ComposerProps {
   preset?: Preset | null | undefined;
   /** Jeu de rôle : demande au modèle la réplique du joueur, placée dans la saisie pour relecture. */
   onImpersonate?: (() => Promise<string>) | undefined;
+  /** Dossier de travail : active les mentions `@fichier` et les demandes du volet Fichiers. */
+  workspace?: string | null | undefined;
   children?: React.ReactNode;
 }
 
@@ -58,6 +62,7 @@ export function Composer({
   acceptsImages = true,
   preset,
   onImpersonate,
+  workspace,
   children,
 }: ComposerProps) {
   const { t } = useTranslation();
@@ -74,6 +79,32 @@ export function Composer({
   }, [roleplay]);
   const snippets = useSettings((s) => s.snippets);
   const snippetMenu = useSnippetMenu(value, setValue);
+
+  /** Un fichier du dossier de travail remplace la pièce jointe de même chemin. */
+  const addWorkspaceAttachment = (item: Attachment) =>
+    setAttachments((prev) => [
+      ...prev.filter((a) => !(a.kind === 'text' && a.name === item.name)),
+      item,
+    ]);
+  const mentionMenu = useFileMentionMenu({
+    workspace,
+    value,
+    setValue,
+    textareaRef: ref,
+    onAttach: addWorkspaceAttachment,
+  });
+
+  // Fichiers déposés par le volet Fichiers (bouton « Ajouter au message »).
+  const attachRequests = useExplorer((s) => s.attachRequests);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: déclenché par la file d'attente seulement
+  useEffect(() => {
+    if (!workspace || attachRequests.length === 0) return;
+    useExplorer.getState().consumeAttachRequests();
+    for (const request of attachRequests) {
+      void attachWorkspaceFile(workspace, request.path, request.size, addWorkspaceAttachment);
+    }
+    ref.current?.focus();
+  }, [attachRequests, workspace]);
 
   useEffect(() => {
     if (draft !== undefined) {
@@ -186,6 +217,7 @@ export function Composer({
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (snippetMenu.onKeyDown(e)) return;
+    if (mentionMenu.onKeyDown(e)) return;
     if (roleplay && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') {
       e.preventDefault();
       setOoc((v) => !v);
@@ -234,6 +266,7 @@ export function Composer({
           </div>
         )}
         {snippetMenu.element}
+        {mentionMenu.element}
         {attachments.length > 0 && (
           <div className="px-3 pt-3">
             <AttachmentList
