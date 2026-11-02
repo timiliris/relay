@@ -4,7 +4,7 @@ import type { Preset } from '@/lib/db';
 import { defaultPersona } from '@/lib/persona';
 import { Composer } from './composer';
 
-const preset = (mode: 'assistant' | 'roleplay'): Preset => ({
+const preset = (mode: 'assistant' | 'roleplay' | 'innerVoice'): Preset => ({
   id: 'p1',
   name: 'Maître du jeu',
   systemPrompt: null,
@@ -18,7 +18,10 @@ const preset = (mode: 'assistant' | 'roleplay'): Preset => ({
   createdAt: '',
 });
 
-function renderComposer(mode: 'assistant' | 'roleplay', onImpersonate?: () => Promise<string>) {
+function renderComposer(
+  mode: 'assistant' | 'roleplay' | 'innerVoice',
+  onImpersonate?: () => Promise<string>,
+) {
   const onSend = vi.fn();
   render(
     <Composer
@@ -68,6 +71,13 @@ describe('Composer en jeu de rôle', () => {
     fireEvent.click(screen.getByRole('button', { name: /prochaine réplique/ }));
     expect(await screen.findByDisplayValue('Je sors mon épée.')).toBe(textarea);
     expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it('en petite voix, « Passer le tour » envoie « Fais ce que tu sens. » et cache « Jouer mon tour »', () => {
+    const { onSend } = renderComposer('innerVoice', async () => 'x');
+    expect(screen.queryByRole('button', { name: /prochaine réplique/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Passer le tour/ }));
+    expect(onSend).toHaveBeenCalledWith('Fais ce que tu sens.', []);
   });
 
   it('insère un jet de dés dans la saisie', () => {

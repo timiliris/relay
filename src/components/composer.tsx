@@ -12,6 +12,7 @@ import { AttachmentError, attachmentFromFile, pickAttachments } from '@/lib/atta
 import type { ContextEstimate } from '@/lib/context';
 import type { Attachment, Preset } from '@/lib/db';
 import { formatTokens } from '@/lib/format';
+import { isSceneMode } from '@/lib/persona';
 import { expandLeadingSnippet } from '@/lib/snippets';
 import { errorMessage, isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
@@ -38,7 +39,7 @@ interface ComposerProps {
   context?: ContextEstimate | undefined;
   onContextChange?: ((draft: string, attachments: Attachment[]) => void) | undefined;
   acceptsImages?: boolean;
-  /** Persona de la conversation ; en mode jeu de rôle, affiche les outils dédiés. */
+  /** Persona de la conversation ; en jeu de rôle ou en petite voix, affiche les outils dédiés. */
   preset?: Preset | null | undefined;
   /** Jeu de rôle : demande au modèle la réplique du joueur, placée dans la saisie pour relecture. */
   onImpersonate?: (() => Promise<string>) | undefined;
@@ -71,9 +72,9 @@ export function Composer({
   const [dragging, setDragging] = useState(false);
   const [ooc, setOoc] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
-  const roleplay = preset?.persona.mode === 'roleplay';
+  const roleplay = preset ? isSceneMode(preset.persona.mode) : false;
 
-  // La bascule hors rôle n'a de sens qu'en jeu de rôle.
+  // La bascule hors rôle n'a de sens que dans une scène (jeu de rôle, petite voix).
   useEffect(() => {
     if (!roleplay) setOoc(false);
   }, [roleplay]);
@@ -315,6 +316,7 @@ export function Composer({
               onImpersonate={onImpersonate}
               onReplaceDraft={replaceDraft}
               onInsert={insert}
+              onSendText={(text) => onSend(text, [])}
             />
           )}
           <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">{children}</div>

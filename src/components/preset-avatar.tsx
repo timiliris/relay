@@ -1,4 +1,4 @@
-import { Drama } from 'lucide-react';
+import { Drama, Ear } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { hueStyle } from '@/lib/color';
 import type { Preset } from '@/lib/db';
@@ -21,11 +21,11 @@ export function PresetAvatar({ preset, className }: { preset: Preset; className?
   );
 }
 
-/** Étiquettes « RP » et « 18+ » d'un persona ; rien pour un assistant classique. */
+/** Étiquettes « RP », « Voix » et « 18+ » d'un persona ; rien pour un assistant classique. */
 export function PresetBadges({ preset, className }: { preset: Preset; className?: string }) {
   const { t } = useTranslation();
   const { mode, mature } = preset.persona;
-  if (mode !== 'roleplay' && !mature) return null;
+  if (mode === 'assistant' && !mature) return null;
   return (
     <span className={cn('inline-flex shrink-0 items-center gap-1', className)}>
       {mode === 'roleplay' && (
@@ -35,6 +35,15 @@ export function PresetBadges({ preset, className }: { preset: Preset; className?
         >
           <Drama className="size-3" aria-hidden="true" />
           {t('presets.badgeRoleplay')}
+        </Badge>
+      )}
+      {mode === 'innerVoice' && (
+        <Badge
+          className="gap-1 border-info/40 bg-info/10 px-1.5 text-info"
+          title={t('presets.modeInnerVoice')}
+        >
+          <Ear className="size-3" aria-hidden="true" />
+          {t('presets.badgeInnerVoice')}
         </Badge>
       )}
       {mature && (

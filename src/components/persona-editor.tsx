@@ -1,4 +1,4 @@
-import { Drama, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Drama, Ear, RotateCcw, ShieldAlert } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { resolveLanguage } from '@/i18n';
@@ -6,6 +6,8 @@ import type { Preset } from '@/lib/db';
 import {
   buildSystemPrompt,
   defaultPersona,
+  type InnerVoice,
+  isSceneMode,
   NEUTRAL,
   type Persona,
   type Roleplay,
@@ -25,7 +27,7 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 
-type Tab = 'identity' | 'personality' | 'roleplay' | 'advanced';
+type Tab = 'identity' | 'personality' | 'roleplay' | 'innerVoice' | 'advanced';
 
 interface PersonaEditorProps {
   preset: Preset;
@@ -35,8 +37,8 @@ interface PersonaEditorProps {
 }
 
 /**
- * Éditeur complet d'un persona : identité et mode, traits par curseurs, fiche de jeu
- * de rôle, paramètres avancés, avec aperçu de l'instruction système composée.
+ * Éditeur complet d'un persona : identité et mode, traits par curseurs, fiches de jeu
+ * de rôle et de petite voix, paramètres avancés, avec aperçu de l'instruction composée.
  */
 export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEditorProps) {
   const { t } = useTranslation();
@@ -52,6 +54,9 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
     setPersona({ traits: { ...persona.traits, [key]: value } });
   const setRoleplay = (patch: Partial<Roleplay>) =>
     setPersona({ roleplay: { ...persona.roleplay, ...patch } });
+  const setInnerVoice = (patch: Partial<InnerVoice>) =>
+    setPersona({ innerVoice: { ...persona.innerVoice, ...patch } });
+  const scene = isSceneMode(persona.mode);
 
   const toggleMature = async (on: boolean) => {
     if (on && !adultConfirmed) {
@@ -71,6 +76,7 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
     { value: 'identity', label: t('presets.tabIdentity') },
     { value: 'personality', label: t('presets.tabPersonality') },
     { value: 'roleplay', label: t('presets.tabRoleplay') },
+    { value: 'innerVoice', label: t('presets.tabInnerVoice') },
     { value: 'advanced', label: t('presets.tabAdvanced') },
   ];
 
@@ -99,6 +105,7 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
           options={[
             { value: 'assistant', label: t('presets.modeAssistant') },
             { value: 'roleplay', label: t('presets.modeRoleplay') },
+            { value: 'innerVoice', label: t('presets.modeInnerVoice') },
           ]}
         />
       </div>
@@ -279,6 +286,97 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
         </div>
       )}
 
+      {tab === 'innerVoice' && (
+        <div className="flex flex-col gap-4">
+          {persona.mode !== 'innerVoice' && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-info/40 bg-info/5 px-3 py-2 text-xs">
+              <span className="inline-flex items-center gap-2">
+                <Ear className="size-4 text-info" aria-hidden="true" />
+                {t('presets.innerVoiceOnly')}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPersona({ mode: 'innerVoice' })}
+              >
+                {t('presets.switchToInnerVoice')}
+              </Button>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">{t('presets.ivHint')}</p>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <Field label={t('presets.ivCharacterName')}>
+              <Input
+                value={persona.innerVoice.characterName}
+                onChange={(e) => setInnerVoice({ characterName: e.target.value })}
+                placeholder={t('presets.ivCharacterNamePlaceholder')}
+                className="h-8"
+              />
+            </Field>
+            <Field label={t('presets.ivUserName')}>
+              <Input
+                value={persona.innerVoice.userName}
+                onChange={(e) => setInnerVoice({ userName: e.target.value })}
+                placeholder={t('presets.ivUserNamePlaceholder')}
+                className="h-8"
+              />
+            </Field>
+          </div>
+          <Field label={t('presets.ivCharacter')} hint={t('presets.ivTemplateHint')}>
+            <Textarea
+              value={persona.innerVoice.character}
+              onChange={(e) => setInnerVoice({ character: e.target.value })}
+              placeholder={t('presets.ivCharacterPlaceholder')}
+              className="min-h-24 font-sans"
+            />
+          </Field>
+          <Field label={t('presets.ivOtherName')}>
+            <Input
+              value={persona.innerVoice.otherName}
+              onChange={(e) => setInnerVoice({ otherName: e.target.value })}
+              placeholder={t('presets.ivOtherNamePlaceholder')}
+              className="h-8 max-w-xs"
+            />
+          </Field>
+          <Field label={t('presets.ivOther')}>
+            <Textarea
+              value={persona.innerVoice.otherCharacter}
+              onChange={(e) => setInnerVoice({ otherCharacter: e.target.value })}
+              placeholder={t('presets.ivOtherPlaceholder')}
+              className="min-h-20 font-sans"
+            />
+          </Field>
+          <Field label={t('presets.rpScenario')}>
+            <Textarea
+              value={persona.innerVoice.scenario}
+              onChange={(e) => setInnerVoice({ scenario: e.target.value })}
+              placeholder={t('presets.ivScenarioPlaceholder')}
+              className="min-h-20 font-sans"
+            />
+          </Field>
+          <Field label={t('presets.rpGreeting')} hint={t('presets.ivGreetingHint')}>
+            <Textarea
+              value={persona.innerVoice.greeting}
+              onChange={(e) => setInnerVoice({ greeting: e.target.value })}
+              placeholder={t('presets.ivGreetingPlaceholder')}
+              className="min-h-20 font-sans"
+            />
+          </Field>
+          <Field label={t('presets.rpFormat')}>
+            <Segmented
+              label={t('presets.rpFormat')}
+              value={persona.innerVoice.format}
+              onChange={(format) => setInnerVoice({ format })}
+              options={[
+                { value: 'novel', label: t('presets.rpFormatNovel') },
+                { value: 'chat', label: t('presets.rpFormatChat') },
+              ]}
+            />
+          </Field>
+        </div>
+      )}
+
       {tab === 'advanced' && (
         <div className="flex flex-col gap-4">
           <Field
@@ -300,13 +398,13 @@ export function PersonaEditor({ preset, onChange, onSave, onCancel }: PersonaEdi
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p>{t('params.reasoning')}</p>
-              {persona.mode === 'roleplay' && (
+              {scene && (
                 <p className="text-xs text-muted-foreground">{t('presets.reasoningOffRoleplay')}</p>
               )}
             </div>
             <Switch
-              checked={persona.mode === 'roleplay' ? false : (preset.reasoning ?? true)}
-              disabled={persona.mode === 'roleplay'}
+              checked={scene ? false : (preset.reasoning ?? true)}
+              disabled={scene}
               onCheckedChange={(v) => onChange({ ...preset, reasoning: v })}
               aria-label={t('params.reasoning')}
             />

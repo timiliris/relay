@@ -185,6 +185,30 @@ describe('applyPreset', () => {
     expect(updated[0]?.[1]).toMatchObject({ reasoning: false });
   });
 
+  it('traite une petite voix comme un jeu de rôle : conversation dédiée, scène d’ouverture, sans raisonnement', async () => {
+    const p = preset({ reasoning: true });
+    p.persona.mode = 'innerVoice';
+    p.persona.innerVoice.characterName = 'Camille';
+    p.persona.innerVoice.otherName = 'Théo';
+    p.persona.innerVoice.greeting = 'Je mets quoi, {{user}} ? {{other}} m’attend.';
+
+    const result = await applyPreset(null, p);
+
+    expect(result?.id).toBe('new');
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ title: 'Lyra', presetId: 'p1', reasoning: false });
+    const prompt = String(created[0]?.systemPrompt);
+    expect(prompt).toContain('Petite voix : tu incarnes Camille');
+    expect(prompt).not.toContain('Jeu de rôle');
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({
+      conversationId: 'new',
+      role: 'assistant',
+      content: 'Je mets quoi, la petite voix ? Théo m’attend.',
+    });
+    expect(useSettings.getState().systemPrompt).toBe('');
+  });
+
   it('applique un assistant classique aux valeurs par défaut quand aucune conversation n’est ouverte', async () => {
     const p = preset();
     p.persona.traits.verbosity = 10;

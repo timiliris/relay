@@ -41,7 +41,7 @@ import {
   type ToolCall,
   toToolCallPayload,
 } from './openrouter';
-import { buildSystemPrompt, greetingOf } from './persona';
+import { buildSystemPrompt, greetingOf, isSceneMode } from './persona';
 import { formatMemoryBlock } from './persona-memory';
 import { errorMessage, isTauri } from './tauri';
 import { activePath, siblingsOf, tail } from './tree';
@@ -598,8 +598,9 @@ async function notifyIfHidden(title: string, body: string): Promise<void> {
 
 /**
  * Applique un persona : à la conversation (instruction composée, paramètres, modèle) ou,
- * sans conversation, aux valeurs par défaut. Un persona en jeu de rôle démarre toujours une
- * conversation dédiée et y insère sa première réplique. Renvoie la conversation créée, à ouvrir.
+ * sans conversation, aux valeurs par défaut. Un persona en jeu de rôle ou en petite voix démarre
+ * toujours une conversation dédiée et y insère sa première réplique. Renvoie la conversation
+ * créée, à ouvrir.
  */
 export async function applyPreset(
   conversation: Conversation | null,
@@ -614,8 +615,8 @@ export async function applyPreset(
     temperature: preset.temperature,
     topP: preset.topP,
     maxTokens: preset.maxTokens,
-    // En jeu de rôle, le raisonnement affiché n'apporte rien et casse l'immersion.
-    reasoning: preset.persona.mode === 'roleplay' ? false : preset.reasoning,
+    // En jeu de rôle et en petite voix, le raisonnement affiché n'apporte rien et casse l'immersion.
+    reasoning: isSceneMode(preset.persona.mode) ? false : preset.reasoning,
   };
   const greeting = greetingOf(preset, language);
 
@@ -630,7 +631,7 @@ export async function applyPreset(
     return null;
   }
 
-  if (preset.persona.mode === 'roleplay') {
+  if (isSceneMode(preset.persona.mode)) {
     const created = await useConversations.getState().create({
       title: preset.name,
       model: preset.model ?? s.defaultModel,
