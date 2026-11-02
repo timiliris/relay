@@ -364,7 +364,8 @@ fn kill_tree_blocking(pid: u32) {
     }
 }
 
-async fn kill_tree(child: &mut Child) {
+/// Arrêt forcé du processus et de ses enfants (partagé avec `env.rs`).
+pub(crate) async fn kill_tree(child: &mut Child) {
     if let Some(pid) = child.id() {
         let _ = tokio::task::spawn_blocking(move || kill_tree_blocking(pid)).await;
     }

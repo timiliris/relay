@@ -84,6 +84,7 @@ pub fn run() {
         .manage(openrouter::OpenRouterState::new())
         .manage(agent::WorkspaceState::default())
         .manage(agent::exec::ProcessRegistry::default())
+        .manage(agent::env::EnvironmentState::default())
         .invoke_handler(tauri::generate_handler![
             commands::app::set_language,
             commands::app::should_start_hidden,
@@ -124,6 +125,8 @@ pub fn run() {
             commands::browser::browser_set_bounds,
             commands::browser::browser_close,
             commands::browser::fetch_url,
+            commands::agent::detect_environment,
+            commands::agent::install_playwright,
         ])
         .setup(|app| {
             let info = app.package_info();

@@ -2,7 +2,7 @@
  * Wrappers typés des commandes Rust du mode agent (`src-tauri/src/commands/agent.rs`).
  * Tout chemin est relatif au dossier de travail enregistré ; Rust refuse ce qui en sort.
  */
-import { invoke } from '@tauri-apps/api/core';
+import { Channel, invoke } from '@tauri-apps/api/core';
 
 export interface WorkspaceInfo {
   root: string;
@@ -227,4 +227,57 @@ export const browserCommands = {
   setBounds: (bounds: BrowserBounds) => invoke<void>('browser_set_bounds', { ...bounds }),
   close: () => invoke<void>('browser_close'),
   fetchUrl: (url: string, maxChars?: number) => invoke<PageText>('fetch_url', { url, maxChars }),
+} as const;
+
+// ---- Environnement du poste (`env.rs`) : outils installés et Playwright ----
+
+export interface ToolInfo {
+  name: string;
+  /** `2.47.1`, ou `null` si l'outil est absent ou n'a pas répondu à `--version`. */
+  version: string | null;
+  /** Exécutable trouvé dans le PATH ; `null` : outil absent. */
+  path: string | null;
+}
+
+export interface PlaywrightInfo {
+  /** Paquet Python `playwright` importable. */
+  python: boolean;
+  /** Paquet npm `playwright` résolu par `npx` (local au dossier de travail ou global). */
+  node: boolean;
+  /** Familles de navigateurs déjà téléchargées (`chromium`, `firefox`, `webkit`). */
+  browsers: string[];
+  version: string | null;
+}
+
+export interface Environment {
+  /** `Windows 11`, `macOS 15.1`, `Linux 6.8`… */
+  os: string;
+  /** Shell de `run_command` : `PowerShell` ou `sh`. */
+  shell: string;
+  tools: ToolInfo[];
+  playwright: PlaywrightInfo;
+}
+
+/** Événements du dialogue d'installation de Playwright. */
+export type InstallEvent =
+  | { type: 'step'; index: number; total: number; command: string }
+  | { type: 'line'; text: string; stderr: boolean }
+  | {
+      type: 'done';
+      success: boolean;
+      exitCode: number | null;
+      cancelled: boolean;
+      timedOut: boolean;
+    };
+
+export const environmentCommands = {
+  /** Relevé en cache pour la session ; `refresh` force une nouvelle détection (~2 s). */
+  detect: (workspace: string | null, refresh = false) =>
+    invoke<Environment>('detect_environment', { workspace, refresh }),
+  /** Résout `true` si toutes les étapes ont réussi ; annulable via `agentCommands.cancelTool(id)`. */
+  installPlaywright: (id: string, onEvent: (event: InstallEvent) => void) => {
+    const channel = new Channel<InstallEvent>();
+    channel.onmessage = onEvent;
+    return invoke<boolean>('install_playwright', { id, onEvent: channel });
+  },
 } as const;

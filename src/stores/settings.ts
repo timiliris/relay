@@ -78,6 +78,8 @@ export interface SettingsData extends GenerationParams {
   agentAutoCommands: string[];
   /** Mode agent : contexte de projet (arborescence, instructions, manifestes) en tête de conversation. */
   agentProjectContext: boolean;
+  /** Mode agent : bloc « Environment » (outils installés, Playwright) avec le contexte de projet. */
+  agentEnvironment: boolean;
 }
 
 export interface SettingsState extends SettingsData {
@@ -117,6 +119,7 @@ const defaults: SettingsData = {
   agentCommandTimeout: 120,
   agentAutoCommands: [...DEFAULT_AUTO_COMMANDS],
   agentProjectContext: true,
+  agentEnvironment: true,
   ...defaultGeneration,
 };
 

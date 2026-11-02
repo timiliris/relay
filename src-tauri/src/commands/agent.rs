@@ -4,9 +4,11 @@
 use std::sync::Arc;
 
 use serde::Serialize;
+use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::AppResult;
+use crate::agent::env::{self, Environment, EnvironmentState, InstallEvent};
 use crate::agent::exec::{
     self, CommandOutput, ProcessEvent, ProcessInfo, ProcessOutput, ProcessRegistry, Stream,
 };
@@ -294,4 +296,55 @@ pub async fn git_checkout(
 pub async fn git_init(state: State<'_, WorkspaceState>, workspace: String) -> AppResult<()> {
     let root = state.root(&workspace)?;
     git::init(&root).await
+}
+
+// ---- Environnement du poste (outils installés, Playwright) ----
+
+/// Outils du poste et état de Playwright, en cache pour la session ; `refresh` force un nouveau
+/// relevé. `workspace` (facultatif) sert à voir un Playwright npm local au projet.
+#[tauri::command]
+pub async fn detect_environment(
+    state: State<'_, EnvironmentState>,
+    workspace: Option<String>,
+    refresh: bool,
+) -> AppResult<Environment> {
+    if !refresh && let Some(cached) = state.get(workspace.as_deref()) {
+        return Ok(cached);
+    }
+    let detected = env::detect(workspace.as_deref().map(std::path::Path::new)).await;
+    log::info!(
+        "environnement relevé : {} ({}), {} outils présents sur {}, playwright python={} node={} navigateurs={:?}",
+        detected.os,
+        detected.shell,
+        detected.tools.iter().filter(|t| t.path.is_some()).count(),
+        detected.tools.len(),
+        detected.playwright.python,
+        detected.playwright.node,
+        detected.playwright.browsers
+    );
+    state.set(workspace.as_deref(), detected.clone());
+    Ok(detected)
+}
+
+/// Installe Playwright et Chromium (`pip` si Python est présent, sinon npm) en relayant la sortie
+/// ligne par ligne sur `on_event` ; annulable via `cancel_tool(id)`. Le cache est invalidé à la fin.
+#[tauri::command]
+pub async fn install_playwright(
+    state: State<'_, EnvironmentState>,
+    workspaces: State<'_, WorkspaceState>,
+    id: String,
+    on_event: Channel<InstallEvent>,
+) -> AppResult<bool> {
+    let current = match state.get(None) {
+        Some(env) => env,
+        None => env::detect(None).await,
+    };
+    let cancel = workspaces.track(&id);
+    let result = env::install_playwright(&current, cancel, |event| {
+        let _ = on_event.send(event);
+    })
+    .await;
+    workspaces.untrack(&id);
+    state.clear();
+    result
 }

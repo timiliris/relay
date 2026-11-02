@@ -8,9 +8,10 @@ import { Input } from '../ui/input';
 import { Segmented } from '../ui/segmented';
 import { Switch } from '../ui/switch';
 import { Textarea } from '../ui/textarea';
+import { EnvironmentGroup } from './environment-group';
 import { Field, Group, Row, SettingsSection } from './primitives';
 
-/** Mode agent : politique d'approbation, délai des commandes, commandes auto-approuvées. */
+/** Mode agent : approbation, contexte de projet, environnement du poste, commandes. */
 export function DeveloperSection() {
   const { t } = useTranslation();
   const settings = useSettings();
@@ -56,6 +57,8 @@ export function DeveloperSection() {
           />
         </Row>
       </Group>
+
+      <EnvironmentGroup />
 
       <Group title={t('settings.developer.commands')}>
         <Row label={t('settings.developer.timeout')} hint={t('settings.developer.timeoutHint')}>
