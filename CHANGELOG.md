@@ -2,6 +2,13 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.12.0](https://github.com/timiliris/relay/compare/v0.11.0...v0.12.0) (2026-11-03)
+
+
+### Nouveautés
+
+* **personas:** Léa en petite voix dans le pack 18+ (Jules second personnage) ([be31620](https://github.com/timiliris/relay/commit/be316208e009537637213a15ed88d357269b1787))
+
 ## [0.11.0](https://github.com/timiliris/relay/compare/v0.10.0...v0.11.0) (2026-11-02)
 
 
