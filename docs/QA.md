@@ -313,6 +313,10 @@ Branche `claude/inner-voice-persona`. Troisième mode de persona à côté d'ass
 
 Biome propre, tsc propre, suite Vitest complète verte après ajout.
 
+## Release 0.11.0 (3 novembre 2026)
+
+Quatre branches fusionnées une à une dans `main` (`07dbf7c`) : volet Processus et sortie en direct (`claude/agent-processes-44f404`), relevé d'environnement et installation de Playwright (`claude/agent-environment-6ec41a`), outils navigateur de l'agent (`claude/agent-browser-tools-aa542d`), mode persona « petite voix » (`claude/inner-voice-persona`). Conflits résolus à la main : `exec.rs` (`kill_tree` rendu visible pour `env.rs`), imports de `commands/agent.rs`, états gérés dans `lib.rs`, listes d'outils, icônes et libellés (processus × navigateur), `PRIMARY_ARG` de la carte complété des trois outils de processus, fiches QA. Effet de bord corrigé : un `t` typé passé en paramètre dans `environment-group.tsx` faisait exploser la profondeur d'instanciation de tsc une fois les ressources i18n agrandies (`i18n.t` à la place). Arbre fusionné : Biome, tsc, **248 tests Vitest**, `cargo fmt`, clippy strict, **80 tests Rust**, `cargo deny` ; vérifié dans le navigateur : conversation « Premier rendez-vous » avec badge « Voix », volet Processus sur la conversation agent, groupe Environnement dans Paramètres. CI Linux : un test du plan d'installation utilisait un chemin Windows (`5742cf3`). Release par release-please (PR #20, `Cargo.lock` aligné) : quatre builds réussis au premier passage, **17 fichiers**, `latest.json` en 0.11.0 avec 11 cibles. Non vérifié dans l'app installée : un tour d'agent complet avec sortie en direct, les outils navigateur et la petite voix face à un vrai modèle.
+
 ## Optimisations mesurées (0.1.1)
 
 | Mesure                                   | Avant                       | Après                                                     |
