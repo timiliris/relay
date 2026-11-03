@@ -2,6 +2,27 @@
 
 Généré par [release-please](https://github.com/googleapis/release-please) à partir des Conventional Commits.
 
+## [0.11.0](https://github.com/timiliris/relay/compare/v0.10.0...v0.11.0) (2026-11-02)
+
+
+### Nouveautés
+
+* **agent:** bloc « Environment » dans l'instruction et consigne de ne pas sonder le poste ([e65e606](https://github.com/timiliris/relay/commit/e65e6064e103585a4365c93f20fa3b50271b671b))
+* **agent:** outils navigateur pour le modèle (navigate, read, click, type, eval) ([7617617](https://github.com/timiliris/relay/commit/7617617f3dc1ebe4267ab7f98222afc80cc64626))
+* **agent:** relevé de l'environnement du poste et installation de Playwright côté Rust ([c3cc252](https://github.com/timiliris/relay/commit/c3cc2522d862a9fb1033130aa1c432ba3672e1ab))
+* **agent:** sortie des commandes diffusée, arrière-plan et registre des processus ([5740068](https://github.com/timiliris/relay/commit/5740068a5b7bdcc2a318ad698c901bfaaef51b6d))
+* **chat:** volet Processus et sortie en direct des commandes de l'agent ([5e62bca](https://github.com/timiliris/relay/commit/5e62bcae32ff619342f8adc0f9376de99d72e495))
+* **personas:** conversation de démo petite voix et fiches des seconds personnages ([5f981ab](https://github.com/timiliris/relay/commit/5f981abeb8550fffbb9a126fc0465aa79966fc29))
+* **personas:** deux petites voix par défaut (premier rendez-vous, entretien) ([6c55743](https://github.com/timiliris/relay/commit/6c5574329d545091b93b0dff17168f0a373c1a13))
+* **personas:** éditeur, badges, application et fiches pour la petite voix ([d28da40](https://github.com/timiliris/relay/commit/d28da409a903a295b95d8db22909395164d1bfdf))
+* **personas:** mode « petite voix » dans le modèle, le prompt et les gabarits ([0fbb329](https://github.com/timiliris/relay/commit/0fbb329d7307acf2ff7fea2f409d195540a02304))
+* **settings:** groupe Environnement avec outils détectés et installation de Playwright ([c6cf443](https://github.com/timiliris/relay/commit/c6cf4433fed234f19dcd843527267bf844d386d5))
+
+
+### Corrections
+
+* **agent:** attendre l'événement terminal du flux avant de persister les appels d'outils ([b6bff6b](https://github.com/timiliris/relay/commit/b6bff6b65c73bb2e2fecda6264455f80f3773019))
+
 ## [0.10.0](https://github.com/timiliris/relay/compare/v0.9.0...v0.10.0) (2026-11-02)
 
 
