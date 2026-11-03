@@ -620,7 +620,7 @@
       "closePanel": "Fermer le volet mémoire"
     },
     "addAdult": "Ajouter les personas 18+",
-    "addAdultHint": "Six personnages de fiction pour adultes (romance, tension, aventure), ajoutés après confirmation d'âge. Jamais installés automatiquement.",
+    "addAdultHint": "Sept personnages de fiction pour adultes (romance, tension, aventure, une petite voix), ajoutés après confirmation d'âge. Jamais installés automatiquement.",
     "adultAdded": "{{count}} persona(s) 18+ ajouté(s)."
   },
   "compare": {

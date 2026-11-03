@@ -620,7 +620,7 @@
       "closePanel": "Close memory panel"
     },
     "addAdult": "Add 18+ personas",
-    "addAdultHint": "Six adult-fiction characters (romance, tension, adventure), added after age confirmation. Never installed automatically.",
+    "addAdultHint": "Seven adult-fiction characters (romance, tension, adventure, one inner voice), added after age confirmation. Never installed automatically.",
     "adultAdded": "{{count}} 18+ persona(s) added."
   },
   "compare": {
