@@ -43,7 +43,7 @@ globset = "0.4"
 regex = "1"
 dunce = "1"
 # Navigateur et outil `fetch_url` : HTML -> texte lisible pour le modèle.
-html2text = "0.16"
+html2text = "0.17"
 url = "2"
 
 # Outils navigateur de l'agent : évaluation de script avec valeur de retour, par plateforme
